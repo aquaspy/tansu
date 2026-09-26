@@ -1,0 +1,27 @@
+# Tansu monorepo ignores (all seven apps).
+#
+# Per-app rules live here, not in apps/* — one place to look.
+
+# Local env (examples are committed).
+**/.env*
+!**/.env.example
+
+# SQLite data, uploads, logs, tmp.
+**/storage/*
+**/log/*
+**/tmp/*
+
+# Go build outputs (per-app binaries).
+apps/account/kuraaccount
+apps/notes/kuranotes
+apps/chat/kurachat
+apps/calendar/kuracalendar
+apps/spend/kuraspend
+apps/people/kurapeople
+apps/home/kurahome
+
+# Built CSS (generated from input.css by the Tailwind CLI).
+apps/*/web/static/css/app.css
+
+# E2E scratch (scripts/e2e.sh defaults to mktemp, this is belt-and-braces).
+.e2e/
