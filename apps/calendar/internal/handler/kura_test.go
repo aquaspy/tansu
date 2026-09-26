@@ -47,11 +47,17 @@ func withAccount(t *testing.T, profile string, mutate func(*config.Config)) (*fl
 	return f, acct.Close
 }
 
+func setKuraStateCookie(f *flow, state string) {
+	u, _ := url.Parse(f.server.URL)
+	f.client.Jar.SetCookies(u, []*http.Cookie{{Name: kuraStateCookie, Value: state, Path: "/"}})
+}
+
 func kuraCallback(t *testing.T, f *flow, state string) (int, string, http.Header) {
 	t.Helper()
 	if err := f.store.CreateKuraLogin(state, "test-verifier"); err != nil {
 		t.Fatal(err)
 	}
+	setKuraStateCookie(f, state)
 	return f.get("/login/kura/callback?code=test-code&state="+state, nil)
 }
 
@@ -70,6 +76,21 @@ func TestKuraStartRedirectsToAccount(t *testing.T) {
 		if !strings.Contains(loc, param) {
 			t.Fatalf("authorize URL %q misses %s", loc, param)
 		}
+	}
+	parsed, err := url.Parse(loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := parsed.Query().Get("state")
+	var bound string
+	for _, line := range hdr.Values("Set-Cookie") {
+		if strings.HasPrefix(line, kuraStateCookie+"=") {
+			bound = line
+		}
+	}
+	if state == "" || !strings.Contains(bound, kuraStateCookie+"="+state) ||
+		!strings.Contains(bound, "HttpOnly") || !strings.Contains(bound, "SameSite=Lax") {
+		t.Fatalf("state cookie %q does not bind authorize state %q", bound, state)
 	}
 }
 
@@ -113,6 +134,30 @@ func TestKuraCallbackLinksExistingEmail(t *testing.T) {
 	}
 }
 
+func TestKuraCallbackRejectsSubOverwrite(t *testing.T) {
+	f, done := withAccount(t, `{"sub":"acct-new","email":"ana@example.com"}`, nil)
+	defer done()
+	digest, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
+	existing, err := f.store.CreateUser("ana@example.com", string(digest))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.store.SetUserSub(existing.ID, "acct-old"); err != nil {
+		t.Fatal(err)
+	}
+	code, _, _ := kuraCallback(t, f, "state-overwrite")
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", code)
+	}
+	linked, err := f.store.FindUser(existing.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if linked.AccountSub != "acct-old" {
+		t.Fatalf("AccountSub = %q, want acct-old", linked.AccountSub)
+	}
+}
+
 func TestKuraCallbackRejectsUnknownState(t *testing.T) {
 	f, done := withAccount(t, `{"sub":"acct-3","email":"x@example.com"}`, nil)
 	defer done()
@@ -134,11 +179,33 @@ func TestKuraCallbackRejectsReplay(t *testing.T) {
 	if err := f.store.CreateKuraLogin("state-once", "test-verifier"); err != nil {
 		t.Fatal(err)
 	}
+	setKuraStateCookie(f, "state-once")
 	if code, _, _ := f.get("/login/kura/callback?code=test-code&state=state-once", nil); code != http.StatusSeeOther {
 		t.Fatalf("first callback = %d, want 303", code)
 	}
 	if code, _, _ := f.get("/login/kura/callback?code=test-code&state=state-once", nil); code != http.StatusUnprocessableEntity {
 		t.Fatalf("replayed callback = %d, want 422", code)
+	}
+}
+
+func TestKuraCallbackRejectsMissingStateCookie(t *testing.T) {
+	f, done := withAccount(t, `{"sub":"acct-6","email":"cookie@example.com"}`, nil)
+	defer done()
+	if err := f.store.CreateKuraLogin("state-nocookie", "test-verifier"); err != nil {
+		t.Fatal(err)
+	}
+	code, _, _ := f.get("/login/kura/callback?code=test-code&state=state-nocookie", nil)
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", code)
+	}
+	if _, err := f.store.FindUserByEmail("cookie@example.com"); err == nil {
+		t.Fatal("missing state cookie must not provision a user")
+	}
+	// The pending login stays usable for the browser that holds the cookie.
+	setKuraStateCookie(f, "state-nocookie")
+	code, _, hdr := f.get("/login/kura/callback?code=test-code&state=state-nocookie", nil)
+	if code != http.StatusSeeOther || hdr.Get("Location") != "/" {
+		t.Fatalf("retry with cookie = %d loc %q, want 303 /", code, hdr.Get("Location"))
 	}
 }
 

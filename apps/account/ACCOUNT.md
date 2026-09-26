@@ -81,9 +81,12 @@ codes (`invalid_client`, `invalid_grant`, `invalid_token`, `rate_limited`).
    Empty account URL → hide the button, local login only.
 2. `GET /login/kura`: build the authorize URL (random `state` + PKCE pair),
    stash both server-side (signed cookie or short session row), redirect.
-3. `GET /login/kura/callback`: verify `state`, exchange the code, fetch
+3. `GET /login/kura/callback`: verify `state` against the `kura_sso_state`
+   cookie set at step 2 (HttpOnly, SameSite=Lax), exchange the code, fetch
    userinfo, find-or-create the local user (`account_sub`, else email
-   claim), mint the normal local session, redirect `/`.
+   claim only when `account_sub` is still empty), mint the normal local
+   session, redirect `/`. A different `account_sub` on that email fails
+   closed — recreating the Account user does not take over the app.
 4. Keep the local login form untouched below the button.
 5. Tests: callback against an `httptest` Account double (happy + bad state),
    plus standalone regression (no env → old behavior).
@@ -101,11 +104,15 @@ Interop details the checklist glosses over, all verified live:
 - `userinfo` returns exactly `{"sub","email"}`. `sub` is the account's
   numeric user id as a string — stable, use it as the join key.
 - Apps join on `account_sub` (unique partial index, empty = standalone).
-  First SSO with a known email links the existing row; unknown email
-  provisions a row with an unusable password digest when signups are open.
-  Known hardening gap: the link-by-email step is automatic while the
-  Account has no email verification — fine for single-operator self-host,
-  revisit before shared hosting.
+  First SSO with a known email links the existing row only while
+  `account_sub` is empty. A row already linked to a different subject
+  fails closed, so deleting and recreating the Account user (same email,
+  new id) does not take over the app. Unknown email provisions a row
+  with an unusable password digest when signups are open.
+  Known hardening gap: that first link-by-email is automatic while the
+  Account has no email verification — fine for self-host, revisit before
+  shared hosting. The callback also requires the `kura_sso_state` cookie
+  from the browser that started `/login/kura`.
 - Migration ordering matters: create the `users_account_sub` index
   **after** the `ALTER TABLE ... ADD COLUMN`, not in the schema string,
   or old databases fail to open (`no such column`). Every app has a

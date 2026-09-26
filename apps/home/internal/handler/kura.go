@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -80,6 +81,7 @@ func (s *Server) handleKuraStart(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "try again", http.StatusInternalServerError)
 		return
 	}
+	s.setKuraStateCookie(w, r, state)
 	sum := sha256.Sum256([]byte(verifier))
 	challenge := base64.RawURLEncoding.EncodeToString(sum[:])
 	url := s.kuraOAuth(r).AuthCodeURL(state,
@@ -119,7 +121,16 @@ func (s *Server) handleKuraCallback(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusUnprocessableEntity, "auth.kura_failed")
 		return
 	}
-	verifier, err := s.Store.ConsumeKuraLogin(r.URL.Query().Get("state"), store.KuraLoginTTL)
+	// The state cookie binds the callback to the browser that started
+	// the flow. A mismatch must not consume the pending login, so the
+	// real browser can still finish.
+	state := r.URL.Query().Get("state")
+	if !kuraStateMatches(r, state) {
+		fail(http.StatusUnprocessableEntity, "auth.kura_failed")
+		return
+	}
+	clearCookie(w, r, s.Config, kuraStateCookie)
+	verifier, err := s.Store.ConsumeKuraLogin(state, store.KuraLoginTTL)
 	if err != nil {
 		fail(http.StatusUnprocessableEntity, "auth.kura_failed")
 		return
@@ -143,14 +154,26 @@ func (s *Server) handleKuraCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if user == nil {
-		if existing, err := s.Store.FindUserByEmail(profile.Email); err == nil {
-			// Same email, first SSO: link the existing account.
+		existing, findErr := s.Store.FindUserByEmail(profile.Email)
+		switch {
+		case findErr == nil && existing.AccountSub != "" && existing.AccountSub != profile.Sub:
+			// Already linked to another Account subject. Recreating the
+			// Account row (same email, new id) must not take over.
+			fail(http.StatusUnprocessableEntity, "auth.kura_failed")
+			return
+		case findErr == nil && existing.AccountSub == "":
+			// Same email, first SSO: link the existing local account.
 			if err := s.Store.SetUserSub(existing.ID, profile.Sub); err != nil {
 				fail(http.StatusUnprocessableEntity, "auth.kura_failed")
 				return
 			}
+			existing.AccountSub = profile.Sub
 			user = existing
-			user.AccountSub = profile.Sub
+		case findErr == nil:
+			user = existing
+		case !errors.Is(findErr, store.ErrNotFound):
+			fail(http.StatusUnprocessableEntity, "auth.kura_failed")
+			return
 		}
 	}
 	if user == nil {
@@ -182,6 +205,35 @@ func (s *Server) handleKuraCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	s.setSessionCookie(w, r, sess.ID)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// kuraStateCookie is the browser binding for one SSO attempt.
+// HttpOnly + SameSite=Lax: a foreign site can navigate the user to
+// the callback, but it cannot attach this cookie.
+const kuraStateCookie = "kura_sso_state"
+
+func (s *Server) setKuraStateCookie(w http.ResponseWriter, r *http.Request, state string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     kuraStateCookie,
+		Value:    state,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   s.secureCookies(r),
+		MaxAge:   int(store.KuraLoginTTL.Seconds()),
+		Expires:  time.Now().Add(store.KuraLoginTTL),
+	})
+}
+
+func kuraStateMatches(r *http.Request, state string) bool {
+	if state == "" || len(state) > 128 {
+		return false
+	}
+	c, err := r.Cookie(kuraStateCookie)
+	if err != nil || c.Value == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(c.Value), []byte(state)) == 1
 }
 
 func (s *Server) fetchKuraProfile(ctx context.Context, accessToken string) (*kuraProfile, error) {
