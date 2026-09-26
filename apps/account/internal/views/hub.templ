@@ -1,0 +1,97 @@
+package views
+
+import "strconv"
+
+templ LockNow(p Page) {
+	<form id="lock-now-form" action="/lock" method="post">
+		<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+		<button type="submit" id="lock-now" class="sr-only" tabindex="-1" aria-hidden="true"></button>
+	</form>
+}
+
+templ Flashes(p Page) {
+	if p.Notice != "" {
+		<p class="flash flash-notice" role="status">{ p.Notice }</p>
+	}
+	if p.Alert != "" {
+		<p class="flash flash-alert" role="alert">{ p.Alert }</p>
+	}
+}
+
+templ HubPage(p Page, d HubData) {
+	@LockNow(p)
+	@Flashes(p)
+	<div
+		class="hub"
+		data-controller="menu lock offline"
+		data-lock-enabled-value={ LockEnabledValue(d.AutoLock) }
+		data-lock-on-label-value={ p.T("app.auto_lock_on") }
+		data-lock-off-label-value={ p.T("app.auto_lock_off") }
+	>
+		<p class="offline-banner" data-offline-target="banner" hidden>{ p.T("app.offline") }</p>
+		<header class="hub-top">
+			@Wordmark()
+			<button type="button" class="icon-btn hub-top-tool" data-action="theme#cycle" data-theme-button title={ p.T("auth.theme") } aria-label={ p.T("auth.theme") }>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 3a5 5 0 0 0 0 10Z" fill="currentColor"></path></svg>
+			</button>
+			<button type="button" class="icon-btn desktop-only" data-action="lock#lock" title={ p.T("app.lock") } aria-label={ p.T("app.lock") }>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.4" y="7.2" width="9.2" height="6.4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M5.3 7.2V5.4a2.7 2.7 0 0 1 5.4 0v1.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+			</button>
+			<button type="button" class="icon-btn" data-action="menu#toggle" data-menu-target="menuButton" title={ p.T("app.more") } aria-label={ p.T("app.more") } aria-expanded="false">
+				<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="3.5" r="1.1" fill="currentColor"></circle><circle cx="8" cy="8" r="1.1" fill="currentColor"></circle><circle cx="8" cy="12.5" r="1.1" fill="currentColor"></circle></svg>
+			</button>
+			<div class="mobile-menu" data-menu-target="menu" hidden>
+				<form action="/lock" method="post">
+					<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+					<button type="submit" class="btn-io">
+						<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.4" y="7.2" width="9.2" height="6.4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M5.3 7.2V5.4a2.7 2.7 0 0 1 5.4 0v1.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+						<span>{ p.T("app.lock") }</span>
+					</button>
+				</form>
+				@AutoLockButton(p, d.AutoLock)
+				@ChangePasswordButton(p)
+				@SignOut(p)
+			</div>
+		</header>
+		<main class="hub-inner">
+			<section class="fox">
+				<svg class="tails" viewBox="0 0 120 92" role="img" aria-label={ p.T("hub.tails", "count", strconv.Itoa(LinkedCount(d)), "max", strconv.Itoa(d.MaxTails)) }>
+					for _, tail := range TailSlots(d) {
+						if tail.Lit {
+							<ellipse cx="60" cy="38" rx="7" ry="26" class="tail lit" transform={ "rotate(" + strconv.Itoa(tail.Angle) + " 60 80)" }></ellipse>
+						} else {
+							<ellipse cx="60" cy="38" rx="7" ry="26" class="tail" transform={ "rotate(" + strconv.Itoa(tail.Angle) + " 60 80)" }></ellipse>
+						}
+					}
+					<circle cx="60" cy="80" r="9" class="fox-heart"></circle>
+				</svg>
+				<h1>{ p.T("hub.title") }</h1>
+				<p class="fox-sub">{ d.Email }</p>
+				<p class="fox-tails">{ p.T("hub.tails", "count", strconv.Itoa(LinkedCount(d)), "max", strconv.Itoa(d.MaxTails)) }</p>
+			</section>
+			if len(d.Clients) == 0 {
+				<section class="empty">
+					<h2>{ p.T("hub.empty_title") }</h2>
+					<p>{ p.T("hub.empty_lede") }</p>
+				</section>
+			} else {
+				<nav class="apps" aria-label={ p.T("hub.apps") }>
+					for _, client := range d.Clients {
+						<a class="app-card" href={ templ.SafeURL(client.Home) }>
+							<span class="app-icon" aria-hidden="true">{ ClientIcon(client) }</span>
+							<span class="app-main">
+								<span class="app-name">{ client.Name }</span>
+								if IsLinked(d, client) {
+									<span class="app-sub is-linked">{ p.T("hub.linked") }</span>
+								} else {
+									<span class="app-sub">{ p.T("hub.not_linked") }</span>
+								}
+							</span>
+							<span class="app-open">{ p.T("hub.open") }</span>
+						</a>
+					}
+				</nav>
+			}
+		</main>
+	</div>
+}

@@ -1,0 +1,114 @@
+package views
+
+templ LoginPage(p Page, email string, signupOpen bool) {
+	<section class="auth-card">
+		@Wordmark()
+		<h1>{ p.T("auth.sign_in") }</h1>
+		<p class="lede">{ p.T("auth.sign_in_lede") }</p>
+		<form action="/login" method="post" class="auth-form">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			if p.Alert != "" {
+				<p class="error">{ p.Alert }</p>
+			}
+			<label>
+				{ p.T("auth.email") }
+				<input type="email" name="email" value={ email } autocomplete="username" required/>
+			</label>
+			<label>
+				{ p.T("auth.password") }
+				<input type="password" name="password" autocomplete="current-password" required minlength="8"/>
+			</label>
+			<input type="submit" value={ p.T("auth.sign_in") } class="btn-primary"/>
+		</form>
+		if signupOpen {
+			<p class="auth-foot">{ p.T("auth.no_account") } <a href="/signup">{ p.T("auth.create_one") }</a></p>
+		}
+		@ThemeSwitch(p)
+	</section>
+}
+
+templ SignupPage(p Page, email string) {
+	<section class="auth-card">
+		@Wordmark()
+		<h1>{ p.T("auth.create_account") }</h1>
+		<p class="lede">{ p.T("auth.signup_lede") }</p>
+		<form action="/signup" method="post" class="auth-form">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			if p.Alert != "" {
+				<p class="error">{ p.Alert }</p>
+			}
+			<label>
+				{ p.T("auth.email") }
+				<input type="email" name="email" value={ email } autocomplete="username" required/>
+			</label>
+			<label>
+				{ p.T("auth.password") }
+				<input type="password" name="password" autocomplete="new-password" required minlength="8"/>
+			</label>
+			<label>
+				{ p.T("auth.confirm_password") }
+				<input type="password" name="password_confirmation" autocomplete="new-password" required minlength="8"/>
+			</label>
+			<input type="submit" value={ p.T("auth.create_account") } class="btn-primary"/>
+		</form>
+		<p class="auth-foot">{ p.T("auth.have_account") } <a href="/login">{ p.T("auth.sign_in") }</a></p>
+		@ThemeSwitch(p)
+	</section>
+}
+
+templ UnlockPage(p Page, email string) {
+	<section class="auth-card">
+		@Wordmark()
+		<h1>{ p.T("app.unlock") }</h1>
+		<p class="lede">{ p.T("app.unlock_lede", "email", email) }</p>
+		<form action="/unlock" method="post" class="auth-form">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			if p.Alert != "" {
+				<p class="error">{ p.Alert }</p>
+			}
+			<label>
+				{ p.T("auth.password") }
+				<input type="password" name="password" autocomplete="current-password" required minlength="8" autofocus/>
+			</label>
+			<input type="submit" value={ p.T("app.unlock") } class="btn-primary"/>
+		</form>
+		@SignOut(p)
+		@ThemeSwitch(p)
+	</section>
+}
+
+templ PasswordPage(p Page) {
+	<section class="auth-card">
+		@Wordmark()
+		<h1>{ p.T("auth.change_password") }</h1>
+		<p class="lede">{ p.T("auth.change_password_lede") }</p>
+		<form
+			action="/password"
+			method="post"
+			class="auth-form"
+			hx-patch="/password"
+			hx-target="closest .auth-card"
+			hx-swap="outerHTML"
+		>
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			if p.Alert != "" {
+				<p class="error">{ p.Alert }</p>
+			}
+			<label>
+				{ p.T("auth.current_password") }
+				<input type="password" name="current_password" autocomplete="current-password" required minlength="8" autofocus/>
+			</label>
+			<label>
+				{ p.T("auth.new_password") }
+				<input type="password" name="password" autocomplete="new-password" required minlength="8"/>
+			</label>
+			<label>
+				{ p.T("auth.confirm_new_password") }
+				<input type="password" name="password_confirmation" autocomplete="new-password" required minlength="8"/>
+			</label>
+			<input type="submit" value={ p.T("auth.change_password") } class="btn-primary"/>
+		</form>
+		<p class="auth-foot"><a href="/">{ p.T("app.cancel") }</a></p>
+		@ThemeSwitch(p)
+	</section>
+}
