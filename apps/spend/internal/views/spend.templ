@@ -1,0 +1,493 @@
+package views
+
+import (
+	"github.com/aquasp/kuraspend/internal/i18n"
+	"github.com/aquasp/kuraspend/internal/money"
+	"github.com/aquasp/kuraspend/internal/store"
+)
+
+templ SpendPage(p Page, d SpendData) {
+	<form id="lock-now-form" action="/lock" method="post">
+		<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+		<button type="submit" id="lock-now" class="sr-only" tabindex="-1"></button>
+	</form>
+	if p.Notice != "" {
+		<p class="flash flash-notice" role="status">{ p.Notice }</p>
+	}
+	if p.Alert != "" {
+		<p class="flash flash-alert" role="alert">{ p.Alert }</p>
+	}
+	<div
+		class="spend"
+		data-controller="composer confirm menu lock offline settings"
+		data-lock-enabled-value={ BoolString(d.AutoLock) }
+		data-lock-on-label-value={ p.T("app.auto_lock_on") }
+		data-lock-off-label-value={ p.T("app.auto_lock_off") }
+	>
+		<p class="offline-banner" data-offline-target="banner" hidden>{ p.T("app.offline") }</p>
+		if len(d.Summary.MissingRateCurrencies()) > 0 {
+			<p class="offline-banner fx-banner" role="status">{ p.T("app.missing_rates", "codes", missingCodes(d)) }</p>
+		}
+		<header class="spend-top">
+			@Wordmark()
+			<button type="button" class="icon-btn spend-top-tool" data-action="theme#cycle" data-theme-button title={ p.T("auth.theme") } aria-label={ p.T("auth.theme") }>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 3a5 5 0 0 0 0 10Z" fill="currentColor"></path></svg>
+			</button>
+			<button type="button" class="icon-btn desktop-only" data-action="lock#lock" title={ p.T("app.lock") } aria-label={ p.T("app.lock") }>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.4" y="7.2" width="9.2" height="6.4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M5.3 7.2V5.4a2.7 2.7 0 0 1 5.4 0v1.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+			</button>
+			<button type="button" class="icon-btn" data-action="menu#toggle" data-menu-target="menuButton" title={ p.T("app.more") } aria-label={ p.T("app.more") } aria-expanded="false">
+				<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="3.5" r="1.1" fill="currentColor"></circle><circle cx="8" cy="8" r="1.1" fill="currentColor"></circle><circle cx="8" cy="12.5" r="1.1" fill="currentColor"></circle></svg>
+			</button>
+			<div class="mobile-menu" data-menu-target="menu" hidden>
+				<form action="/lock" method="post">
+					<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+					<button type="submit" class="btn-io">
+						<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.4" y="7.2" width="9.2" height="6.4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M5.3 7.2V5.4a2.7 2.7 0 0 1 5.4 0v1.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+						<span>{ p.T("app.lock") }</span>
+					</button>
+				</form>
+				@AutoLockButton(p, d.AutoLock)
+				<button type="button" class="btn-io" data-action="menu#close settings#open">
+					<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.2v9.6M4.2 6.8h7.6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path><circle cx="8" cy="8" r="5.4" fill="none" stroke="currentColor" stroke-width="1.3"></circle></svg>
+					<span>{ p.T("app.settings") }</span>
+				</button>
+				@ChangePasswordButton(p)
+				@APITokensButton(p)
+				@TransferButtons(p, d)
+				@SignOut(p)
+			</div>
+		</header>
+		<div class="spend-inner">
+			<nav class="spend-nav" aria-label={ p.T("titles.app") }>
+				<a href={ templ.SafeURL(MonthPath(d.Summary.PrevMonth().Year(), int(d.Summary.PrevMonth().Month()))) } class="icon-btn" aria-label={ p.T("app.previous_month") }>
+					<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.2 3.4 5.6 8l4.6 4.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+				</a>
+				<h1>{ MonthTitle(p, d) }</h1>
+				<a href={ templ.SafeURL(MonthPath(d.Summary.NextMonth().Year(), int(d.Summary.NextMonth().Month()))) } class="icon-btn" aria-label={ p.T("app.next_month") }>
+					<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.8 3.4 10.4 8l-4.6 4.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+				</a>
+				<a href="/" class="text-btn today-btn">{ p.T("app.today") }</a>
+			</nav>
+			@SpendHero(p, d)
+			<div class="spend-layout">
+				@ExpensesPanel(p, d)
+				<div class="spend-side">
+					@PaymentDaysPanel(p, d)
+					@SubscriptionsPanel(p, d)
+				</div>
+			</div>
+		</div>
+		<button type="button" class="fab" data-action="composer#newExpense" aria-label={ p.T("app.add_expense") }>
+			<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>
+		</button>
+		@SpendDialogs(p, d)
+	</div>
+}
+
+func missingCodes(d SpendData) string {
+	codes := d.Summary.MissingRateCurrencies()
+	out := ""
+	for i, code := range codes {
+		if i > 0 {
+			out += ", "
+		}
+		out += code
+	}
+	return out
+}
+
+templ SpendHero(p Page, d SpendData) {
+	<section
+		class="hero"
+		data-leftover={ Itoa64(d.Summary.LeftoverCents()) }
+		data-income={ Itoa64(d.Summary.IncomeHomeCents()) }
+		data-subscriptions-total={ Itoa64(d.Summary.SubscriptionsHomeCents()) }
+		data-expenses-total={ Itoa64(d.Summary.ExpensesHomeCents()) }
+	>
+		if d.Summary.LeftoverCents() < 0 {
+			<p class="hero-kicker">{ p.T("app.leftover_negative") }</p>
+			<p class="hero-figure is-negative">{ Money(p, d, d.Summary.LeftoverCents()) }</p>
+		} else {
+			<p class="hero-kicker">{ p.T("app.leftover") }</p>
+			<p class="hero-figure">{ Money(p, d, d.Summary.LeftoverCents()) }</p>
+		}
+		if d.Summary.SalaryMissing() {
+			<p class="hero-hint">{ p.T("app.salary_hint") }</p>
+		}
+		<dl class="hero-lines">
+			<div>
+				<dt>{ p.T("app.salary") }</dt>
+				<dd>{ Money(p, d, d.Summary.IncomeHomeCents()) }</dd>
+			</div>
+			<div>
+				<dt>− { p.T("app.subscriptions") }</dt>
+				<dd>{ Money(p, d, d.Summary.SubscriptionsHomeCents()) }</dd>
+			</div>
+			<div>
+				<dt>− { p.T("app.expenses") }</dt>
+				<dd>{ Money(p, d, d.Summary.ExpensesHomeCents()) }</dd>
+			</div>
+		</dl>
+	</section>
+}
+
+templ ExpensesPanel(p Page, d SpendData) {
+	<section class="panel">
+		<header class="panel-head">
+			<h2>{ p.T("app.expenses") }</h2>
+			<button type="button" class="text-btn" data-action="composer#newExpense">{ p.T("app.add_expense") }</button>
+		</header>
+		if len(d.Summary.Expenses()) == 0 {
+			<p class="empty-day">{ p.T("app.empty_expenses") }</p>
+		} else {
+			for _, group := range d.Summary.ExpensesByDay() {
+				<h3 class={ "day-label", templ.KV("is-today", IsToday(d, group.Date)) }>{ DayLabel(p, group.Date) }</h3>
+				<ul class="day-list">
+					for _, line := range group.Lines {
+						<li class={ "day-item", templ.KV("is-today", IsToday(d, group.Date)), templ.KV("is-skipped", line.Skipped) }>
+							<button
+								type="button"
+								class="item-main"
+								data-action="composer#editExpense"
+								data-id={ Itoa64(LineID(line)) }
+								data-title={ line.Title }
+								data-amount={ AmountInput(p, line.AmountCents) }
+								data-currency={ line.Currency }
+								data-spent-on={ DateString(line.SpentOn) }
+								data-category={ line.Category }
+								data-notes={ line.Notes }
+								data-heading={ p.T("app.edit_expense") }
+							>
+								<span class="item-kind">{ line.Title }</span>
+								if line.Category != "" {
+									<span class="item-note">{ CategoryLabel(p, line.Category) }</span>
+								} else if line.Notes != "" {
+									<span class="item-note">{ line.Notes }</span>
+								}
+							</button>
+							if line.Skipped {
+								<span class="row-amount">{ p.T("app.skipped") }</span>
+							} else {
+								<span class="row-amount">{ MoneyPair(p, d, line) }</span>
+							}
+							<button
+								type="button"
+								class="item-del"
+								data-action="confirm#open"
+								data-url={ "/expenses/" + Itoa64(LineID(line)) }
+								data-redirect={ MonthPath(d.Year, d.Month) }
+								data-message={ p.T("js.delete_expense_confirm") }
+								aria-label={ p.T("app.delete") }
+							>
+								<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 4.2 11.8 11.8M11.8 4.2 4.2 11.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>
+							</button>
+						</li>
+					}
+				</ul>
+			}
+		}
+	</section>
+}
+
+templ PaymentDaysPanel(p Page, d SpendData) {
+	<section class="panel">
+		<header class="panel-head">
+			<h2>{ p.T("app.payment_days") }</h2>
+			<button type="button" class="text-btn" data-action="composer#newPaymentDay">{ p.T("app.add_payment_day") }</button>
+		</header>
+		if len(d.Summary.PaymentDays()) == 0 {
+			<p class="empty-day">{ p.T("app.empty_payment_days") }</p>
+		} else {
+			<ul class="day-list">
+				for _, line := range d.Summary.PaymentDays() {
+					<li class={ "day-item", templ.KV("is-today", line.DueToday), templ.KV("is-overdue", line.Overdue) }>
+						<button
+							type="button"
+							class="item-main"
+							data-action="composer#editPaymentDay"
+							data-id={ Itoa64(LineID(line)) }
+							data-title={ line.Title }
+							data-due-day={ DueDayString(line.DueDay) }
+							data-notes={ line.Notes }
+							data-heading={ p.T("app.edit_payment_day") }
+						>
+							<span class="item-kind">{ line.Title }</span>
+							<span class="item-note row-due">
+								if line.DueToday {
+									{ p.T("app.due_today") }
+								} else if line.Overdue {
+									{ p.T("app.due_passed") }
+								} else {
+									{ p.T("app.due_on_day", "day", DueOnDay(line.DueOn)) }
+								}
+							</span>
+						</button>
+						<span class="due-num">{ DueOnDay(line.DueOn) }</span>
+						<button
+							type="button"
+							class="item-del"
+							data-action="confirm#open"
+							data-url={ "/payment_days/" + Itoa64(LineID(line)) }
+							data-redirect={ MonthPath(d.Year, d.Month) }
+							data-message={ p.T("js.delete_payment_day_confirm") }
+							aria-label={ p.T("app.delete") }
+						>
+							<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 4.2 11.8 11.8M11.8 4.2 4.2 11.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>
+						</button>
+					</li>
+				}
+			</ul>
+		}
+	</section>
+}
+
+templ SubscriptionsPanel(p Page, d SpendData) {
+	<section class="panel">
+		<header class="panel-head">
+			<h2>{ p.T("app.subscriptions") }</h2>
+			<button type="button" class="text-btn" data-action="composer#newSubscription">{ p.T("app.add_subscription") }</button>
+		</header>
+		if len(d.Summary.SubscriptionRows()) == 0 {
+			<p class="empty-day">{ p.T("app.empty_subscriptions") }</p>
+		} else {
+			<ul class="day-list">
+				for _, line := range d.Summary.SubscriptionRows() {
+					<li class={ "day-item", templ.KV("is-skipped", line.Skipped), templ.KV("is-quiet", !line.Counts) }>
+						<button
+							type="button"
+							class="item-main"
+							data-action="composer#editSubscription"
+							data-id={ Itoa64(LineID(line)) }
+							data-title={ line.Title }
+							data-amount={ AmountInput(p, line.AmountCents) }
+							data-currency={ line.Currency }
+							data-interval={ IntervalString(line.Interval) }
+							data-due-day={ DueDayString(line.DueDay) }
+							data-billing-month={ BillingMonthString(line.BillingMonth) }
+							data-notes={ line.Notes }
+							data-heading={ p.T("app.edit_subscription") }
+						>
+							<span class="item-kind">{ line.Title }</span>
+							<span class="item-note">
+								{ p.T("app.interval_" + IntervalString(line.Interval)) }
+								if line.DueDay != nil {
+									· { p.T("app.due_day") } { DueDayString(line.DueDay) }
+								}
+							</span>
+						</button>
+						if line.Skipped {
+							<span class="row-amount">{ p.T("app.skipped") }</span>
+						} else {
+							<span class="row-amount">{ MoneyPair(p, d, line) }</span>
+						}
+						<button
+							type="button"
+							class="item-del"
+							data-action="confirm#open"
+							data-url={ "/subscriptions/" + Itoa64(LineID(line)) }
+							data-redirect={ MonthPath(d.Year, d.Month) }
+							data-message={ p.T("js.delete_subscription_confirm") }
+							aria-label={ p.T("app.delete") }
+						>
+							<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 4.2 11.8 11.8M11.8 4.2 4.2 11.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>
+						</button>
+					</li>
+				}
+			</ul>
+		}
+	</section>
+}
+
+templ SpendDialogs(p Page, d SpendData) {
+	<dialog class="confirm-dialog form-dialog" data-composer-target="expenseBox" data-action="click->composer#backdrop">
+		<p class="dialog-heading" data-composer-target="expenseHeading">{ p.T("app.new_expense") }</p>
+		<form action="/expenses" method="post" class="auth-form" data-composer-target="expenseForm" data-action="input->composer#store submit->composer#submitted">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<input type="hidden" name="_method" value="post" data-composer-target="expenseMethod"/>
+			<input type="hidden" name="year" value={ Itoa(d.Year) }/>
+			<input type="hidden" name="month" value={ Itoa(d.Month) }/>
+			<label>
+				{ p.T("app.title") }
+				<input type="text" name="expense[title]" required maxlength="200" data-composer-target="expenseTitle"/>
+			</label>
+			<div class="time-row">
+				<label>
+					{ p.T("app.amount") }
+					<input type="text" name="expense[amount]" required inputmode="decimal" autocomplete="off" data-composer-target="expenseAmount"/>
+				</label>
+				<label>
+					{ p.T("app.currency") }
+					<select name="expense[currency]" data-composer-target="expenseCurrency">
+						for _, code := range money.Currencies {
+							<option value={ code } selected?={ code == d.User.HomeCurrency }>{ code }</option>
+						}
+					</select>
+				</label>
+			</div>
+			<div class="time-row">
+				<label>
+					{ p.T("app.date") }
+					<input type="date" name="expense[spent_on]" required data-composer-target="expenseSpentOn"/>
+				</label>
+				<label>
+					{ p.T("app.category") }
+					<select name="expense[category]" data-composer-target="expenseCategory">
+						<option value="">{ p.T("app.category_none") }</option>
+						for _, key := range store.Categories {
+							<option value={ key }>{ p.T("categories." + key) }</option>
+						}
+					</select>
+				</label>
+			</div>
+			<label>
+				{ p.T("app.notes") }
+				<textarea name="expense[notes]" rows="2" data-composer-target="expenseNotes"></textarea>
+			</label>
+			<div class="confirm-actions">
+				<button type="button" class="btn-dialog" data-action="composer#closeExpense">{ p.T("app.cancel") }</button>
+				<button type="submit" class="btn-dialog primary">{ p.T("app.save") }</button>
+			</div>
+		</form>
+		<button type="button" class="btn-dialog danger dialog-delete" hidden data-composer-target="expenseDelete" data-action="confirm#open" data-redirect={ MonthPath(d.Year, d.Month) } data-message={ p.T("js.delete_expense_confirm") }>{ p.T("app.delete") }</button>
+	</dialog>
+	<dialog class="confirm-dialog form-dialog" data-composer-target="payBox" data-action="click->composer#backdrop">
+		<p class="dialog-heading" data-composer-target="payHeading">{ p.T("app.new_payment_day") }</p>
+		<form action="/payment_days" method="post" class="auth-form" data-composer-target="payForm" data-action="input->composer#store submit->composer#submitted">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<input type="hidden" name="_method" value="post" data-composer-target="payMethod"/>
+			<input type="hidden" name="year" value={ Itoa(d.Year) }/>
+			<input type="hidden" name="month" value={ Itoa(d.Month) }/>
+			<label>
+				{ p.T("app.title") }
+				<input type="text" name="payment_day[title]" required maxlength="200" data-composer-target="payTitle" placeholder={ p.T("app.payment_day_placeholder") }/>
+			</label>
+			<label>
+				{ p.T("app.due_day") }
+				<input type="number" name="payment_day[due_day]" min="1" max="31" step="1" required inputmode="numeric" pattern="[0-9]*" data-composer-target="payDueDay"/>
+				<span class="field-hint">{ p.T("app.payment_day_hint") }</span>
+			</label>
+			<label>
+				{ p.T("app.notes") }
+				<textarea name="payment_day[notes]" rows="2" data-composer-target="payNotes"></textarea>
+			</label>
+			<div class="confirm-actions">
+				<button type="button" class="btn-dialog" data-action="composer#closePay">{ p.T("app.cancel") }</button>
+				<button type="submit" class="btn-dialog primary">{ p.T("app.save") }</button>
+			</div>
+		</form>
+		<button type="button" class="btn-dialog danger dialog-delete" hidden data-composer-target="payDelete" data-action="confirm#open" data-redirect={ MonthPath(d.Year, d.Month) } data-message={ p.T("js.delete_payment_day_confirm") }>{ p.T("app.delete") }</button>
+	</dialog>
+	<dialog class="confirm-dialog form-dialog" data-composer-target="subBox" data-action="click->composer#backdrop">
+		<p class="dialog-heading" data-composer-target="subHeading">{ p.T("app.new_subscription") }</p>
+		<form action="/subscriptions" method="post" class="auth-form" data-composer-target="subForm" data-action="input->composer#store submit->composer#submitted">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<input type="hidden" name="_method" value="post" data-composer-target="subMethod"/>
+			<input type="hidden" name="year" value={ Itoa(d.Year) }/>
+			<input type="hidden" name="month" value={ Itoa(d.Month) }/>
+			<label>
+				{ p.T("app.title") }
+				<input type="text" name="subscription[title]" required maxlength="200" data-composer-target="subTitle"/>
+			</label>
+			<div class="time-row">
+				<label>
+					{ p.T("app.amount") }
+					<input type="text" name="subscription[amount]" required inputmode="decimal" autocomplete="off" data-composer-target="subAmount"/>
+				</label>
+				<label>
+					{ p.T("app.currency") }
+					<select name="subscription[currency]" data-composer-target="subCurrency">
+						for _, code := range money.Currencies {
+							<option value={ code } selected?={ code == d.User.HomeCurrency }>{ code }</option>
+						}
+					</select>
+				</label>
+			</div>
+			<label>
+				{ p.T("app.interval") }
+				<select name="subscription[interval]" data-composer-target="subInterval" data-action="composer#toggleInterval">
+					<option value="monthly">{ p.T("app.interval_monthly") }</option>
+					<option value="yearly">{ p.T("app.interval_yearly") }</option>
+				</select>
+			</label>
+			<label data-composer-target="subBillingWrap" hidden>
+				{ p.T("app.billing_month") }
+				<select name="subscription[billing_month]" data-composer-target="subBillingMonth">
+					for m := 1; m <= 12; m++ {
+						<option value={ Itoa(m) }>{ i18n.MonthName(p.L, m) }</option>
+					}
+				</select>
+			</label>
+			<label>
+				{ p.T("app.due_day") }
+				<input type="number" name="subscription[due_day]" min="1" max="31" data-composer-target="subDueDay"/>
+			</label>
+			<label>
+				{ p.T("app.notes") }
+				<textarea name="subscription[notes]" rows="2" data-composer-target="subNotes"></textarea>
+			</label>
+			<div class="confirm-actions">
+				<button type="button" class="btn-dialog" data-action="composer#closeSub">{ p.T("app.cancel") }</button>
+				<button type="submit" class="btn-dialog primary">{ p.T("app.save") }</button>
+			</div>
+		</form>
+		<button type="button" class="btn-dialog danger dialog-delete" hidden data-composer-target="subDelete" data-action="confirm#open" data-redirect={ MonthPath(d.Year, d.Month) } data-message={ p.T("js.delete_subscription_confirm") }>{ p.T("app.delete") }</button>
+	</dialog>
+	<dialog class="confirm-dialog form-dialog" data-settings-target="box" data-action="click->settings#backdrop">
+		<p class="dialog-heading">{ p.T("app.settings") }</p>
+		<p class="lede">{ p.T("app.settings_lede") }</p>
+		<form action="/settings" method="post" class="auth-form">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<input type="hidden" name="_method" value="patch"/>
+			<input type="hidden" name="year" value={ Itoa(d.Year) }/>
+			<input type="hidden" name="month" value={ Itoa(d.Month) }/>
+			<label>
+				{ p.T("app.salary") }
+				<input type="text" name="user[monthly_income]" value={ AmountInput(p, d.User.MonthlyIncomeCents) } inputmode="decimal" autocomplete="off"/>
+			</label>
+			<div class="time-row">
+				<label>
+					{ p.T("app.income_currency") }
+					<select name="user[income_currency]">
+						for _, code := range money.Currencies {
+							<option value={ code } selected?={ code == d.User.IncomeCurrency }>{ code }</option>
+						}
+					</select>
+				</label>
+				<label>
+					{ p.T("app.home_currency") }
+					<select name="user[home_currency]">
+						for _, code := range money.Currencies {
+							<option value={ code } selected?={ code == d.User.HomeCurrency }>{ code }</option>
+						}
+					</select>
+				</label>
+			</div>
+			<p class="field-hint">{ p.T("app.fx_lede") }</p>
+			for _, code := range FXCodes(d) {
+				<label>
+					{ p.T("app.fx_rate", "code", code) } = { d.User.HomeCurrency }
+					<input type="text" name={ "fx[" + code + "]" } value={ store.RateFor(d.User, code) } inputmode="decimal" autocomplete="off" placeholder="5.45"/>
+				</label>
+			}
+			<div class="confirm-actions">
+				<button type="button" class="btn-dialog" data-action="settings#close">{ p.T("app.cancel") }</button>
+				<button type="submit" class="btn-dialog primary">{ p.T("app.save") }</button>
+			</div>
+		</form>
+		<form action="/fx/refresh" method="post" class="auth-form fx-refresh">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<input type="hidden" name="year" value={ Itoa(d.Year) }/>
+			<input type="hidden" name="month" value={ Itoa(d.Month) }/>
+			<p class="field-hint">{ FXAutoStatus(p, d) }</p>
+			<button type="submit" class="btn-dialog">{ p.T("app.fx_refresh") }</button>
+		</form>
+	</dialog>
+	<dialog class="confirm-dialog" data-confirm-target="box" data-action="click->confirm#backdrop">
+		<p data-confirm-target="message">{ p.T("js.delete_expense_confirm") }</p>
+		<div class="confirm-actions">
+			<button type="button" class="btn-dialog" data-action="confirm#close">{ p.T("app.cancel") }</button>
+			<button type="button" class="btn-dialog danger" data-confirm-target="destroy">{ p.T("app.delete") }</button>
+		</div>
+	</dialog>
+}

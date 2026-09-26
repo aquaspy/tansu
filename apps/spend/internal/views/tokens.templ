@@ -1,0 +1,74 @@
+package views
+
+import (
+	"fmt"
+
+	"github.com/aquasp/kuraspend/internal/i18n"
+	"github.com/aquasp/kuraspend/internal/store"
+)
+
+templ TokensPage(p Page, list []*store.APIToken, raw string) {
+	<section class="auth-card">
+		if p.Notice != "" {
+			<p class="flash flash-notice" role="status">{ p.Notice }</p>
+		}
+		if p.Alert != "" {
+			<p class="flash flash-alert" role="alert">{ p.Alert }</p>
+		}
+		@Wordmark()
+		<h1>{ p.T("tokens.title") }</h1>
+		<p class="lede">{ p.T("tokens.lede") }</p>
+		if raw != "" {
+			<div class="token-new">
+				<p class="token-warning">{ p.T("tokens.copy_now") }</p>
+				<code class="token-value">{ raw }</code>
+			</div>
+		}
+		<form action="/api_tokens/" method="post" class="auth-form">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<label>
+				{ p.T("tokens.name_label") }
+				<input type="text" name="name" required maxlength="80" autocomplete="off" placeholder={ p.T("tokens.name_placeholder") }/>
+			</label>
+			<label>
+				{ p.T("auth.current_password") }
+				<input type="password" name="current_password" autocomplete="current-password" required/>
+			</label>
+			<input type="submit" value={ p.T("tokens.create") } class="btn-primary"/>
+		</form>
+		<h2 class="tokens-heading">{ p.T("tokens.existing") }</h2>
+		if len(list) > 0 {
+			<ul class="token-list">
+				for _, tok := range list {
+					<li class="token-row">
+						<div class="token-meta">
+							<strong>{ tok.Name }</strong>
+							<span class="field-hint">{ tok.Prefix }… · { p.T("tokens.last_used") }: { lastUsed(p, tok) }</span>
+						</div>
+						<form
+							action={ templ.SafeURL(fmt.Sprintf("/api_tokens/%d/delete", tok.ID)) }
+							method="post"
+							data-controller="confirm"
+							data-action="submit->confirm#ask"
+							data-confirm-message={ p.T("tokens.revoke_confirm") }
+						>
+							<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+							<button type="submit" class="btn-dialog danger">{ p.T("tokens.revoke") }</button>
+						</form>
+					</li>
+				}
+			</ul>
+		} else {
+			<p class="lede">{ p.T("tokens.empty") }</p>
+		}
+		<p class="auth-foot"><a href="/">{ p.T("app.cancel") }</a></p>
+		@ThemeSwitch(p)
+	</section>
+}
+
+func lastUsed(p Page, tok *store.APIToken) string {
+	if tok.LastUsedAt == nil {
+		return p.T("tokens.never_used")
+	}
+	return i18n.TimeShort(p.L, *tok.LastUsedAt)
+}
