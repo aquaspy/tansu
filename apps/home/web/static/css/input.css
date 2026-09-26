@@ -1356,7 +1356,34 @@ input:focus { outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--acce
   background: color-mix(in srgb, var(--bg0) 82%, transparent);
   backdrop-filter: blur(14px);
 }
-.home-top .wordmark { flex: none; }
+.home-top .wordmark { flex: 0 1 auto; min-width: 0; }
+.home-top .wordmark span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-top .views { flex: 1 0 auto; }
+.home-top .account-link { margin-left: auto; }
+
+.account-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  flex: none;
+  height: 2rem;
+  padding: 0 0.75rem 0 0.5rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+  background: var(--accent-soft);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  white-space: nowrap;
+}
+.account-link svg { width: 0.95rem; height: 0.95rem; color: var(--accent-2); flex: none; }
+.account-link:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+}
 
 .views {
   flex: 1;
@@ -1825,6 +1852,24 @@ input:focus { outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--acce
   }
   .stack tbody tr { position: relative; }
   .home-top { padding-inline: 0.7rem; }
+  .home-top .account-link {
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    justify-content: center;
+  }
+  .home-top .account-link span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .home-top .account-link svg { width: 1.15rem; height: 1.15rem; }
   .greeting { margin-top: 0.8rem; font-size: 2.15rem; }
   .tiles { grid-template-columns: repeat(auto-fill, minmax(8.4rem, 1fr)); gap: 0.65rem; }
   .tile { min-height: 8.1rem; }

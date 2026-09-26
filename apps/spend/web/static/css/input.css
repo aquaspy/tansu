@@ -559,8 +559,35 @@ textarea { resize: vertical; min-height: 4.5rem; }
   background: color-mix(in srgb, var(--bg0) 82%, transparent);
   backdrop-filter: blur(14px);
 }
-.spend-top .wordmark { flex: none; }
+.spend-top .wordmark { flex: 1; min-width: 0; }
+.spend-top .wordmark span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .spend-top-tool { margin-left: auto; }
+.spend-top .account-link { margin-left: auto; }
+.spend-top .account-link + .spend-top-tool { margin-left: 0; }
+
+.account-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  flex: none;
+  height: 2rem;
+  padding: 0 0.75rem 0 0.5rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+  background: var(--accent-soft);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  white-space: nowrap;
+}
+.account-link svg { width: 0.95rem; height: 0.95rem; color: var(--accent-2); flex: none; }
+.account-link:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+}
 
 .spend-inner {
   width: min(72rem, calc(100% - 2.2rem));

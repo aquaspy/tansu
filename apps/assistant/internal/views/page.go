@@ -37,13 +37,14 @@ func simpleFormat(s string) string {
 
 // Page carries the data every full page needs.
 type Page struct {
-	L         i18n.Locale
-	Title     string
-	BodyClass string
-	CSRF      string
-	Notice    string
-	Alert     string
-	KuraLogin bool
+	L          i18n.Locale
+	Title      string
+	BodyClass  string
+	CSRF       string
+	Notice     string
+	Alert      string
+	KuraLogin  bool
+	AccountURL string
 }
 
 // T translates key with optional %{name}, value pairs.

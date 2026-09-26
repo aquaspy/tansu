@@ -428,7 +428,32 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
 }
 
 .list-head { padding: 0.9rem 0.8rem 0.4rem; display: grid; gap: 0.65rem; }
-.brand { padding: 0 0.2rem; }
+.brand { padding: 0 0.2rem; display: grid; gap: 0.55rem; justify-items: start; }
+
+.account-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  flex: none;
+  height: 2rem;
+  padding: 0 0.75rem 0 0.5rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+  background: var(--accent-soft);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  white-space: nowrap;
+}
+.account-link svg { width: 0.95rem; height: 0.95rem; color: var(--accent-2); flex: none; }
+.account-link:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+}
+.brand .account-link { width: 100%; justify-content: center; }
 .search-form { margin: 0; }
 
 .search {
@@ -1337,7 +1362,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
     z-index: 5;
     grid-row: 2;
   }
-  .mobile-top .wordmark { flex: 1; font-size: 1rem; }
+  .mobile-top .wordmark { flex: 1; min-width: 0; font-size: 1rem; }
+  .mobile-top .wordmark span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   .col-list {
     border-right: 0;

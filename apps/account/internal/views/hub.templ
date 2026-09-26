@@ -55,20 +55,26 @@ templ HubPage(p Page, d HubData) {
 			</div>
 		</header>
 		<main class="hub-inner">
-			<section class="fox">
-				<svg class="tails" viewBox="0 0 120 92" role="img" aria-label={ p.T("hub.tails", "count", strconv.Itoa(LinkedCount(d)), "max", strconv.Itoa(d.MaxTails)) }>
-					for _, tail := range TailSlots(d) {
-						if tail.Lit {
-							<ellipse cx="60" cy="38" rx="7" ry="26" class="tail lit" transform={ "rotate(" + strconv.Itoa(tail.Angle) + " 60 80)" }></ellipse>
-						} else {
-							<ellipse cx="60" cy="38" rx="7" ry="26" class="tail" transform={ "rotate(" + strconv.Itoa(tail.Angle) + " 60 80)" }></ellipse>
-						}
+			<section class="chest">
+				<svg class="cabinet" viewBox="0 0 120 128" role="img" aria-label={ p.T("hub.drawers", "count", strconv.Itoa(LinkedCount(d)), "max", strconv.Itoa(d.MaxDrawers)) }>
+					<rect class="cabinet-lip" x="14" y="12" width="92" height="8" rx="1.5"></rect>
+					<rect class="cabinet-case" x="18" y="18" width="84" height="102" rx="3"></rect>
+					for _, drawer := range Drawers(d) {
+						<g class={ DrawerClass(drawer) }>
+							<rect class="drawer-face" x={ strconv.Itoa(drawer.X) } y={ strconv.Itoa(drawer.Y) } width={ strconv.Itoa(drawer.W) } height={ strconv.Itoa(drawer.H) } rx="1.4"></rect>
+							if drawer.Lock {
+								<circle class="drawer-pull" cx={ strconv.Itoa(drawer.CX()) } cy={ strconv.Itoa(drawer.CY()) } r="2.3"></circle>
+							} else {
+								<rect class="drawer-pull" x={ strconv.Itoa(drawer.PullX()) } y={ strconv.Itoa(drawer.PullY()) } width="10" height="1.8" rx="0.9"></rect>
+							}
+						</g>
 					}
-					<circle cx="60" cy="80" r="9" class="fox-heart"></circle>
+					<rect class="cabinet-foot" x="26" y="120" width="14" height="4" rx="1"></rect>
+					<rect class="cabinet-foot" x="80" y="120" width="14" height="4" rx="1"></rect>
 				</svg>
 				<h1>{ p.T("hub.title") }</h1>
-				<p class="fox-sub">{ d.Email }</p>
-				<p class="fox-tails">{ p.T("hub.tails", "count", strconv.Itoa(LinkedCount(d)), "max", strconv.Itoa(d.MaxTails)) }</p>
+				<p class="chest-sub">{ d.Email }</p>
+				<p class="chest-count">{ p.T("hub.drawers", "count", strconv.Itoa(LinkedCount(d)), "max", strconv.Itoa(d.MaxDrawers)) }</p>
 			</section>
 			if len(d.Clients) == 0 {
 				<section class="empty">

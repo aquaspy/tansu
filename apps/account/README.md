@@ -40,7 +40,7 @@ Sister apps: [TansuNotes](../notes), [Tansu Assistant](../assistant), [TansuHome
 
 - Central signup/login for the suite
 - OAuth2 authorize + code + userinfo for first-party apps (see ACCOUNT.md)
-- Hub: launcher grid, per-app linked state, and a fox that grows tails
+- Hub: launcher grid, per-app linked state, and a tansu whose drawers fill as apps connect
 - Multi-user accounts on one instance
 - Offline hub shell; apps need a connection to open
 - Long-lived sessions with an optional idle lock (**per device**); sign-out

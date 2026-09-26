@@ -24,6 +24,7 @@ templ Shell(p Page, d ShellData) {
 		<p class="offline-banner" data-offline-target="banner" hidden>{ p.T("app.offline") }</p>
 		<header class="mobile-top">
 			@Wordmark()
+			@AccountLink(p)
 			<button type="button" class="icon-btn" data-action="theme#cycle" data-theme-button title={ p.T("auth.theme") } aria-label={ p.T("auth.theme") }>
 				<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 3a5 5 0 0 0 0 10Z" fill="currentColor"></path></svg>
 			</button>
@@ -46,6 +47,7 @@ templ Shell(p Page, d ShellData) {
 		<aside class="col-folders">
 			<div class="brand">
 				@Wordmark()
+				@AccountLink(p)
 			</div>
 			<nav class="folder-list">
 				@FoldersNav(p, d)

@@ -12,13 +12,14 @@ import (
 func (s *Server) page(w http.ResponseWriter, r *http.Request, title, bodyClass string) views.Page {
 	flash := FlashOf(r)
 	return views.Page{
-		L:         LocaleOf(r),
-		Title:     title,
-		BodyClass: bodyClass,
-		CSRF:      s.CSRFToken(w, r),
-		Notice:    flash.Notice,
-		Alert:     flash.Alert,
-		KuraLogin: s.Config.AccountEnabled(),
+		L:          LocaleOf(r),
+		Title:      title,
+		BodyClass:  bodyClass,
+		CSRF:       s.CSRFToken(w, r),
+		Notice:     flash.Notice,
+		Alert:      flash.Alert,
+		KuraLogin:  s.Config.AccountEnabled(),
+		AccountURL: s.Config.KuraAccountURL,
 	}
 }
 

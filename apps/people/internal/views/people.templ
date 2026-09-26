@@ -24,6 +24,7 @@ templ PeopleHeader(p Page, autoLock bool, back bool) {
 			</a>
 		}
 		@Wordmark()
+		@AccountLink(p)
 		<button type="button" class="icon-btn people-top-tool" data-action="theme#cycle" data-theme-button title={ p.T("auth.theme") } aria-label={ p.T("auth.theme") }>
 			<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 3a5 5 0 0 0 0 10Z" fill="currentColor"></path></svg>
 		</button>

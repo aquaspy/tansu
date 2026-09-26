@@ -61,19 +61,19 @@ func (p Page) I18nScript() templ.Component {
 	return templ.Raw(`<script type="application/json" id="i18n">` + p.I18nJSON() + `</script>`)
 }
 
-// MaxTails is the full fox: nine tails for nine apps.
-const MaxTails = 9
+// MaxDrawers is the chest: nine drawers for nine apps.
+const MaxDrawers = 9
 
 // HubData drives the account launcher.
 type HubData struct {
-	Email    string
-	Clients  []*store.Client
-	Linked   map[string]bool
-	AutoLock bool
-	MaxTails int
+	Email      string
+	Clients    []*store.Client
+	Linked     map[string]bool
+	AutoLock   bool
+	MaxDrawers int
 }
 
-// LinkedCount reports the lit tails, capped at MaxTails.
+// LinkedCount reports the lit drawers, capped at MaxDrawers.
 func LinkedCount(d HubData) int {
 	n := 0
 	for _, c := range d.Clients {
@@ -81,38 +81,65 @@ func LinkedCount(d HubData) int {
 			n++
 		}
 	}
-	if n > d.MaxTails {
-		n = d.MaxTails
+	if n > d.MaxDrawers {
+		n = d.MaxDrawers
 	}
 	return n
 }
 
-// TailSlot is one fox tail: fan angle + lit state.
-type TailSlot struct {
-	Angle int
-	Lit   bool
+// Drawer is one face of the tansu. The bottom drawer is the lock.
+type Drawer struct {
+	X, Y, W, H int
+	Lit        bool
+	Lock       bool
 }
 
-// TailSlots fans MaxTails tails from -80° to +80°, lighting from the
-// center outward so a young fox stays symmetric.
-func TailSlots(d HubData) []TailSlot {
+// CX is the horizontal center of the face, where the pull sits.
+func (d Drawer) CX() int { return d.X + d.W/2 }
+
+// CY is the vertical center of the face.
+func (d Drawer) CY() int { return d.Y + d.H/2 }
+
+// PullX is the left edge of a short iron pull.
+func (d Drawer) PullX() int { return d.CX() - 5 }
+
+// PullY is the top edge of that pull.
+func (d Drawer) PullY() int { return d.CY() - 1 }
+
+// Drawers is a nine-drawer tansu: two small, one wide, three small,
+// two small, and a locking drawer across the bottom. Connected apps
+// light it from the lock upward.
+func Drawers(d HubData) []Drawer {
 	lit := LinkedCount(d)
-	out := make([]TailSlot, 0, d.MaxTails)
-	mid := (d.MaxTails - 1) / 2
-	order := map[int]int{}
-	for rank, dist := range []int{0, -1, 1, -2, 2, -3, 3, -4, 4} {
-		if i := mid + dist; i >= 0 && i < d.MaxTails {
-			order[i] = rank
-		}
+	on := map[int]bool{}
+	// Bottom lock first, then the row above, then upward.
+	order := []int{8, 6, 7, 4, 3, 5, 2, 0, 1}
+	for i := 0; i < lit && i < len(order); i++ {
+		on[order[i]] = true
 	}
-	for i := 0; i < d.MaxTails; i++ {
-		angle := -80
-		if d.MaxTails > 1 {
-			angle = -80 + i*160/(d.MaxTails-1)
-		}
-		out = append(out, TailSlot{Angle: angle, Lit: order[i] < lit})
+	faces := []Drawer{
+		{X: 24, Y: 26, W: 34, H: 15},
+		{X: 62, Y: 26, W: 34, H: 15},
+		{X: 24, Y: 44, W: 72, H: 14},
+		{X: 24, Y: 61, W: 22, H: 14},
+		{X: 49, Y: 61, W: 22, H: 14},
+		{X: 74, Y: 61, W: 22, H: 14},
+		{X: 24, Y: 78, W: 34, H: 14},
+		{X: 62, Y: 78, W: 34, H: 14},
+		{X: 24, Y: 95, W: 72, H: 14, Lock: true},
 	}
-	return out
+	for i := range faces {
+		faces[i].Lit = on[i]
+	}
+	return faces
+}
+
+// DrawerClass marks a lit face so the accent fill can follow the link.
+func DrawerClass(d Drawer) string {
+	if d.Lit {
+		return "drawer lit"
+	}
+	return "drawer"
 }
 
 // ClientIcon renders the registered emoji, or the name initial.

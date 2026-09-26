@@ -438,21 +438,24 @@ input:focus, select:focus, textarea:focus {
   padding: 0.4rem 0 5.5rem;
 }
 
-/* Fox hero: nine tails, lit by connected apps. */
-.fox { text-align: center; margin: 1.2rem 0 1.6rem; }
-.tails { width: min(16rem, 60vw); height: auto; display: block; margin: 0 auto 0.4rem; }
-.tail { fill: var(--line); }
-.tail.lit { fill: var(--accent); }
-.fox-heart { fill: var(--accent-2); }
-.fox h1 {
+/* Tansu: nine drawers, lit as apps connect. The center face is the lock. */
+.chest { text-align: center; margin: 1.15rem 0 1.7rem; }
+.cabinet { width: min(13.5rem, 56vw); height: auto; display: block; margin: 0 auto 0.85rem; }
+.cabinet-lip, .cabinet-foot { fill: var(--ink); }
+.cabinet-case { fill: var(--surface); stroke: var(--ink); stroke-width: 1.6; }
+.drawer-face { fill: color-mix(in srgb, var(--bg0) 62%, var(--line)); }
+.drawer.lit .drawer-face { fill: var(--accent); }
+.drawer-pull { fill: var(--muted); }
+.drawer.lit .drawer-pull { fill: var(--accent-ink); }
+.chest h1 {
   font-family: ui-serif, "Iowan Old Style", Palatino, Georgia, serif;
   font-size: clamp(1.5rem, 3.4vw, 2rem);
   font-weight: 500;
   letter-spacing: -0.02em;
   margin: 0;
 }
-.fox-sub { color: var(--muted); margin: 0.3rem 0 0; overflow-wrap: anywhere; }
-.fox-tails { color: var(--accent-2); font-weight: 600; margin: 0.35rem 0 0; }
+.chest-sub { color: var(--muted); margin: 0.35rem 0 0; overflow-wrap: anywhere; }
+.chest-count { color: var(--accent-2); font-weight: 600; margin: 0.4rem 0 0; letter-spacing: 0.01em; }
 
 /* App launcher. */
 .apps { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }

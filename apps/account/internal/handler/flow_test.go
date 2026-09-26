@@ -180,7 +180,7 @@ func TestHubRequiresAuth(t *testing.T) {
 	}
 }
 
-func TestHubShowsAppsAndTails(t *testing.T) {
+func TestHubShowsAppsAndDrawers(t *testing.T) {
 	f := newFlow(t, nil)
 	u := f.seedUser("ada@example.com", "secret-password")
 	f.login(u.Email, "secret-password")
@@ -188,16 +188,16 @@ func TestHubShowsAppsAndTails(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("hub: %d", code)
 	}
-	for _, want := range []string{"TansuPeople", "0 of 9 tails", "Not connected yet", "Connect", "http://127.0.0.1:3005/login/kura"} {
+	for _, want := range []string{"TansuPeople", "0 of 9 drawers", "Not connected yet", "Connect", "http://127.0.0.1:3005/login/kura"} {
 		mustContain(t, body, want)
 	}
-	// Link the app through a redemption, tails light up.
+	// Link the app through a redemption, drawers light up.
 	raw, _ := f.store.CreateAuthCode(testClientID, u.ID, testRedirect, "c")
 	if _, err := f.store.RedeemAuthCode(raw, testClientID, testRedirect); err != nil {
 		t.Fatal(err)
 	}
 	_, body, _ = f.get("/", nil)
-	for _, want := range []string{"1 of 9 tails", "Connected", "Open", "http://127.0.0.1:3005/"} {
+	for _, want := range []string{"1 of 9 drawers", "Connected", "Open", "http://127.0.0.1:3005/"} {
 		mustContain(t, body, want)
 	}
 	if strings.Contains(body, "/login/kura") {
