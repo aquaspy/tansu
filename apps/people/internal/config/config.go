@@ -20,6 +20,11 @@ type Config struct {
 	KuraAccountURL   string
 	KuraClientID     string
 	KuraClientSecret string
+
+	// CalendarURL + SyncSecret push birthdays into Tansu Calendar.
+	// Both empty keeps People standalone.
+	CalendarURL string
+	SyncSecret  string
 }
 
 func Load() Config {
@@ -33,7 +38,14 @@ func Load() Config {
 		KuraAccountURL:   strings.TrimSuffix(envOr("KURA_ACCOUNT_URL", ""), "/"),
 		KuraClientID:     envOr("KURA_CLIENT_ID", "kurapeople"),
 		KuraClientSecret: envOr("KURA_CLIENT_SECRET", ""),
+		CalendarURL:      strings.TrimSuffix(envOr("KURA_CALENDAR_URL", ""), "/"),
+		SyncSecret:       envOr("KURA_SYNC_SECRET", ""),
 	}
+}
+
+// SyncEnabled reports whether birthday push to Calendar is configured.
+func (c Config) SyncEnabled() bool {
+	return c.CalendarURL != "" && c.SyncSecret != ""
 }
 
 // AccountEnabled reports whether Kura Account SSO is configured.

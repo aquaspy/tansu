@@ -1059,3 +1059,7 @@ a.folder-item { font-size: 0.9rem; font-weight: 550; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+.lang-switch { margin-top: 0.35rem; }
+.auth-prefs { display: flex; flex-direction: column; align-items: stretch; }
+.auth-card .lang-switch { margin-top: 0.85rem; }

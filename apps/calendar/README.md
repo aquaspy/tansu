@@ -60,7 +60,7 @@ Edit `.env`. At minimum:
 KURA_HOST=calendar.gettansu.com
 SIGNUP_ENABLED=true       # first account, then flip to false
 FORCE_SSL=false           # true once HTTPS terminates in front
-BIND=127.0.0.1:3003       # 3003 if Notes/Chat/Home already took 3000+
+BIND=127.0.0.1:3003       # 3003 if Notes/Assistant/Home already took 3000+
 ```
 
 Then:

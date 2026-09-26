@@ -188,7 +188,7 @@ func TestHubShowsAppsAndTails(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("hub: %d", code)
 	}
-	for _, want := range []string{"TansuPeople", "0 of 9 tails", "Not connected yet"} {
+	for _, want := range []string{"TansuPeople", "0 of 9 tails", "Not connected yet", "Connect", "http://127.0.0.1:3005/login/kura"} {
 		mustContain(t, body, want)
 	}
 	// Link the app through a redemption, tails light up.
@@ -197,8 +197,11 @@ func TestHubShowsAppsAndTails(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, body, _ = f.get("/", nil)
-	for _, want := range []string{"1 of 9 tails", "Connected"} {
+	for _, want := range []string{"1 of 9 tails", "Connected", "Open", "http://127.0.0.1:3005/"} {
 		mustContain(t, body, want)
+	}
+	if strings.Contains(body, "/login/kura") {
+		t.Fatal("a connected app should open its home, not start SSO again")
 	}
 }
 
@@ -323,4 +326,62 @@ func TestSignupClosed(t *testing.T) {
 	if code, _, h := f.get("/signup", nil); code != http.StatusSeeOther || h.Get("Location") != "/login" {
 		t.Fatalf("signup page: %d %q", code, h.Get("Location"))
 	}
+}
+
+func TestLoginReturnsToAuthorize(t *testing.T) {
+	f := newFlow(t, nil)
+	f.seedUser("ada@example.com", "secret-password")
+	next := authorizePath("back")
+	code, _, h := f.post("/login", url.Values{
+		"email": {"ada@example.com"}, "password": {"secret-password"}, "next": {next},
+	}, nil)
+	if code != http.StatusSeeOther || h.Get("Location") != next {
+		t.Fatalf("login next: %d %q", code, h.Get("Location"))
+	}
+}
+
+func TestLoginDropsForeignNext(t *testing.T) {
+	f := newFlow(t, nil)
+	f.seedUser("ada@example.com", "secret-password")
+	code, _, h := f.post("/login", url.Values{
+		"email": {"ada@example.com"}, "password": {"secret-password"},
+		"next": {"https://evil.example/authorize"},
+	}, nil)
+	if code != http.StatusSeeOther || h.Get("Location") != "/" {
+		t.Fatalf("foreign next: %d %q", code, h.Get("Location"))
+	}
+}
+
+func TestLockedAuthorizeResumesAfterUnlock(t *testing.T) {
+	f := newFlow(t, nil)
+	u := f.seedUser("ada@example.com", "secret-password")
+	f.login(u.Email, "secret-password")
+	if code, _, _ := f.post("/lock", nil, nil); code != http.StatusSeeOther {
+		t.Fatalf("lock: %d", code)
+	}
+	code, _, h := f.get(authorizePath("resume"), nil)
+	if code != http.StatusSeeOther || !strings.HasPrefix(h.Get("Location"), "/unlock?next=") {
+		t.Fatalf("locked authorize: %d %q", code, h.Get("Location"))
+	}
+	next := authorizePath("resume")
+	code, _, h = f.post("/unlock", url.Values{"password": {"secret-password"}, "next": {next}}, nil)
+	if code != http.StatusSeeOther || h.Get("Location") != next {
+		t.Fatalf("unlock next: %d %q", code, h.Get("Location"))
+	}
+}
+
+func TestLocaleCookieOverridesHeader(t *testing.T) {
+	f := newFlow(t, nil)
+	u, _ := url.Parse(f.server.URL)
+	f.client.Jar.SetCookies(u, []*http.Cookie{{Name: "kura_locale", Value: "pt", Path: "/"}})
+	_, body, _ := f.get("/login", map[string]string{"Accept-Language": "en"})
+	mustContain(t, body, "Entrar")
+	code, _, h := f.post("/locale", url.Values{"lang": {"en"}}, map[string]string{
+		"Referer": f.server.URL + "/login",
+	})
+	if code != http.StatusSeeOther || h.Get("Location") != "/login" {
+		t.Fatalf("locale: %d %q", code, h.Get("Location"))
+	}
+	_, body, _ = f.get("/login", map[string]string{"Accept-Language": "pt-BR"})
+	mustContain(t, body, "Sign in")
 }

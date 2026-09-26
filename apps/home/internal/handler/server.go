@@ -81,7 +81,7 @@ func FlashOf(r *http.Request) Flash {
 
 func (s *Server) localeMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		l := i18n.FromHeader(r.Header.Get("Accept-Language"))
+		l := i18n.FromCookie(r.Header.Get("Accept-Language"), localeCookieValue(r))
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), localeKey, l)))
 	})
 }
@@ -138,9 +138,66 @@ func AutoLockEnabled(r *http.Request) bool {
 	return err == nil && c.Value == "1"
 }
 
+const suiteLockCookie = "kura_suite_lock"
+
+// SuiteLocked is the shared lock for every app on this host (or parent
+// domain). Locking one app sets it; unlocking clears it.
+func SuiteLocked(r *http.Request) bool {
+	c, err := r.Cookie(suiteLockCookie)
+	return err == nil && c.Value == "1"
+}
+
+func sessionUsable(r *http.Request) bool {
+	if SuiteLocked(r) {
+		return false
+	}
+	return SessionOpen(SessionOf(r), AutoLockEnabled(r))
+}
+
+// sharedCookieDomain is the parent of KURA_HOST so notes.example.com and
+// calendar.example.com see the same cookie. Localhost and IP addresses
+// stay host-only, which already covers every port on that host.
+func sharedCookieDomain(hosts []string) string {
+	if len(hosts) == 0 {
+		return ""
+	}
+	host := hosts[0]
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	host = strings.TrimPrefix(strings.ToLower(host), ".")
+	if host == "" || host == "localhost" || strings.HasSuffix(host, ".localhost") || net.ParseIP(host) != nil {
+		return ""
+	}
+	parts := strings.Split(host, ".")
+	if len(parts) < 2 {
+		return ""
+	}
+	return strings.Join(parts[len(parts)-2:], ".")
+}
+
+func (s *Server) setSuiteLock(w http.ResponseWriter, r *http.Request, locked bool) {
+	value := ""
+	maxAge := -1
+	if locked {
+		value = "1"
+		maxAge = 365 * 24 * 3600
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     suiteLockCookie,
+		Value:    value,
+		Path:     "/",
+		Domain:   sharedCookieDomain(s.Config.KuraHosts),
+		MaxAge:   maxAge,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   s.secureCookies(r),
+	})
+}
+
 func (s *Server) requireUnlock(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if UserOf(r) != nil && !SessionOpen(SessionOf(r), AutoLockEnabled(r)) {
+		if UserOf(r) != nil && !sessionUsable(r) {
 			http.Redirect(w, r, "/unlock", http.StatusSeeOther)
 			return
 		}
@@ -339,6 +396,7 @@ func (s *Server) Routes() *chi.Mux {
 	r.Post("/signup", s.handleSignupCreate)
 	r.Get("/login", s.handleLoginNew)
 	r.Post("/login", s.handleLoginCreate)
+	r.Post("/locale", s.handleLocale)
 	r.Get("/login/kura", s.handleKuraStart)
 	r.Get("/login/kura/callback", s.handleKuraCallback)
 	r.Delete("/logout", s.handleLogout)

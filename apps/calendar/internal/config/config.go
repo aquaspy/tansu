@@ -20,6 +20,9 @@ type Config struct {
 	KuraAccountURL   string
 	KuraClientID     string
 	KuraClientSecret string
+
+	// SyncSecret authenticates People pushing birthdays. Empty disables it.
+	SyncSecret string
 }
 
 func Load() Config {
@@ -33,6 +36,7 @@ func Load() Config {
 		KuraAccountURL:   strings.TrimSuffix(envOr("KURA_ACCOUNT_URL", ""), "/"),
 		KuraClientID:     envOr("KURA_CLIENT_ID", "kuracalendar"),
 		KuraClientSecret: envOr("KURA_CLIENT_SECRET", ""),
+		SyncSecret:       envOr("KURA_SYNC_SECRET", ""),
 	}
 }
 

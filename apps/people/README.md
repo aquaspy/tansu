@@ -62,7 +62,7 @@ Edit `.env`. At minimum:
 KURA_HOST=people.gettansu.com
 SIGNUP_ENABLED=true       # first account, then flip to false
 FORCE_SSL=false           # true once HTTPS terminates in front
-BIND=127.0.0.1:3005       # 3005 if Chat/Notes/Home/Calendar/Spend took the rest
+BIND=127.0.0.1:3005       # 3005 if Assistant/Notes/Home/Calendar/Spend took the rest
 ```
 
 Then:

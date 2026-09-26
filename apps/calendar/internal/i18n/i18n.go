@@ -29,6 +29,18 @@ func FromHeader(header string) Locale {
 	return EN
 }
 
+// FromCookie prefers an explicit kura_locale cookie over Accept-Language.
+func FromCookie(header, cookie string) Locale {
+	switch strings.ToLower(strings.TrimSpace(cookie)) {
+	case "pt", "pt-br":
+		return PT
+	case "en":
+		return EN
+	default:
+		return FromHeader(header)
+	}
+}
+
 func HTMLLang(l Locale) string {
 	if l == PT {
 		return "pt-BR"
@@ -194,6 +206,7 @@ var strings_ = map[Locale]map[string]string{
 		"auth.signup_lede":          "There is no password recovery. If you lose it, ask whoever runs the server.",
 		"auth.have_account":         "Already have an account?",
 		"auth.theme":                "Theme",
+		"auth.language":             "Language",
 		"auth.too_many":             "Too many attempts. Wait a moment.",
 		"auth.or":                   "or",
 		"auth.login_with_kura":      "Sign in with Tansu",
@@ -396,6 +409,7 @@ var strings_ = map[Locale]map[string]string{
 		"auth.signup_lede":          "Não existe recuperação de senha. Se perder, peça a quem administra o servidor.",
 		"auth.have_account":         "Já tem conta?",
 		"auth.theme":                "Tema",
+		"auth.language":             "Idioma",
 		"auth.too_many":             "Muitas tentativas. Espere um pouco.",
 		"auth.or":                   "ou",
 		"auth.login_with_kura":      "Entrar com Tansu",

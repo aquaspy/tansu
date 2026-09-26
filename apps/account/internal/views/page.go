@@ -2,6 +2,7 @@ package views
 
 import (
 	"encoding/json"
+	"net/url"
 	"strings"
 	"unicode/utf8"
 
@@ -18,12 +19,30 @@ type Page struct {
 	CSRF      string
 	Notice    string
 	Alert     string
+	// Next is a safe /authorize return path, or empty.
+	Next string
 }
 
 // T translates key with optional %{name}, value pairs.
 func (p Page) T(key string, pairs ...string) string { return i18n.T(p.L, key, pairs...) }
 
 func (p Page) Lang() string { return i18n.HTMLLang(p.L) }
+
+// OtherLocale is the language a single click switches to.
+func (p Page) OtherLocale() string {
+	if p.L == i18n.PT {
+		return "en"
+	}
+	return "pt"
+}
+
+// OtherLocaleName is the label of that switch, in the target language.
+func (p Page) OtherLocaleName() string {
+	if p.L == i18n.PT {
+		return "English"
+	}
+	return "Português"
+}
 
 // I18nJSON serializes the js.* table for the #i18n script blob.
 func (p Page) I18nJSON() string {
@@ -110,6 +129,30 @@ func ClientIcon(c *store.Client) string {
 
 // IsLinked reports whether the user connected an app.
 func IsLinked(d HubData, c *store.Client) bool { return d.Linked[c.ID] }
+
+// AppHref opens a connected app at its home, and starts SSO for one
+// that is not connected yet.
+func AppHref(c *store.Client, linked bool) string {
+	home := strings.TrimSpace(c.Home)
+	if home == "" {
+		return "/"
+	}
+	if linked {
+		return home
+	}
+	if !strings.HasSuffix(home, "/") {
+		home += "/"
+	}
+	return home + "login/kura"
+}
+
+// WithNext appends a next query when the authorize hop is present.
+func WithNext(path, next string) string {
+	if next == "" {
+		return path
+	}
+	return path + "?next=" + url.QueryEscape(next)
+}
 
 // LockEnabledValue renders the lock controller's enabled value.
 func LockEnabledValue(autoLock bool) string {

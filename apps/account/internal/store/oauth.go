@@ -300,4 +300,6 @@ func (s *Store) DeleteStaleOAuth() {
 	cutoff := now()
 	_, _ = s.db.Exec(`DELETE FROM auth_codes WHERE expires_at < ?`, cutoff)
 	_, _ = s.db.Exec(`DELETE FROM access_tokens WHERE expires_at < ?`, cutoff)
+	// Unconfirmed signups share this sweep. An expired row never becomes a user.
+	_, _ = s.db.Exec(`DELETE FROM pending_signups WHERE expires_at < ?`, cutoff)
 }

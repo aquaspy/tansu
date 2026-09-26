@@ -23,7 +23,7 @@ func clientIP(r *http.Request) string {
 }
 
 func (s *Server) handleSignupNew(w http.ResponseWriter, r *http.Request) {
-	if UserOf(r) != nil && SessionOpen(SessionOf(r), AutoLockEnabled(r)) {
+	if UserOf(r) != nil && sessionUsable(r) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
@@ -90,7 +90,7 @@ func (s *Server) handleSignupCreate(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleLoginNew(w http.ResponseWriter, r *http.Request) {
 	if UserOf(r) != nil {
-		if SessionOpen(SessionOf(r), AutoLockEnabled(r)) {
+		if sessionUsable(r) {
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 		} else {
 			http.Redirect(w, r, "/unlock", http.StatusSeeOther)
@@ -151,7 +151,7 @@ func (s *Server) handleUnlockNew(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	if SessionOpen(SessionOf(r), AutoLockEnabled(r)) {
+	if sessionUsable(r) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
@@ -181,6 +181,7 @@ func (s *Server) handleUnlockCreate(w http.ResponseWriter, r *http.Request) {
 	if sess := SessionOf(r); sess != nil {
 		_ = s.Store.UnlockSession(sess.ID)
 	}
+	s.setSuiteLock(w, r, false)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
@@ -190,6 +191,7 @@ func (s *Server) handleLock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = s.Store.LockSession(SessionOf(r).ID)
+	s.setSuiteLock(w, r, true)
 	http.Redirect(w, r, "/unlock", http.StatusSeeOther)
 }
 

@@ -156,6 +156,7 @@ func (s *Server) savePerson(w http.ResponseWriter, r *http.Request, userID, id i
 		http.Redirect(w, r, views.PersonURL(person), http.StatusSeeOther)
 		return
 	}
+	s.pushBirthdayFor(userID, person, false)
 	http.Redirect(w, r, views.PersonURL(person), http.StatusSeeOther)
 }
 
@@ -166,10 +167,12 @@ func (s *Server) handlePeopleDestroy(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
-	if _, err := s.Store.FindPerson(user.ID, id); err != nil {
+	person, err := s.Store.FindPerson(user.ID, id)
+	if err != nil {
 		s.notFound(w, r)
 		return
 	}
+	s.pushBirthdayFor(user.ID, person, true)
 	_ = s.Store.DeletePerson(user.ID, id)
 	s.Store.ReclaimSpace()
 	if r.Header.Get("X-Requested-With") == "fetch" {

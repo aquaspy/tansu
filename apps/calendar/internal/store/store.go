@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS birthdays (
   year INTEGER,
   body TEXT NOT NULL DEFAULT '',
   emoji TEXT NOT NULL DEFAULT '',
+  source_key TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -126,6 +127,7 @@ func migrate(db *sql.DB) error {
 		{"events", "repeat", "TEXT NOT NULL DEFAULT 'none'"},
 		{"events", "repeat_until", "TEXT"},
 		{"birthdays", "emoji", "TEXT NOT NULL DEFAULT ''"},
+		{"birthdays", "source_key", "TEXT NOT NULL DEFAULT ''"},
 		{"users", "account_sub", "TEXT NOT NULL DEFAULT ''"},
 	}
 	for _, step := range steps {
@@ -143,6 +145,10 @@ func migrate(db *sql.DB) error {
 	// After the column exists on every database, old or new.
 	if _, err := db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS users_account_sub
 		ON users(account_sub) WHERE account_sub != ''`); err != nil {
+		return err
+	}
+	if _, err := db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS birthdays_source_key
+		ON birthdays(user_id, source_key) WHERE source_key != ''`); err != nil {
 		return err
 	}
 	return nil

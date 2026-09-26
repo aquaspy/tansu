@@ -26,6 +26,22 @@ func (p Page) T(key string, pairs ...string) string { return i18n.T(p.L, key, pa
 
 func (p Page) Lang() string { return i18n.HTMLLang(p.L) }
 
+// OtherLocale is the language a single click switches to.
+func (p Page) OtherLocale() string {
+	if p.L == i18n.PT {
+		return "en"
+	}
+	return "pt"
+}
+
+// OtherLocaleName is the label of that switch, in the target language.
+func (p Page) OtherLocaleName() string {
+	if p.L == i18n.PT {
+		return "English"
+	}
+	return "Português"
+}
+
 // I18nJSON serializes the js.* table for the #i18n script blob.
 func (p Page) I18nJSON() string {
 	b, _ := json.Marshal(i18n.JS(p.L))

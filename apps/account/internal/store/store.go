@@ -65,6 +65,16 @@ CREATE TABLE IF NOT EXISTS sessions (
   last_seen_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS index_sessions_on_user_id ON sessions(user_id);
+CREATE TABLE IF NOT EXISTS pending_signups (
+  email TEXT PRIMARY KEY,
+  password_digest TEXT NOT NULL,
+  token_digest TEXT NOT NULL UNIQUE,
+  next TEXT NOT NULL DEFAULT '',
+  locale TEXT NOT NULL DEFAULT 'en',
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0
+);
 `
 
 type Store struct {
@@ -94,7 +104,39 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("schema: %w", err)
 	}
-	return &Store{db: db}, nil
+	st := &Store{db: db}
+	if err := st.migrate(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("migrate: %w", err)
+	}
+	return st, nil
+}
+
+// migrate adds columns that postdate an existing database file.
+func (s *Store) migrate() error {
+	rows, err := s.db.Query(`SELECT name FROM pragma_table_info('pending_signups')`)
+	if err != nil {
+		return err
+	}
+	have := map[string]bool{}
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			rows.Close()
+			return err
+		}
+		have[name] = true
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if !have["attempts"] {
+		if _, err := s.db.Exec(`ALTER TABLE pending_signups ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0`); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Store) Close() error { return s.db.Close() }

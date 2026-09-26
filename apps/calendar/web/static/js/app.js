@@ -159,17 +159,13 @@
       event?.preventDefault();
       const current = document.documentElement.dataset.theme || "system";
       const next = THEME_ORDER[(THEME_ORDER.indexOf(current) + 1) % THEME_ORDER.length];
-      localStorage.setItem("kura.theme", next);
-      document.documentElement.dataset.theme = next;
-      paintTheme();
+      rememberTheme(next);
     },
     set({ event, element }) {
       event?.preventDefault();
       const theme = element?.dataset.themeChoice;
       if (!THEME_ORDER.includes(theme)) return;
-      localStorage.setItem("kura.theme", theme);
-      document.documentElement.dataset.theme = theme;
-      paintTheme();
+      rememberTheme(theme);
     },
   };
 
@@ -180,15 +176,43 @@
   let lockTimer = null;
   let lockHiddenAt = null;
 
+  function sharedCookieSuffix() {
+    const host = location.hostname;
+    const secure = location.protocol === "https:" ? "; Secure" : "";
+    let domain = "";
+    if (host && host !== "localhost" && !host.endsWith(".localhost") && !/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
+      const parts = host.split(".");
+      if (parts.length >= 2) domain = "; Domain=" + parts.slice(-2).join(".");
+    }
+    return "; Path=/; SameSite=Lax" + domain + secure;
+  }
+
+  function writeSharedCookie(name, value, maxAge) {
+    document.cookie = `${name}=${value}${sharedCookieSuffix()}; Max-Age=${maxAge}`;
+  }
+
+  function rememberTheme(theme) {
+    localStorage.setItem("kura.theme", theme);
+    writeSharedCookie("tansu_theme", theme, 31536000);
+    document.documentElement.dataset.theme = theme;
+    paintTheme();
+  }
+
+  function cookieValue(name) {
+    const m = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
+    return m ? decodeURIComponent(m[1]) : "";
+  }
+
   function lockEnabled() {
-    return (localStorage.getItem(LOCK_KEY) || document.cookie.match(/kura_auto_lock=(\d)/)?.[1] || "0") === "1";
+    const fromCookie = cookieValue(LOCK_KEY);
+    if (fromCookie === "1" || fromCookie === "0") return fromCookie === "1";
+    return (localStorage.getItem(LOCK_KEY) || "0") === "1";
   }
 
   function persistLock(enabled) {
     const value = enabled ? "1" : "0";
     localStorage.setItem(LOCK_KEY, value);
-    const secure = window.location.protocol === "https:" ? "; Secure" : "";
-    document.cookie = `${LOCK_KEY}=${value}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`;
+    writeSharedCookie(LOCK_KEY, value, 31536000);
     refreshLockLabels();
     armLock();
   }
@@ -218,6 +242,11 @@
   controllers.lock = {
     connect(el) {
       // Migrate a stored preference onto the cookie the server reads.
+      const fromCookie = cookieValue(LOCK_KEY);
+      if (fromCookie === "1" || fromCookie === "0") {
+        persistLock(fromCookie === "1");
+        return;
+      }
       const stored = localStorage.getItem(LOCK_KEY);
       const initial = el.dataset.lockEnabledValue === "true";
       if (stored === "1" || stored === "0") persistLock(stored === "1");

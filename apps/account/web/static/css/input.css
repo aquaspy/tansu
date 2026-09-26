@@ -550,3 +550,7 @@ input:focus, select:focus, textarea:focus {
 @media (min-width: 861px) {
   .desktop-only { display: grid; }
 }
+
+.lang-switch { margin-top: 0.35rem; }
+.auth-prefs { display: flex; flex-direction: column; align-items: stretch; }
+.auth-card .lang-switch { margin-top: 0.85rem; }

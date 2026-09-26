@@ -564,6 +564,48 @@ func (s *Store) CountBirthdays(userID int64) int {
 	return n
 }
 
+// UpsertSyncedBirthday creates or updates the birthday imported from
+// another Tansu app. sourceKey is stable ("people:12") and is not shown.
+func (s *Store) UpsertSyncedBirthday(userID int64, sourceKey string, in BirthdayInput) (*Birthday, []FieldError, error) {
+	p, errs := parseBirthdayInput(in)
+	if len(errs) > 0 {
+		return nil, errs, nil
+	}
+	var id int64
+	err := s.db.QueryRow(`SELECT id FROM birthdays WHERE user_id = ? AND source_key = ?`,
+		userID, sourceKey).Scan(&id)
+	ts := now()
+	if errors.Is(err, sql.ErrNoRows) {
+		res, err := s.db.Exec(`INSERT INTO birthdays
+			(user_id, name, month, day, year, body, emoji, source_key, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			userID, p.Name, p.Month, p.Day, nullIfZero(p.Year), p.Body, p.Emoji, sourceKey, ts, ts)
+		if err != nil {
+			return nil, nil, err
+		}
+		id, _ = res.LastInsertId()
+		b, err := s.FindBirthday(userID, id)
+		return b, nil, err
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	_, err = s.db.Exec(`UPDATE birthdays SET name = ?, month = ?, day = ?, year = ?,
+		emoji = ?, updated_at = ? WHERE id = ? AND user_id = ?`,
+		p.Name, p.Month, p.Day, nullIfZero(p.Year), p.Emoji, ts, id, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	b, err := s.FindBirthday(userID, id)
+	return b, nil, err
+}
+
+// DeleteSyncedBirthday removes one imported birthday. A missing row is fine.
+func (s *Store) DeleteSyncedBirthday(userID int64, sourceKey string) error {
+	_, err := s.db.Exec(`DELETE FROM birthdays WHERE user_id = ? AND source_key = ?`, userID, sourceKey)
+	return err
+}
+
 // CreateBirthday validates (including the per-user cap) and inserts.
 func (s *Store) CreateBirthday(userID int64, in BirthdayInput) (*Birthday, []FieldError, error) {
 	p, errs := parseBirthdayInput(in)

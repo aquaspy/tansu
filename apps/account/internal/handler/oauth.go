@@ -66,8 +66,8 @@ func (s *Server) handleAuthorize(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login?next="+url.QueryEscape(authorizeURL(r)), http.StatusSeeOther)
 		return
 	}
-	if !SessionOpen(SessionOf(r), AutoLockEnabled(r)) {
-		http.Redirect(w, r, "/login?next="+url.QueryEscape(authorizeURL(r)), http.StatusSeeOther)
+	if !sessionUsable(r) {
+		http.Redirect(w, r, "/unlock?next="+url.QueryEscape(authorizeURL(r)), http.StatusSeeOther)
 		return
 	}
 	if !s.Limiter.Allow("authcode:"+itoa64(user.ID), 60, time.Minute) {

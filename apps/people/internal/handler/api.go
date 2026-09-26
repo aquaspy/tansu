@@ -380,6 +380,7 @@ func (s *Server) handleAPIPeopleCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	attrs, _ := s.Store.ListAttrs(person.ID)
+	s.pushBirthday(apiUserOf(r), person, false)
 	writeAPIJSON(w, http.StatusCreated, map[string]any{"person": apiPerson(person, attrs, time.Now())})
 }
 
@@ -419,6 +420,7 @@ func (s *Server) handleAPIPeopleUpdate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	attrs, _ := s.Store.ListAttrs(person.ID)
+	s.pushBirthday(apiUserOf(r), person, false)
 	writeAPIJSON(w, http.StatusOK, map[string]any{"person": apiPerson(person, attrs, time.Now())})
 }
 
@@ -428,10 +430,12 @@ func (s *Server) handleAPIPeopleDestroy(w http.ResponseWriter, r *http.Request) 
 		writeAPIError(w, http.StatusNotFound, "not_found")
 		return
 	}
-	if _, err := s.Store.FindPerson(apiUserOf(r).ID, id); err != nil {
+	person, err := s.Store.FindPerson(apiUserOf(r).ID, id)
+	if err != nil {
 		writeAPIError(w, http.StatusNotFound, "not_found")
 		return
 	}
+	s.pushBirthday(apiUserOf(r), person, true)
 	_ = s.Store.DeletePerson(apiUserOf(r).ID, id)
 	s.Store.ReclaimSpace()
 	w.WriteHeader(http.StatusNoContent)

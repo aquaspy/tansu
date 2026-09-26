@@ -41,7 +41,7 @@ It sits next to [TansuNotes](../notes), [TansuHome](../home), [TansuCalendar](..
 - Automatic context compaction on very long threads (full transcript stays in SQLite)
 - Offline: reopen chats you already opened; sending stays disabled until you are back
 
-**What you do not get (on purpose):** generating images, a media library, per-user API keys, a model picker UI, RAG over your notes, Redis, or a bundled reverse proxy.
+**What you do not get (on purpose):** generating images, a media library, per-user API keys, RAG over your notes, Redis, or a bundled reverse proxy.
 
 ---
 

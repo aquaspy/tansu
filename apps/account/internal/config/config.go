@@ -19,6 +19,10 @@ type Config struct {
 	// [{"id","secret","name","home","icon","redirect_uris":[]}].
 	ClientsJSON string
 	Clients     []ClientConfig
+	// ResendAPIKey enables email confirmation. Empty keeps immediate signup.
+	ResendAPIKey string
+	// ResendFrom is the verified sender. Required when ResendAPIKey is set.
+	ResendFrom string
 }
 
 // ClientConfig is one suite app allowed to use "Entrar com Tansu".
@@ -39,7 +43,35 @@ func Load() Config {
 		SignupEnabled: flag("SIGNUP_ENABLED", true),
 		ForceSSL:      flag("FORCE_SSL", false),
 		ClientsJSON:   strings.TrimSpace(os.Getenv("KURA_CLIENTS_JSON")),
+		ResendAPIKey:  strings.TrimSpace(os.Getenv("RESEND_API_KEY")),
+		ResendFrom:    strings.TrimSpace(os.Getenv("RESEND_FROM")),
 	}
+}
+
+// MailEnabled reports whether signup must confirm the inbox before
+// creating a user. Self-host installs leave the key empty.
+func (c Config) MailEnabled() bool { return c.ResendAPIKey != "" }
+
+// Validate fails closed when mail is configured without a usable sender.
+func (c Config) Validate() error {
+	if c.MailEnabled() && !validSender(c.ResendFrom) {
+		return fmt.Errorf("RESEND_FROM must be an email address when RESEND_API_KEY is set")
+	}
+	return nil
+}
+
+// validSender accepts "ada@example.com" and "Tansu <ada@example.com>".
+func validSender(from string) bool {
+	addr := strings.TrimSpace(from)
+	if i := strings.LastIndex(addr, "<"); i >= 0 {
+		addr = strings.TrimSpace(strings.TrimSuffix(addr[i+1:], ">"))
+	}
+	at := strings.Index(addr, "@")
+	if at <= 0 || strings.Contains(addr[at+1:], "@") {
+		return false
+	}
+	dot := strings.LastIndex(addr, ".")
+	return dot > at+1 && dot < len(addr)-1 && !strings.ContainsAny(addr, " \t")
 }
 
 // ParseClients decodes and validates the static registry. No clients

@@ -20,6 +20,9 @@ func runServe(cfg config.Config) error {
 	if err := cfg.ParseClients(); err != nil {
 		return err
 	}
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
 	st, err := store.Open(filepath.Join(cfg.DataDir, "kuraaccount.sqlite3"))
 	if err != nil {
 		return err

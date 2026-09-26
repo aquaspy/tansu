@@ -43,14 +43,14 @@ func Layout(p Page, head templ.Component, content templ.Component) templ.Compone
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\"><head><script>\n\t\t\t\tdocument.documentElement.dataset.theme = localStorage.getItem(\"kura.theme\") || \"system\"\n\t\t\t</script><title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\"><head><script>\n\t\t\t\t(function () {\n\t\t\t\t\tvar m = document.cookie.match(/(?:^|; )tansu_theme=([^;]*)/);\n\t\t\t\t\tvar theme = m ? decodeURIComponent(m[1]) : \"\";\n\t\t\t\t\tif (theme !== \"light\" && theme !== \"dark\" && theme !== \"system\") theme = localStorage.getItem(\"kura.theme\") || \"system\";\n\t\t\t\t\tdocument.documentElement.dataset.theme = theme;\n\t\t\t\t})()\n\t\t\t</script><title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(p.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/layout.templ`, Line: 11, Col: 19}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/layout.templ`, Line: 16, Col: 19}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -63,7 +63,7 @@ func Layout(p Page, head templ.Component, content templ.Component) templ.Compone
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.CSRF)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/layout.templ`, Line: 19, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/layout.templ`, Line: 24, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {

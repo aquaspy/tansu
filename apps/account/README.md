@@ -69,7 +69,15 @@ SIGNUP_ENABLED=true       # first account, then flip to false
 FORCE_SSL=false           # true once HTTPS terminates in front
 BIND=127.0.0.1:3006
 KURA_CLIENTS_JSON=[...]   # one entry per suite app (see .env.example)
+# RESEND_API_KEY=         # optional; with RESEND_FROM, signup waits for email
+# RESEND_FROM=
 ```
+
+Leave `RESEND_API_KEY` empty and signup creates the account immediately.
+Set the key and a verified `RESEND_FROM` when this Account is the public
+signup for the hosted suite: the account is created only after the person
+opens the link and types the password again. The link uses the first
+`KURA_HOST`. Five wrong passwords on that link burn it.
 
 Then:
 
@@ -162,6 +170,8 @@ go vet ./...
 | Variable | What it does |
 | --- | --- |
 | `SIGNUP_ENABLED` | Public signup form. Turn off after the first account |
+| `RESEND_API_KEY` | When set, signup waits for an email confirmation. Empty keeps immediate signup |
+| `RESEND_FROM` | Verified sender. Required when `RESEND_API_KEY` is set |
 | `FORCE_SSL` | `true` when Caddy/nginx terminates HTTPS |
 | `KURA_HOST` | Public hostname (comma-separated if several) |
 | `BIND` | Default `127.0.0.1:3006` |

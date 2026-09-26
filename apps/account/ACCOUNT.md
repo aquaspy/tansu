@@ -109,10 +109,14 @@ Interop details the checklist glosses over, all verified live:
   fails closed, so deleting and recreating the Account user (same email,
   new id) does not take over the app. Unknown email provisions a row
   with an unusable password digest when signups are open.
-  Known hardening gap: that first link-by-email is automatic while the
-  Account has no email verification — fine for self-host, revisit before
-  shared hosting. The callback also requires the `kura_sso_state` cookie
-  from the browser that started `/login/kura`.
+  Known hardening gap: that first link-by-email is automatic. With
+  `RESEND_API_KEY` and `RESEND_FROM` set, Account creates the user only
+  after the inbox is confirmed, so a new hosted account's email was
+  proven. A self-host Account without the key still creates the user
+  immediately, and an app user that already existed with the same email
+  is still linked on the first SSO while `account_sub` is empty. The
+  callback also requires the `kura_sso_state` cookie from the browser
+  that started `/login/kura`.
 - Migration ordering matters: create the `users_account_sub` index
   **after** the `ALTER TABLE ... ADD COLUMN`, not in the schema string,
   or old databases fail to open (`no such column`). Every app has a

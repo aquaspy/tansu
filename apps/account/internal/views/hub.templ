@@ -50,6 +50,7 @@ templ HubPage(p Page, d HubData) {
 				</form>
 				@AutoLockButton(p, d.AutoLock)
 				@ChangePasswordButton(p)
+				@LanguageSwitch(p)
 				@SignOut(p)
 			</div>
 		</header>
@@ -77,7 +78,7 @@ templ HubPage(p Page, d HubData) {
 			} else {
 				<nav class="apps" aria-label={ p.T("hub.apps") }>
 					for _, client := range d.Clients {
-						<a class="app-card" href={ templ.SafeURL(client.Home) }>
+						<a class="app-card" href={ templ.SafeURL(AppHref(client, IsLinked(d, client))) }>
 							<span class="app-icon" aria-hidden="true">{ ClientIcon(client) }</span>
 							<span class="app-main">
 								<span class="app-name">{ client.Name }</span>
@@ -87,7 +88,11 @@ templ HubPage(p Page, d HubData) {
 									<span class="app-sub">{ p.T("hub.not_linked") }</span>
 								}
 							</span>
-							<span class="app-open">{ p.T("hub.open") }</span>
+							if IsLinked(d, client) {
+								<span class="app-open">{ p.T("hub.open") }</span>
+							} else {
+								<span class="app-open">{ p.T("hub.connect") }</span>
+							}
 						</a>
 					}
 				</nav>

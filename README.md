@@ -14,7 +14,7 @@ cloud you did not choose.
 | Tansu People | `apps/people` | 3005 | `people.gettansu.com` |
 | Tansu Home | `apps/home` | 3000 | `home.gettansu.com` |
 
-The 3000 default is shared by Notes, Chat, and Home — run one at a time, or
+The 3000 default is shared by Notes, Assistant, and Home — run one at a time, or
 override `BIND` (the E2E script below uses scratch ports for the full fleet).
 
 ## Run one app
@@ -76,6 +76,12 @@ Set `FORCE_SSL=true` in every `.env` (Caddy terminates HTTPS below).
 Keep `SIGNUP_ENABLED=true` until the first accounts exist, then flip to
 `false` everywhere.
 
+On a hosted Account, also set `RESEND_API_KEY` and `RESEND_FROM` (a sender
+verified at Resend). Signup then creates the account only after the person
+opens the link and re-enters the password. The link uses the first
+`KURA_HOST`. Leave both empty for a family self-host: Account signup stays
+immediate, and the other apps are unchanged.
+
 **2. Mint one client secret per app** (16+ chars each; they never travel
 except over your own HTTPS):
 
@@ -112,6 +118,15 @@ KURA_CLIENT_SECRET=<matching-secret>
 
 Leave `KURA_ACCOUNT_URL` empty on any app to keep it standalone — its local
 login keeps working exactly as before, Account or no Account.
+
+Birthdays typed in People show up in Calendar when both apps share one
+secret. On People set `KURA_CALENDAR_URL=https://calendar.example.com` and
+`KURA_SYNC_SECRET` (16+ chars). Set the same `KURA_SYNC_SECRET` on Calendar.
+The Calendar user is the one with the same Account subject, or the same
+email if that app is still standalone. Theme, language, and the lock travel
+with the browser across the suite: on a shared parent domain
+(`notes.example.com` and `calendar.example.com`) and, on one machine,
+across ports of `127.0.0.1`.
 
 **5. Boot everything, Account first:**
 

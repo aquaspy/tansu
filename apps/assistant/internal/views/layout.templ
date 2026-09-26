@@ -6,7 +6,12 @@ templ Layout(p Page, head templ.Component, content templ.Component) {
 	<html lang={ p.Lang() }>
 		<head>
 			<script>
-				document.documentElement.dataset.theme = localStorage.getItem("kura.theme") || "system"
+				(function () {
+					var m = document.cookie.match(/(?:^|; )tansu_theme=([^;]*)/);
+					var theme = m ? decodeURIComponent(m[1]) : "";
+					if (theme !== "light" && theme !== "dark" && theme !== "system") theme = localStorage.getItem("kura.theme") || "system";
+					document.documentElement.dataset.theme = theme;
+				})()
 			</script>
 			<title>{ p.Title }</title>
 			<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content"/>
