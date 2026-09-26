@@ -1,0 +1,5 @@
+# Mark any vendored files as having been vendored.
+web/static/js/vendor/* linguist-vendored
+
+# Generated templ output.
+internal/views/*_templ.go linguist-generated

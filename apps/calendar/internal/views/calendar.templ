@@ -1,0 +1,381 @@
+package views
+
+import "github.com/aquasp/kuracalendar/internal/calendar"
+
+templ CalPage(p Page, d CalData) {
+	<form action="/lock" method="post" id="lock-now-form">
+		<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+		<button type="submit" id="lock-now" class="sr-only" tabindex="-1"></button>
+	</form>
+	if p.Notice != "" {
+		<p class="flash flash-notice" role="status">{ p.Notice }</p>
+	}
+	if p.Alert != "" {
+		<p class="flash flash-alert" role="alert">{ p.Alert }</p>
+	}
+	<div
+		class="cal"
+		data-controller="composer confirm menu lock offline holidays"
+		data-lock-enabled-value={ LockEnabledValue(d) }
+		data-lock-on-label-value={ p.T("app.auto_lock_on") }
+		data-lock-off-label-value={ p.T("app.auto_lock_off") }
+	>
+		<p class="offline-banner" data-offline-target="banner" hidden>{ p.T("app.offline") }</p>
+		<header class="cal-top">
+			@Wordmark()
+			<button type="button" class="icon-btn cal-top-tool" data-action="theme#cycle" data-theme-button title={ p.T("auth.theme") } aria-label={ p.T("auth.theme") }>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 3a5 5 0 0 0 0 10Z" fill="currentColor"></path></svg>
+			</button>
+			<button type="button" class="icon-btn desktop-only" data-action="lock#lock" title={ p.T("app.lock") } aria-label={ p.T("app.lock") }>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.4" y="7.2" width="9.2" height="6.4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M5.3 7.2V5.4a2.7 2.7 0 0 1 5.4 0v1.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+			</button>
+			<button type="button" class="icon-btn" data-action="menu#toggle" data-menu-target="menuButton" title={ p.T("app.more") } aria-label={ p.T("app.more") } aria-expanded="false">
+				<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="3.5" r="1.1" fill="currentColor"></circle><circle cx="8" cy="8" r="1.1" fill="currentColor"></circle><circle cx="8" cy="12.5" r="1.1" fill="currentColor"></circle></svg>
+			</button>
+			<div class="mobile-menu" data-menu-target="menu" hidden>
+				<form action="/lock" method="post">
+					<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+					<button type="submit" class="btn-io">
+						<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.4" y="7.2" width="9.2" height="6.4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M5.3 7.2V5.4a2.7 2.7 0 0 1 5.4 0v1.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+						<span>{ p.T("app.lock") }</span>
+					</button>
+				</form>
+				@AutoLockButton(p, d.AutoLock)
+				<button type="button" class="btn-io" data-action="menu#close holidays#open">
+					<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.2" y="4.2" width="9.6" height="8.6" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M5.4 3.2v2.2M10.6 3.2v2.2M3.2 7.2h9.6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+					<span>{ p.T("app.holidays") }</span>
+				</button>
+				@ChangePasswordButton(p)
+				@ApiTokensButton(p)
+				@Transfer(p)
+				@SignOut(p)
+			</div>
+		</header>
+		<div class="cal-inner">
+			<nav class="cal-nav" aria-label={ p.T("titles.app") }>
+				<a href={ templ.SafeURL(MonthNavPath(d.Grid.PrevMonth, d.Grid.Selected.Day())) } class="icon-btn" aria-label={ p.T("app.previous_month") }>
+					<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.2 3.4 5.6 8l4.6 4.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+				</a>
+				<h1>{ MonthLabel(p, d.Grid.Month) }</h1>
+				<a href={ templ.SafeURL(MonthNavPath(d.Grid.NextMonth, d.Grid.Selected.Day())) } class="icon-btn" aria-label={ p.T("app.next_month") }>
+					<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.8 3.4 10.4 8l-4.6 4.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+				</a>
+				<a href="/" class="text-btn today-btn">{ p.T("app.today") }</a>
+			</nav>
+			<div class="cal-layout">
+				@MonthGrid(p, d)
+				@DayPanel(p, d)
+			</div>
+		</div>
+		<button type="button" class="fab" data-action="composer#openChoice" aria-label={ p.T("app.new_item") }>
+			<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>
+		</button>
+		@Dialogs(p, d)
+	</div>
+}
+
+templ MonthGrid(p Page, d CalData) {
+	<section class="cal-month" aria-label={ MonthLabel(p, d.Grid.Month) }>
+		<div class="cal-weekdays">
+			for _, label := range WeekdayLabels(p) {
+				<span>{ label }</span>
+			}
+		</div>
+		<div class="cal-grid">
+			for _, cell := range d.Grid.Cells {
+				if cell.Today {
+					<a href={ templ.SafeURL(CalPath(cell.Date)) } class={ CellClass(cell) } aria-current="date">
+						@MonthCellInner(p, cell)
+					</a>
+				} else {
+					<a href={ templ.SafeURL(CalPath(cell.Date)) } class={ CellClass(cell) }>
+						@MonthCellInner(p, cell)
+					</a>
+				}
+			}
+		</div>
+	</section>
+}
+
+templ MonthCellInner(p Page, cell *calendar.Cell) {
+	<span class="cal-num">{ CellDay(cell) }</span>
+	<span class="cal-dots" aria-hidden="true">
+		for _, mark := range MarksOf(p, cell).Pills {
+			<i class={ "dot " + mark.Kind }></i>
+		}
+	</span>
+	<span class="cal-pills">
+		for _, mark := range MarksOf(p, cell).Pills {
+			<span class={ "pill " + mark.Kind }>{ mark.Label }</span>
+		}
+		if MarksOf(p, cell).Extra > 0 {
+			<span class="pill more">{ OverflowLabel(p, MarksOf(p, cell).Extra) }</span>
+		}
+	</span>
+}
+
+templ DayPanel(p Page, d CalData) {
+	<aside class="cal-day">
+		<div class="day-head">
+			<h2>{ DayLabel(p, d.Cell.Date) }</h2>
+			<div class="day-add">
+				<button type="button" class="text-btn" data-action="composer#newEvent" data-date={ CellISO(d.Cell) } data-heading={ p.T("app.new_event") }>{ p.T("app.new_event") }</button>
+				<button type="button" class="text-btn" data-action="composer#newBirthday" data-month={ CellMonth(d.Cell) } data-day={ CellDay(d.Cell) } data-heading={ p.T("app.new_birthday") }>{ p.T("app.new_birthday") }</button>
+			</div>
+		</div>
+		if d.Cell.Empty() {
+			<p class="empty-day">{ p.T("app.empty_day") }</p>
+		} else {
+			<ul class="day-list">
+				for _, h := range d.Cell.Holidays {
+					<li class="day-item is-holiday">
+						<span class="item-kind">{ HolidayName(p, h, d.Cell.TagCountries) }</span>
+					</li>
+				}
+				for _, b := range d.Cell.Birthdays {
+					<li class="day-item is-birthday">
+						<button
+							type="button"
+							class="item-main"
+							data-action="composer#newBirthday"
+							data-id={ BirthdayID(b) }
+							data-name={ b.Name }
+							data-month={ BirthdayMonth(b) }
+							data-day={ BirthdayDay(b) }
+							data-year={ BirthdayYear(b) }
+							data-body={ b.Body }
+							data-emoji={ b.Emoji }
+							data-heading={ p.T("app.edit_birthday") }
+						>
+							<span class="item-kind">{ BirthdayLabel(b, d.Cell.Date) }</span>
+							if b.Body != "" {
+								<span class="item-note">{ b.Body }</span>
+							}
+						</button>
+						<button
+							type="button"
+							class="item-del"
+							aria-label={ p.T("app.delete") }
+							data-action="confirm#open"
+							data-url={ BirthdayURL(b) }
+							data-message={ p.T("js.delete_birthday_confirm") }
+						>
+							<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 5h9M6.2 5V3.8h3.6V5M5.2 5v7.2A1 1 0 0 0 6.2 13.2h3.6a1 1 0 0 0 1-1V5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+						</button>
+					</li>
+				}
+				for _, e := range SortedDayEvents(d.Cell) {
+					<li class="day-item is-event">
+						<button
+							type="button"
+							class="item-main"
+							data-action="composer#newEvent"
+							data-id={ EventID(e) }
+							data-title={ e.Title }
+							data-body={ e.Body }
+							data-all-day={ AllDayValue(e) }
+							data-starts-on={ e.StartsOn }
+							data-ends-on={ e.EndsOn }
+							data-starts-at={ e.StartsAt }
+							data-ends-at={ e.EndsAt }
+							data-emoji={ e.Emoji }
+							data-repeat={ e.Repeat }
+							data-repeat-until={ e.RepeatUntil }
+							data-heading={ p.T("app.edit_event") }
+						>
+							if e.TimeLabel() != "" {
+								<span class="item-time">{ e.TimeLabel() }</span>
+							}
+							<span class="item-kind">{ EventTitle(e) }</span>
+							if e.Repeating() {
+								<span class="item-repeat" title={ p.T("app.repeat") }>↻</span>
+							}
+							if e.Body != "" {
+								<span class="item-note">{ e.Body }</span>
+							}
+						</button>
+						<button
+							type="button"
+							class="item-del"
+							aria-label={ p.T("app.delete") }
+							data-action="confirm#open"
+							data-url={ EventURL(e) }
+							data-message={ DeleteEventMessage(p, e) }
+						>
+							<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 5h9M6.2 5V3.8h3.6V5M5.2 5v7.2A1 1 0 0 0 6.2 13.2h3.6a1 1 0 0 0 1-1V5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+						</button>
+					</li>
+				}
+			</ul>
+		}
+	</aside>
+}
+
+templ Transfer(p Page) {
+	<div class="io-actions">
+		<a href="/export" class="btn-io">
+			<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v8M5 8.2 8 11.2 11 8.2M3 13.2h10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+			<span>{ p.T("app.export") }</span>
+		</a>
+		<form action="/import" method="post" enctype="multipart/form-data" class="import-form">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<label class="btn-io">
+				<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13.2V5.2M5 8.2 8 5.2 11 8.2M3 2.8h10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+				<span>{ p.T("app.import") }</span>
+				<input type="file" name="file" accept=".json,application/json" class="sr-only" onchange="this.form.requestSubmit()"/>
+			</label>
+		</form>
+	</div>
+}
+
+templ Dialogs(p Page, d CalData) {
+	<datalist id="emoji-presets">
+		for _, preset := range EmojiPresets() {
+			<option value={ preset }></option>
+		}
+	</datalist>
+	<dialog class="confirm-dialog choice-dialog" data-composer-target="choice" data-action="click->composer#backdrop">
+		<p class="dialog-heading">{ p.T("app.new_item") }</p>
+		<div class="choice-actions">
+			<button type="button" class="btn-dialog primary" data-action="composer#newEvent" data-date={ CellISO(d.Cell) } data-heading={ p.T("app.new_event") }>{ p.T("app.new_event") }</button>
+			<button type="button" class="btn-dialog primary" data-action="composer#newBirthday" data-month={ CellMonth(d.Cell) } data-day={ CellDay(d.Cell) } data-heading={ p.T("app.new_birthday") }>{ p.T("app.new_birthday") }</button>
+		</div>
+		<div class="confirm-actions">
+			<button type="button" class="btn-dialog" data-action="composer#closeChoice">{ p.T("app.cancel") }</button>
+		</div>
+	</dialog>
+	<dialog class="confirm-dialog form-dialog" data-composer-target="eventBox" data-action="click->composer#backdrop">
+		<p class="dialog-heading" data-composer-target="eventHeading">{ p.T("app.new_event") }</p>
+		<form action="/events" method="post" class="auth-form" data-composer-target="eventForm" data-action="input->composer#store submit->composer#submitted">
+			<input type="hidden" name="_method" value="post" data-composer-target="eventMethod"/>
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<label>
+				{ p.T("app.title") }
+				<input type="text" name="title" required maxlength="200" data-composer-target="eventTitle"/>
+			</label>
+			<label>
+				{ p.T("app.emoji") }
+				<input type="text" name="emoji" list="emoji-presets" maxlength="16" autocomplete="off" data-composer-target="eventEmoji"/>
+			</label>
+			<label class="check-row">
+				<input type="checkbox" name="all_day" value="1" checked data-composer-target="eventAllDay" data-action="composer#toggleTimes"/>
+				<span>{ p.T("app.all_day") }</span>
+			</label>
+			<label>
+				{ p.T("app.starts") }
+				<input type="date" name="starts_on" required data-composer-target="eventStartsOn"/>
+			</label>
+			<label>
+				{ p.T("app.ends") }
+				<input type="date" name="ends_on" data-composer-target="eventEndsOn"/>
+			</label>
+			<div class="time-row" data-composer-target="eventTimes" hidden>
+				<label>
+					{ p.T("app.start_time") }
+					<input type="time" name="starts_at" data-composer-target="eventStartsAt"/>
+				</label>
+				<label>
+					{ p.T("app.end_time") }
+					<input type="time" name="ends_at" data-composer-target="eventEndsAt"/>
+				</label>
+			</div>
+			<div class="time-row">
+				<label>
+					{ p.T("app.repeat") }
+					<select name="repeat" data-composer-target="eventRepeat">
+						for _, opt := range RepeatOptions(p) {
+							<option value={ opt.Value }>{ opt.Label }</option>
+						}
+					</select>
+				</label>
+				<label>
+					{ p.T("app.repeat_until") }
+					<input type="date" name="repeat_until" data-composer-target="eventRepeatUntil"/>
+				</label>
+			</div>
+			<p class="field-hint">{ p.T("app.repeat_hint") }</p>
+			<label>
+				{ p.T("app.notes") }
+				<textarea name="body" rows="3" data-composer-target="eventBody"></textarea>
+			</label>
+			<div class="confirm-actions">
+				<button type="button" class="btn-dialog" data-action="composer#closeEvent">{ p.T("app.cancel") }</button>
+				<button type="submit" class="btn-dialog primary">{ p.T("app.save") }</button>
+			</div>
+		</form>
+		<button type="button" class="btn-dialog danger dialog-delete" hidden data-composer-target="eventDelete" data-action="confirm#open" data-message={ p.T("js.delete_event_confirm") }>{ p.T("app.delete") }</button>
+	</dialog>
+	<dialog class="confirm-dialog form-dialog" data-composer-target="birthdayBox" data-action="click->composer#backdrop">
+		<p class="dialog-heading" data-composer-target="birthdayHeading">{ p.T("app.new_birthday") }</p>
+		<form action="/birthdays" method="post" class="auth-form" data-composer-target="birthdayForm" data-action="input->composer#store submit->composer#submitted">
+			<input type="hidden" name="_method" value="post" data-composer-target="birthdayMethod"/>
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<input type="hidden" name="return_year" value={ CellYear(d.Cell) }/>
+			<label>
+				{ p.T("app.name") }
+				<input type="text" name="name" required maxlength="200" data-composer-target="birthdayName"/>
+			</label>
+			<label>
+				{ p.T("app.emoji") }
+				<input type="text" name="emoji" list="emoji-presets" maxlength="16" autocomplete="off" data-composer-target="birthdayEmoji"/>
+			</label>
+			<div class="time-row">
+				<label>
+					{ p.T("app.month") }
+					<select name="month" required data-composer-target="birthdayMonth">
+						for _, opt := range MonthOptions(p) {
+							<option value={ opt.Value }>{ opt.Label }</option>
+						}
+					</select>
+				</label>
+				<label>
+					{ p.T("app.day") }
+					<input type="number" name="day" min="1" max="31" required data-composer-target="birthdayDay"/>
+				</label>
+			</div>
+			<label>
+				{ p.T("app.year") }
+				<input type="number" name="year" min="1900" max="2100" inputmode="numeric" data-composer-target="birthdayYear"/>
+				<span class="field-hint">{ p.T("app.year_hint") }</span>
+			</label>
+			<label>
+				{ p.T("app.notes") }
+				<textarea name="body" rows="3" data-composer-target="birthdayBody"></textarea>
+			</label>
+			<div class="confirm-actions">
+				<button type="button" class="btn-dialog" data-action="composer#closeBirthday">{ p.T("app.cancel") }</button>
+				<button type="submit" class="btn-dialog primary">{ p.T("app.save") }</button>
+			</div>
+		</form>
+		<button type="button" class="btn-dialog danger dialog-delete" hidden data-composer-target="birthdayDelete" data-action="confirm#open" data-message={ p.T("js.delete_birthday_confirm") }>{ p.T("app.delete") }</button>
+	</dialog>
+	<dialog class="confirm-dialog form-dialog" data-holidays-target="box" data-action="click->holidays#backdrop">
+		<p class="dialog-heading">{ p.T("app.holidays") }</p>
+		<p class="lede">{ p.T("app.holidays_lede") }</p>
+		<form action="/holidays" method="post" class="auth-form">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<input type="hidden" name="year" value={ GridYear(d) }/>
+			<input type="hidden" name="month" value={ GridMonth(d) }/>
+			<input type="hidden" name="day" value={ CellDay(d.Cell) }/>
+			<div class="holiday-packs">
+				for _, code := range PackCodes() {
+					<label class="check-row">
+						<input type="checkbox" name="countries" value={ code } checked?={ PackChecked(d, code) } id={ "holiday_" + code }/>
+						<span>{ p.T("countries." + code) }</span>
+					</label>
+				}
+			</div>
+			<div class="confirm-actions">
+				<button type="button" class="btn-dialog" data-action="holidays#close">{ p.T("app.cancel") }</button>
+				<button type="submit" class="btn-dialog primary">{ p.T("app.save") }</button>
+			</div>
+		</form>
+	</dialog>
+	<dialog class="confirm-dialog" data-confirm-target="box" data-action="click->confirm#backdrop">
+		<p data-confirm-target="message">{ p.T("js.delete_event_confirm") }</p>
+		<div class="confirm-actions">
+			<button type="button" class="btn-dialog" data-action="confirm#close">{ p.T("app.cancel") }</button>
+			<button type="button" class="btn-dialog danger" data-confirm-target="destroy" data-url="">{ p.T("app.delete") }</button>
+		</div>
+	</dialog>
+}
