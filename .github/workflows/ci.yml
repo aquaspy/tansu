@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: account
+            cmd: ./cmd/kuraaccount
+            bin: kuraaccount
+          - app: notes
+            cmd: ./cmd/kuranotes
+            bin: kuranotes
+          - app: chat
+            cmd: ./cmd/kurachat
+            bin: kurachat
+          - app: calendar
+            cmd: ./cmd/kuracalendar
+            bin: kuracalendar
+          - app: spend
+            cmd: ./cmd/kuraspend
+            bin: kuraspend
+          - app: people
+            cmd: ./cmd/kurapeople
+            bin: kurapeople
+          - app: home
+            cmd: ./cmd/kurahome
+            bin: kurahome
+
+    defaults:
+      run:
+        working-directory: apps/${{ matrix.app }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+
+      - name: Install templ
+        run: go install github.com/a-h/templ/cmd/templ@latest
+
+      - name: Check generated templates are current
+        run: |
+          templ generate
+          git diff --exit-code -- internal/views/
+
+      - name: Check formatting
+        run: test -z "$(gofmt -l cmd internal)"
+
+      - name: Vet and test
+        run: |
+          go vet ./...
+          go test ./...
+
+      - name: Build CSS
+        run: |
+          curl -sL -o /tmp/tailwindcss https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.3/tailwindcss-linux-x64
+          chmod +x /tmp/tailwindcss
+          /tmp/tailwindcss --input web/static/css/input.css --output /tmp/app.css --minify
+
+      - name: Build static binary
+        run: CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /tmp/${{ matrix.bin }} ${{ matrix.cmd }}
