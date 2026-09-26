@@ -1,0 +1,21 @@
+package views
+
+import (
+	"strings"
+
+	"github.com/aquasp/kuranotes/internal/store"
+)
+
+templ SharedPage(p Page, note *store.Note) {
+	<article class="share-card">
+		@Wordmark()
+		if note.Title != "" {
+			<h1>{ note.Title }</h1>
+		}
+		if strings.TrimSpace(store.BodyAfterTitle(note.Body)) != "" {
+			<div class="share-body">@Raw(simpleFormat(strings.TrimSpace(store.BodyAfterTitle(note.Body))))</div>
+		}
+		<p class="share-foot">{ p.T("app.shared_from") }</p>
+		@ThemeSwitch(p)
+	</article>
+}

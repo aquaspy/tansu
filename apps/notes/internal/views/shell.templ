@@ -1,0 +1,178 @@
+package views
+
+import "fmt"
+
+// Shell renders the full app (folders + list + editor columns).
+templ Shell(p Page, d ShellData) {
+	<form id="lock-now-form" action="/lock" method="post" hidden>
+		<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+		<button type="submit" id="lock-now" class="sr-only" tabindex="-1"></button>
+	</form>
+	if p.Notice != "" {
+		<p class="flash flash-notice" role="status">{ p.Notice }</p>
+	}
+	if p.Alert != "" {
+		<p class="flash flash-alert" role="alert">{ p.Alert }</p>
+	}
+	<div
+		class={ shellClass(d) }
+		data-controller="layout lock offline"
+		data-lock-enabled-value={ fmt.Sprint(d.AutoLock) }
+		data-lock-on-label-value={ p.T("app.auto_lock_on") }
+		data-lock-off-label-value={ p.T("app.auto_lock_off") }
+	>
+		<p class="offline-banner" data-offline-target="banner" hidden>{ p.T("app.offline") }</p>
+		<header class="mobile-top">
+			@Wordmark()
+			<button type="button" class="icon-btn" data-action="theme#cycle" data-theme-button title={ p.T("auth.theme") } aria-label={ p.T("auth.theme") }>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 3a5 5 0 0 0 0 10Z" fill="currentColor"></path></svg>
+			</button>
+			<button type="button" class="icon-btn" data-action="lock#lock" title={ p.T("app.lock") } aria-label={ p.T("app.lock") }>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.4" y="7.2" width="9.2" height="6.4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M5.3 7.2V5.4a2.7 2.7 0 0 1 5.4 0v1.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+			</button>
+			<button type="button" class="icon-btn" data-action="layout#toggleMenu" data-layout-target="menuButton" title={ p.T("app.more") } aria-label={ p.T("app.more") } aria-expanded="false">
+				<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="3.5" r="1.1" fill="currentColor"></circle><circle cx="8" cy="8" r="1.1" fill="currentColor"></circle><circle cx="8" cy="12.5" r="1.1" fill="currentColor"></circle></svg>
+			</button>
+			<div class="mobile-menu" data-layout-target="menu" hidden>
+				@Transfer(p)
+				@LockButton(p)
+				@AutoLockButton(p, d.AutoLock)
+				@ChangePasswordButton(p)
+				@APITokensButton(p)
+				@SignOut(p)
+			</div>
+		</header>
+		<aside class="col-folders">
+			<div class="brand">
+				@Wordmark()
+			</div>
+			<nav class="folder-list">
+				@FoldersNav(p, d)
+			</nav>
+			<div class="sidebar-foot desktop-only">
+				@Transfer(p)
+				@LockButton(p)
+				@AutoLockButton(p, d.AutoLock)
+				@ChangePasswordButton(p)
+				@APITokensButton(p)
+				@SignOut(p)
+			</div>
+		</aside>
+		<section class="col-list">
+			<div class="list-head">
+				<form action="/notes/" method="post" class="desktop-only">
+					<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+					if d.Folder != "" {
+						<input type="hidden" name="folder" value={ d.Folder }/>
+					}
+					if d.Query != "" {
+						<input type="hidden" name="q" value={ d.Query }/>
+					}
+					<button type="submit" class="btn-new">
+						<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>
+						<span>{ p.T("app.new_note") }</span>
+					</button>
+				</form>
+				<form
+					action="/notes/"
+					method="get"
+					class="search-form"
+					hx-get="/notes/"
+					hx-target="#notes_list"
+					hx-swap="outerHTML"
+					hx-trigger="input changed delay:300ms, submit"
+				>
+					if d.Folder != "" {
+						<input type="hidden" name="folder" value={ d.Folder }/>
+					}
+					<input
+						type="search"
+						name="q"
+						value={ d.Query }
+						placeholder={ p.T("app.search") }
+						class="search"
+						enterkeyhint="search"
+						autocomplete="off"
+					/>
+				</form>
+			</div>
+			@NoteList(p, d)
+		</section>
+		<section class="col-editor">
+			@Editor(p, d)
+		</section>
+		<form action="/notes/" method="post" class="fab-form">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			if d.Folder != "" {
+				<input type="hidden" name="folder" value={ d.Folder }/>
+			}
+			if d.Query != "" {
+				<input type="hidden" name="q" value={ d.Query }/>
+			}
+			<button type="submit" class="fab" aria-label={ p.T("app.new_note") }>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>
+			</button>
+		</form>
+	</div>
+}
+
+func shellClass(d ShellData) string {
+	if d.Current != nil {
+		return "app-shell is-editing"
+	}
+	return "app-shell"
+}
+
+templ LockButton(p Page) {
+	<form action="/lock" method="post">
+		<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+		<button type="submit" class="btn-io">
+			<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.4" y="7.2" width="9.2" height="6.4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M5.3 7.2V5.4a2.7 2.7 0 0 1 5.4 0v1.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+			<span>{ p.T("app.lock") }</span>
+		</button>
+	</form>
+}
+
+templ AutoLockButton(p Page, enabled bool) {
+	<button type="button" class="btn-io" data-action="lock#togglePreference">
+		<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 5.2v3.1l2.1 1.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+		<span data-auto-lock-label>
+			if enabled {
+				{ p.T("app.auto_lock_off") }
+			} else {
+				{ p.T("app.auto_lock_on") }
+			}
+		</span>
+	</button>
+}
+
+templ ChangePasswordButton(p Page) {
+	<a href="/password/edit" class="btn-io">
+		<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="5.4" cy="8" r="2.5" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M7.8 8h5.4v2.1M11.2 8v1.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+		<span>{ p.T("auth.change_password") }</span>
+	</a>
+}
+
+templ APITokensButton(p Page) {
+	<a href="/api_tokens/" class="btn-io">
+		<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="5.6" cy="8" r="2.4" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 8h5.2M11.4 8v1.9M13.2 8v1.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+		<span>{ p.T("tokens.title") }</span>
+	</a>
+}
+
+templ Transfer(p Page) {
+	<div class="io-actions">
+		<a href="/notes/export" class="btn-io">
+			<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v8M5 8.2 8 11.2 11 8.2M3 13.2h10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+			<span>{ p.T("app.export") }</span>
+		</a>
+		<form action="/notes/import" method="post" enctype="multipart/form-data" class="import-form">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<label class="btn-io">
+				<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13.2V5.2M5 8.2 8 5.2 11 8.2M3 2.8h10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+				<span>{ p.T("app.import") }</span>
+				<input type="file" name="file" multiple accept=".json,.txt,.zip,text/plain,application/json,application/zip" class="sr-only" onchange="this.form.requestSubmit()"/>
+			</label>
+		</form>
+	</div>
+}

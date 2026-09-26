@@ -1,0 +1,128 @@
+package views
+
+import "fmt"
+
+// Editor is the editor column: the open note form or the empty state.
+templ Editor(p Page, d ShellData) {
+	if d.Current == nil {
+		<p class="empty-editor">{ p.T("app.empty_editor") }</p>
+	} else {
+		<div class="editor-wrap" data-controller="share" data-share-copied-value={ p.T("app.copied") }>
+			<form
+				action={ templ.SafeURL(fmt.Sprintf("/notes/%d", d.Current.Note.ID)) }
+				method="post"
+				hx-patch={ fmt.Sprintf("/notes/%d", d.Current.Note.ID) }
+				hx-swap="none"
+				class="editor-form"
+				data-controller="autosave confirm"
+				data-autosave-saved-value={ p.T("js.saved") }
+				data-autosave-saving-value={ p.T("js.saving") }
+				data-autosave-offline-value={ p.T("js.offline") }
+				data-action="input->autosave#queue"
+			>
+				<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+				if d.Folder != "" {
+					<input type="hidden" name="filter_folder" value={ d.Folder }/>
+				}
+				if d.Query != "" {
+					<input type="hidden" name="filter_q" value={ d.Query }/>
+				}
+				<header class="editor-bar">
+					<a href={ templ.SafeURL(NotesHref(d.Folder, d.Query)) } class="icon-btn back" title={ p.T("app.notes") } aria-label={ p.T("app.notes") }>
+						<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>
+					</a>
+					<button type="button" class="icon-btn desktop-only" data-action="layout#toggleFolders" title={ p.T("app.folders") } aria-label={ p.T("app.folders") }>
+						<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3.5h12M2 8h12M2 12.5h12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>
+					</button>
+					<button type="button" class="icon-btn desktop-only" data-action="layout#toggleList" title={ p.T("app.list") } aria-label={ p.T("app.list") }>
+						<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="4" height="11" rx="0.8" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M9 4.5h4.5M9 8h4.5M9 11.5h4.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+					</button>
+					<button type="button" class="icon-btn desktop-only" data-action="layout#toggleFocus" title={ p.T("app.focus") } aria-label={ p.T("app.focus") }>
+						<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M6 8h4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+					</button>
+					<button type="button" class="icon-btn" data-action="theme#cycle" data-theme-button title={ p.T("auth.theme") } aria-label={ p.T("auth.theme") }>
+						<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 3a5 5 0 0 0 0 10Z" fill="currentColor"></path></svg>
+					</button>
+					<div class="folder-picker" data-controller="folderPicker">
+						<input
+							type="text"
+							name="folder"
+							value={ d.Current.Note.Folder }
+							placeholder={ p.T("app.folder") }
+							class="folder-input"
+							autocomplete="off"
+							maxlength="80"
+							role="combobox"
+							aria-autocomplete="list"
+							aria-expanded="false"
+							aria-controls="folder_picker_list"
+							data-folder-picker-target="input"
+							data-action="focusin->folderPicker#open input->folderPicker#filter keydown->folderPicker#keydown"
+						/>
+						<button type="button" class="folder-picker-toggle" data-action="pointerdown->folderPicker#toggle" title={ p.T("app.choose_folder") } aria-label={ p.T("app.choose_folder") } tabindex="-1">
+							<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 6.2 8 9.8l3.5-3.6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+						</button>
+						<div id="folder_picker_list" class="folder-picker-list" data-folder-picker-target="list" hidden role="listbox">
+							@FolderPickerOptions(p, d)
+						</div>
+					</div>
+					<span class="bar-spacer desktop-only"></span>
+					<span class="status" data-autosave-target="status"></span>
+					<button type="button" class="icon-btn" data-action="lock#lock" title={ p.T("app.lock") } aria-label={ p.T("app.lock") }>
+						<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.4" y="7.2" width="9.2" height="6.4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M5.3 7.2V5.4a2.7 2.7 0 0 1 5.4 0v1.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+					</button>
+					@ShareButton(p, d.Current.Note.ID, d.Current.Shared)
+					<button type="button" class="icon-btn danger" data-action="confirm#open" title={ p.T("app.delete") } aria-label={ p.T("app.delete") }>
+						<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4.4h9.6M6.2 4.4V3.2h3.6v1.2M5.1 6.2l.4 6.2h5l.4-6.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+					</button>
+				</header>
+				<textarea name="body" class="note-body" placeholder={ p.T("app.write_placeholder") } spellcheck="true">{ d.Current.Note.Body }</textarea>
+				<dialog class="confirm-dialog" data-confirm-target="box" data-action="click->confirm#backdrop">
+					<p data-confirm-target="message">{ p.T("js.delete_confirm") }</p>
+					<div class="confirm-actions">
+						<button type="button" class="btn-dialog" data-action="confirm#close">{ p.T("app.cancel") }</button>
+						<button
+							type="button"
+							class="btn-dialog danger"
+							data-confirm-target="destroy"
+							data-url={ fmt.Sprintf("/notes/%d", d.Current.Note.ID) }
+							data-redirect={ NotesHref(d.Folder, d.Query) }
+						>{ p.T("app.delete") }</button>
+					</div>
+				</dialog>
+			</form>
+			<dialog class="confirm-dialog share-dialog" data-share-target="box" data-action="click->share#backdrop">
+				<p class="share-heading">{ p.T("app.share") }</p>
+				@SharePanel(p, d.Current.Note.ID, d.Current.Shared, d.Current.ShareURL, d.Filters)
+			</dialog>
+		</div>
+	}
+}
+
+// FolderPickerOptions lists the inbox plus existing folders for the combobox.
+templ FolderPickerOptions(p Page, d ShellData) {
+	<button
+		type="button"
+		class="folder-picker-option"
+		role="option"
+		data-folder-picker-target="option"
+		data-action="pointerdown->folderPicker#pick"
+		data-value=""
+		data-label={ p.T("js.inbox") }
+	>
+		{ p.T("js.inbox") }
+	</button>
+	for _, name := range d.FolderNames {
+		<button
+			type="button"
+			class="folder-picker-option"
+			role="option"
+			data-folder-picker-target="option"
+			data-action="pointerdown->folderPicker#pick"
+			data-value={ name }
+			data-label={ name }
+		>
+			{ name }
+		</button>
+	}
+}

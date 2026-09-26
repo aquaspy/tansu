@@ -1,0 +1,116 @@
+package views
+
+import "strconv"
+
+// FoldersNav is the folders column; re-rendered on autosaves.
+templ FoldersNav(p Page, d ShellData) {
+	<div id="folders_nav" class="folder-strip" data-controller="confirm folders rename">
+		for _, f := range d.Folders {
+			if f.Name == "all" {
+				<a href={ templ.SafeURL(NotesHref("all", d.Query)) } class={ folderItemClass(f.Active) }>
+					{ f.Label } <em>{ strconv.Itoa(f.Count) }</em>
+				</a>
+			} else {
+				<div class={ folderItemClass(f.Active) }>
+					<a href={ templ.SafeURL(folderHref(f.Name, d.Query)) } class="folder-item-link">
+						{ f.Label } <em>{ strconv.Itoa(f.Count) }</em>
+					</a>
+					if f.Name != "" {
+						<button
+							type="button"
+							class="icon-btn folder-rename"
+							data-action="rename#open"
+							data-from={ f.Name }
+							title={ p.T("app.rename_folder") }
+							aria-label={ p.T("app.rename_folder") }
+						>
+							<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11.4 2.9 13.1 4.6 5.6 12.1l-2.2.3.3-2.2Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+						</button>
+					}
+					if f.Count > 0 {
+						if f.Name == "" {
+							<button
+								type="button"
+								class="icon-btn danger folder-delete"
+								data-action="confirm#open"
+								data-url="/notes/folder?folder=inbox"
+								data-redirect="/notes/?folder=inbox"
+								data-message={ p.T("js.delete_inbox_confirm") }
+								title={ p.T("app.clear_inbox") }
+								aria-label={ p.T("app.clear_inbox") }
+							>
+								<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4.4h9.6M6.2 4.4V3.2h3.6v1.2M5.1 6.2l.4 6.2h5l.4-6.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+							</button>
+						} else {
+							<button
+								type="button"
+								class="icon-btn danger folder-delete"
+								data-action="confirm#open"
+								data-url={ templ.SafeURL("/notes/folder?folder=" + urlQueryEscape(f.Name)) }
+								data-redirect="/notes/"
+								data-message={ p.T("js.delete_folder_confirm", "name", f.Name) }
+								title={ p.T("app.delete_folder") }
+								aria-label={ p.T("app.delete_folder") }
+							>
+								<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4.4h9.6M6.2 4.4V3.2h3.6v1.2M5.1 6.2l.4 6.2h5l.4-6.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+							</button>
+						}
+					}
+				</div>
+			}
+		}
+		<dialog class="confirm-dialog" data-confirm-target="box" data-action="click->confirm#backdrop">
+			<p data-confirm-target="message">{ p.T("js.delete_folder_confirm", "name", "") }</p>
+			<div class="confirm-actions">
+				<button type="button" class="btn-dialog" data-action="confirm#close">{ p.T("app.cancel") }</button>
+				<button type="button" class="btn-dialog danger" data-confirm-target="destroy">{ p.T("app.delete") }</button>
+			</div>
+		</dialog>
+		<dialog class="confirm-dialog" data-rename-target="box" data-action="click->rename#backdrop">
+			<p>{ p.T("app.rename_folder") }</p>
+			<form
+				action="/notes/folder"
+				method="post"
+				hx-patch="/notes/folder"
+				hx-swap="none"
+			>
+				<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+				<input type="hidden" name="_method" value="patch"/>
+				<input type="hidden" name="folder" value="" id="rename_folder_from" data-rename-target="from"/>
+				if d.Query != "" {
+					<input type="hidden" name="q" value={ d.Query }/>
+				}
+				<input
+					type="text"
+					name="name"
+					value=""
+					id="rename_folder_name"
+					maxlength="80"
+					required
+					autocomplete="off"
+					class="rename-input"
+					data-rename-target="input"
+				/>
+				<div class="confirm-actions">
+					<button type="button" class="btn-dialog" data-action="rename#close">{ p.T("app.cancel") }</button>
+					<button type="submit" class="btn-dialog primary">{ p.T("app.rename") }</button>
+				</div>
+			</form>
+		</dialog>
+	</div>
+}
+
+func folderItemClass(active bool) string {
+	if active {
+		return "folder-item is-on"
+	}
+	return "folder-item"
+}
+
+// folderHref maps the inbox (stored "") to its filter name.
+func folderHref(name, q string) string {
+	if name == "" {
+		return NotesHref("inbox", q)
+	}
+	return NotesHref(name, q)
+}

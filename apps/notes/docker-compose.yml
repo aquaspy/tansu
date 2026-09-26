@@ -1,0 +1,21 @@
+services:
+  web:
+    build: .
+    image: kuranotes:latest
+    restart: unless-stopped
+    ports:
+      - "${BIND:-127.0.0.1:3000}:80"
+    env_file: .env
+    environment:
+      DATA_DIR: /data
+    volumes:
+      - kura_notes_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1/up"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  kura_notes_data:

@@ -1,0 +1,97 @@
+package views
+
+import "fmt"
+
+// ShareButton opens the share dialog; highlighted while shared.
+templ ShareButton(p Page, noteID int64, shared bool) {
+	<button
+		type="button"
+		id={ ShareBtnID(noteID) }
+		class={ shareBtnClass(shared) }
+		data-action="share#open"
+		title={ p.T("app.share") }
+		aria-label={ p.T("app.share") }
+	>
+		<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="4.1" cy="8" r="1.55" fill="none" stroke="currentColor" stroke-width="1.3"></circle><circle cx="11.7" cy="4.1" r="1.55" fill="none" stroke="currentColor" stroke-width="1.3"></circle><circle cx="11.7" cy="11.9" r="1.55" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M5.6 7.2 10.2 4.9M5.6 8.8 10.2 11.1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+	</button>
+}
+
+func shareBtnClass(shared bool) string {
+	if shared {
+		return "icon-btn is-shared"
+	}
+	return "icon-btn"
+}
+
+// SharePanel is the dialog body; the response to share mutations also
+// carries the button with hx-swap-oob so both update at once.
+templ SharePanel(p Page, noteID int64, shared bool, shareURL string, filters string) {
+	<div id={ SharePanelID(noteID) }>
+		<p>{ p.T("app.share_lede") }</p>
+		if shared {
+			<div class="share-url-row">
+				<input
+					type="text"
+					readonly
+					value={ shareURL }
+					data-share-target="url"
+					data-action="focus->share#selectUrl click->share#selectUrl"
+				/>
+				<button type="button" class="btn-dialog" data-action="share#copy">{ p.T("app.copy") }</button>
+			</div>
+			<p class="share-status" data-share-target="status" hidden></p>
+			<div class="confirm-actions">
+				<form
+					action={ templ.SafeURL(shareAction(noteID, filters)) }
+					method="post"
+					hx-patch={ shareAction(noteID, filters) }
+					hx-target={ "#" + SharePanelID(noteID) }
+					hx-swap="outerHTML"
+				>
+					<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+					<button type="submit" class="btn-dialog">{ p.T("app.share_new") }</button>
+				</form>
+				<form
+					action={ templ.SafeURL(shareAction(noteID, filters)) }
+					method="post"
+					hx-delete={ shareAction(noteID, filters) }
+					hx-target={ "#" + SharePanelID(noteID) }
+					hx-swap="outerHTML"
+				>
+					<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+					<button type="submit" class="btn-dialog danger">{ p.T("app.share_stop") }</button>
+				</form>
+			</div>
+		} else {
+			<div class="confirm-actions">
+				<button type="button" class="btn-dialog" data-action="share#close">{ p.T("app.cancel") }</button>
+				<form
+					action={ templ.SafeURL(shareAction(noteID, filters)) }
+					method="post"
+					hx-post={ shareAction(noteID, filters) }
+					hx-target={ "#" + SharePanelID(noteID) }
+					hx-swap="outerHTML"
+				>
+					<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+					<button type="submit" class="btn-dialog primary">{ p.T("app.share_create") }</button>
+				</form>
+			</div>
+		}
+	</div>
+}
+
+// SharePanelResponse is the mutation response: fresh panel plus the
+// button swapped out-of-band.
+templ SharePanelResponse(p Page, noteID int64, shared bool, shareURL string, filters string) {
+	@SharePanel(p, noteID, shared, shareURL, filters)
+	<div hx-swap-oob={ "outerHTML:#" + ShareBtnID(noteID) }>
+		@ShareButton(p, noteID, shared)
+	</div>
+}
+
+func shareAction(noteID int64, filters string) string {
+	if filters == "" {
+		return fmt.Sprintf("/notes/%d/share", noteID)
+	}
+	return fmt.Sprintf("/notes/%d/share?%s", noteID, filters)
+}
