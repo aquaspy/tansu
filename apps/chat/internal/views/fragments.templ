@@ -1,0 +1,53 @@
+package views
+
+// ConvTitle is the sidebar row label, replaced live on auto-title.
+templ ConvTitle(convID int64, title string) {
+	<strong id={ ConvTitleID(convID) } sse-swap={ TitleEvent(convID) } hx-swap="outerHTML">{ title }</strong>
+}
+
+// TitleField is the rename input in the editor bar.
+templ TitleField(p Page, convID int64, title string) {
+	<input
+		type="text"
+		name="conversation[title]"
+		value={ title }
+		id={ ConvTitleFieldID(convID) }
+		sse-swap={ TitleFieldEvent(convID) }
+		hx-target="this"
+		hx-swap="outerHTML"
+		placeholder={ p.T("chat.untitled") }
+		class="folder-input"
+		autocomplete="off"
+		aria-label={ p.T("chat.rename") }
+		data-title-target="input"
+		data-action="input->title#schedule focusout->title#save"
+	/>
+}
+
+// ChatCost shows the billed/estimated total; hidden while zero.
+templ ChatCost(p Page, convID int64, cost CostView) {
+	<span
+		id={ ConvCostID(convID) }
+		class={ costClass(cost) }
+		title={ cost.Hint }
+		hidden?={ cost.Text == "" }
+		sse-swap={ CostEvent(convID) }
+		hx-swap="outerHTML"
+	>
+		if cost.Text != "" {
+			{ cost.Text }
+		}
+	</span>
+}
+
+func costClass(cost CostView) string {
+	if cost.Text == "" {
+		return "chat-cost is-empty"
+	}
+	return "chat-cost"
+}
+
+// MsgStatusLine is the thinking line under a streaming reply.
+templ MsgStatusLine(p Page, msgID int64, text string) {
+	<p class="msg-status" id={ MsgStatusID(msgID) } sse-swap={ StatusEvent(msgID) }>{ text }</p>
+}

@@ -1,0 +1,107 @@
+{
+ "search-news": {
+  "A": "grok420",
+  "B": "grok45",
+  "C": "grok-build",
+  "D": "grok46",
+  "E": "grok43"
+ },
+ "search-fact": {
+  "A": "grok45",
+  "B": "grok43",
+  "C": "grok46",
+  "D": "grok-build",
+  "E": "grok420"
+ },
+ "search-greet": {
+  "A": "grok45",
+  "B": "grok43",
+  "C": "grok-build",
+  "D": "grok420",
+  "E": "grok46"
+ },
+ "reason-logic": {
+  "A": "grok46",
+  "B": "grok45",
+  "C": "grok420",
+  "D": "grok-build",
+  "E": "grok43"
+ },
+ "reason-math": {
+  "A": "grok43",
+  "B": "grok46",
+  "C": "grok-build",
+  "D": "grok45",
+  "E": "grok420"
+ },
+ "reason-compare": {
+  "A": "grok46",
+  "B": "grok420",
+  "C": "grok45",
+  "D": "grok-build",
+  "E": "grok43"
+ },
+ "write-email-pt": {
+  "A": "grok420",
+  "B": "grok43",
+  "C": "grok-build",
+  "D": "grok45",
+  "E": "grok46"
+ },
+ "write-summary": {
+  "A": "grok46",
+  "B": "grok43",
+  "C": "grok45",
+  "D": "grok-build",
+  "E": "grok420"
+ },
+ "write-tone": {
+  "A": "grok420",
+  "B": "grok-build",
+  "C": "grok43",
+  "D": "grok45",
+  "E": "grok46"
+ },
+ "code-ruby": {
+  "A": "grok46",
+  "B": "grok45",
+  "C": "grok43",
+  "D": "grok420",
+  "E": "grok-build"
+ },
+ "code-debug": {
+  "A": "grok45",
+  "B": "grok420",
+  "C": "grok43",
+  "D": "grok46",
+  "E": "grok-build"
+ },
+ "explain-concept": {
+  "A": "grok45",
+  "B": "grok43",
+  "C": "grok420",
+  "D": "grok46",
+  "E": "grok-build"
+ },
+ "explain-history": {
+  "A": "grok43",
+  "B": "grok45",
+  "C": "grok420",
+  "D": "grok-build",
+  "E": "grok46"
+ },
+ "vision-dot": {
+  "A": "grok43",
+  "B": "grok46",
+  "C": "grok-build",
+  "D": "grok420",
+  "E": "grok45"
+ },
+ "cache-t2": {
+  "A": "grok43",
+  "B": "grok-build",
+  "C": "grok46",
+  "D": "grok420",
+  "E": "grok45"
+ }
+}

@@ -1,0 +1,210 @@
+package views
+
+import (
+	"fmt"
+
+	"github.com/aquasp/kurachat/internal/store"
+)
+
+// MessageArticle renders one transcript row in any state. Inflight rows
+// subscribe to their terminal event (outerHTML swap replaces the node).
+templ MessageArticle(p Page, m *MessageView, convID int64, inflight bool) {
+	if m.Msg.Inflight() {
+		<article id={ MsgID(m.Msg.ID) } class={ MsgClass(m.Msg) } sse-swap={ MessageEvent(m.Msg.ID) } hx-swap="outerHTML">
+			@ArticleInner(p, m, convID)
+		</article>
+	} else {
+		<article id={ MsgID(m.Msg.ID) } class={ MsgClass(m.Msg) }>
+			@ArticleInner(p, m, convID)
+		</article>
+	}
+}
+
+templ ArticleInner(p Page, m *MessageView, convID int64) {
+	if m.Msg.Role == store.RoleUser {
+		@UserContent(p, m, convID)
+	} else if m.Msg.Inflight() {
+		@MsgBody(m.Msg.ID, m.BodyHTML, true)
+		<p class="msg-status" id={ MsgStatusID(m.Msg.ID) } sse-swap={ StatusEvent(m.Msg.ID) }>{ p.T("chat.thinking") }</p>
+	} else if m.Msg.Failed() {
+		<p class="msg-error">{ p.T("chat.failed") }</p>
+		if m.CanRetry && !m.Shared {
+			<form
+				action={ templ.SafeURL(fmt.Sprintf("/conversations/%d/messages/%d/retry", convID, m.Msg.ID)) }
+				method="post"
+				hx-post={ fmt.Sprintf("/conversations/%d/messages/%d/retry", convID, m.Msg.ID) }
+				hx-target={ "#" + MsgID(m.Msg.ID) }
+				hx-swap="outerHTML"
+			>
+				<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+				<button type="submit" class="btn-dialog primary">{ p.T("chat.retry") }</button>
+			</form>
+		}
+	} else {
+		@MsgBody(m.Msg.ID, m.BodyHTML, false)
+		@MsgMeta(p, m)
+		@MsgTools(p, m)
+	}
+}
+
+// Event names shared with the completer's SSE publishers.
+func StatusEvent(id int64) string     { return fmt.Sprintf("status-%d", id) }
+func BodyEvent(id int64) string       { return fmt.Sprintf("body-%d", id) }
+func MessageEvent(id int64) string    { return fmt.Sprintf("message-%d", id) }
+func TitleEvent(id int64) string      { return fmt.Sprintf("title-%d", id) }
+func TitleFieldEvent(id int64) string { return fmt.Sprintf("title-field-%d", id) }
+func CostEvent(id int64) string       { return fmt.Sprintf("cost-%d", id) }
+
+// MsgBody is the assistant text container. While streaming it subscribes
+// to SSE body events; the swap is innerHTML so the node (and its
+// subscription) survives.
+templ MsgBody(id int64, html string, streaming bool) {
+	if streaming {
+		<div class="msg-body md" id={ MsgBodyID(id) } sse-swap={ BodyEvent(id) }>
+			@templ.Raw(html)
+		</div>
+	} else {
+		<div class="msg-body md" id={ MsgBodyID(id) }>
+			@templ.Raw(html)
+		</div>
+	}
+}
+
+// UserContent renders attached files plus the escaped text.
+templ UserContent(p Page, m *MessageView, convID int64) {
+	if len(m.Msg.Images) > 0 {
+		<div class="msg-images">
+			for _, img := range m.Msg.Images {
+				<div class="msg-image">
+					<a href={ templ.SafeURL(imageHref(m, img, "")) } target="_blank" rel="noopener">
+						<img src={ imageHref(m, img, "thumb") } alt="" loading="lazy"/>
+					</a>
+				</div>
+			}
+		</div>
+	}
+	if len(m.Msg.Documents) > 0 {
+		<div class="msg-docs">
+			for _, doc := range m.Msg.Documents {
+				<a class="msg-doc" href={ templ.SafeURL(docHref(m, doc)) } target="_blank" rel="noopener" title={ doc.Filename }>
+					<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.8h4L12.5 6v8.2h-8Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path><path d="M8.5 1.8V6h4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path></svg>
+					<span class="msg-doc-name">{ doc.Filename }</span>
+				</a>
+			}
+		</div>
+	}
+	if m.Msg.Content != "" {
+		<div class="msg-body">
+			@templ.Raw(simpleFormat(m.Msg.Content))
+		</div>
+	}
+}
+
+func imageHref(m *MessageView, img *store.Image, variant string) string {
+	var base string
+	if m.Shared {
+		base = fmt.Sprintf("/s/%s/i/%d", m.ShareToken, img.ID)
+	} else {
+		base = fmt.Sprintf("/images/%d", img.ID)
+	}
+	if variant != "" {
+		return base + "?v=" + variant
+	}
+	return base
+}
+
+func docHref(m *MessageView, doc *store.Document) string {
+	if m.Shared {
+		return fmt.Sprintf("/s/%s/d/%d", m.ShareToken, doc.ID)
+	}
+	return fmt.Sprintf("/documents/%d", doc.ID)
+}
+
+// MsgMeta is the small model/web line under a finished reply.
+templ MsgMeta(p Page, m *MessageView) {
+	if m.ModelLabel != "" || m.Searched {
+		<p class="msg-meta">
+			if m.ModelLabel != "" {
+				<span>{ m.ModelLabel }</span>
+			}
+			if m.Searched {
+				if m.ModelLabel != "" {
+					<span aria-hidden="true"> · </span>
+				}
+				if m.Deep {
+					<span class="msg-meta-web">{ p.T("chat.searched_deep") }</span>
+				} else {
+					<span class="msg-meta-web">{ p.T("chat.searched") }</span>
+				}
+			}
+		</p>
+	}
+}
+
+// MsgTools is the copy button, the listen button, plus the sources fold.
+// Speech stays out of shared views (the endpoint needs the session).
+templ MsgTools(p Page, m *MessageView) {
+	<nav
+		class="msg-toolbar"
+		data-controller="copy voice"
+		data-copy-copied-value={ p.T("app.copied") }
+		data-copy-idle-value={ p.T("app.copy") }
+		data-voice-speak-value={ fmt.Sprintf("/conversations/%d/voice/speak", m.Msg.ConversationID) }
+		data-voice-idle-value={ p.T("chat.speak") }
+		data-voice-stop-value={ p.T("chat.stop_speech") }
+	>
+		<textarea class="sr-only" readonly tabindex="-1" aria-hidden="true" data-copy-target="source">{ m.Msg.Content }</textarea>
+		<button type="button" class="msg-tool" data-action="copy#copy" title={ p.T("app.copy") }>
+			<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.2" y="5.2" width="7.2" height="8.2" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M3.6 10.8V3.8A1.2 1.2 0 0 1 4.8 2.6h5.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+			<span data-copy-target="label">{ p.T("app.copy") }</span>
+		</button>
+		if !m.Shared {
+			<button
+				type="button"
+				class="msg-tool"
+				data-action="voice#speak"
+				data-voice-target="speak"
+				data-voice-id-param={ fmt.Sprint(m.Msg.ID) }
+				title={ p.T("chat.speak") }
+			>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.6 6v4h2.6L9.4 13V3L5.2 6Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path><path d="M11.4 6.2a3 3 0 0 1 0 3.6M13 4.6a5.4 5.4 0 0 1 0 6.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+				<span data-voice-target="speak-label">{ p.T("chat.speak") }</span>
+			</button>
+		}
+		@Citations(p, m.Citations)
+	</nav>
+}
+
+templ Citations(p Page, cites []Citation) {
+	if len(cites) > 0 {
+		<details class="cite-fold">
+			<summary>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 9.8 9.8 6.2M7.1 4.4l.6-1.1a2.2 2.2 0 0 1 3.8 2.2l-.6 1.1M8.9 11.6l-.6 1.1a2.2 2.2 0 1 1-3.8-2.2l.6-1.1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+				{ p.T("chat.sources") }
+				<span class="cite-fold-n">{ fmt.Sprint(len(cites)) }</span>
+			</summary>
+			<ul class="citations">
+				for _, c := range cites {
+					<li><a href={ templ.SafeURL(c.URL) } rel="noopener noreferrer nofollow" target="_blank">{ citeTitle(c) }</a></li>
+				}
+			</ul>
+		</details>
+	}
+}
+
+func citeTitle(c Citation) string {
+	if c.Title != "" {
+		return c.Title
+	}
+	return c.URL
+}
+
+// MessagesCreated is the POST response: the echoed pair appended to the
+// transcript plus an out-of-band list refresh.
+templ MessagesCreated(p Page, d ShellData, user, asst *MessageView, convID int64) {
+	@MessageArticle(p, user, convID, true)
+	@MessageArticle(p, asst, convID, true)
+	<div hx-swap-oob="outerHTML:#conversation-list">
+		@ConversationList(p, d)
+	</div>
+}

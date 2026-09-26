@@ -1,0 +1,25 @@
+package views
+
+// SharedChatPage is the public read-only view at /s/:token.
+templ SharedChatPage(p Page, title string, messages []*MessageView) {
+	<article class="share-card share-chat">
+		@Wordmark()
+		<h1>{ title }</h1>
+		<div class="share-thread">
+			for _, m := range messages {
+				<section class={ "msg msg-" + m.Msg.Role }>
+					if m.Msg.Role == "user" {
+						@UserContent(p, m, 0)
+					} else {
+						<div class="msg-body md">
+							@templ.Raw(m.BodyHTML)
+						</div>
+						@MsgTools(p, m)
+					}
+				</section>
+			}
+		</div>
+		<p class="share-foot">{ p.T("app.shared_from") }</p>
+		@ThemeSwitch(p)
+	</article>
+}

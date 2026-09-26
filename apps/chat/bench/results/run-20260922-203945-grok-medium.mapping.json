@@ -1,0 +1,47 @@
+{
+ "search-news": {
+  "A": "grok47"
+ },
+ "search-fact": {
+  "A": "grok47"
+ },
+ "search-greet": {
+  "A": "grok47"
+ },
+ "reason-logic": {
+  "A": "grok47"
+ },
+ "reason-math": {
+  "A": "grok47"
+ },
+ "reason-compare": {
+  "A": "grok47"
+ },
+ "write-email-pt": {
+  "A": "grok47"
+ },
+ "write-summary": {
+  "A": "grok47"
+ },
+ "write-tone": {
+  "A": "grok47"
+ },
+ "code-ruby": {
+  "A": "grok47"
+ },
+ "code-debug": {
+  "A": "grok47"
+ },
+ "explain-concept": {
+  "A": "grok47"
+ },
+ "explain-history": {
+  "A": "grok47"
+ },
+ "vision-dot": {
+  "A": "grok47"
+ },
+ "cache-t2": {
+  "A": "grok47"
+ }
+}

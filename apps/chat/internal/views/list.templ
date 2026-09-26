@@ -1,0 +1,52 @@
+package views
+
+import "fmt"
+
+// ConversationList is the sidebar nav; re-rendered for search and renames.
+templ ConversationList(p Page, d ShellData) {
+	<nav class="note-list" id="conversation-list" data-controller="confirm">
+	if !d.HasConversations {
+		<p class="empty-list muted">{ p.T("chat.empty_list") }</p>
+	} else {
+		for _, c := range d.Conversations {
+			<div class={ noteItemClass(c) }>
+				<a href={ templ.SafeURL(listHref(c.ID, d.Query)) } class="note-item-link">
+					@ConvTitle(c.ID, c.Title)
+				</a>
+				<button
+					type="button"
+					class="icon-btn danger note-delete"
+					data-action="confirm#open"
+					data-url={ fmt.Sprintf("/conversations/%d", c.ID) }
+					data-message={ p.T("chat.delete_confirm") }
+					title={ p.T("app.delete") }
+					aria-label={ p.T("app.delete") }
+				>
+					<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4.4h9.6M6.2 4.4V3.2h3.6v1.2M5.1 6.2l.4 6.2h5l.4-6.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+				</button>
+			</div>
+		}
+		<dialog class="confirm-dialog" data-confirm-target="box" data-action="click->confirm#backdrop">
+			<p data-confirm-target="message">{ p.T("chat.delete_confirm") }</p>
+			<div class="confirm-actions">
+				<button type="button" class="btn-dialog" data-action="confirm#close">{ p.T("app.cancel") }</button>
+				<button type="button" class="btn-dialog danger" data-confirm-target="destroy">{ p.T("app.delete") }</button>
+			</div>
+		</dialog>
+		}
+	</nav>
+}
+
+func noteItemClass(c *ConversationItem) string {
+	if c.Active {
+		return "note-item is-on"
+	}
+	return "note-item"
+}
+
+func listHref(id int64, q string) string {
+	if q != "" {
+		return fmt.Sprintf("/conversations/%d?q=%s", id, urlQueryEscape(q))
+	}
+	return fmt.Sprintf("/conversations/%d", id)
+}

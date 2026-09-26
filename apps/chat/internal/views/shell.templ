@@ -1,0 +1,161 @@
+package views
+
+import "fmt"
+
+// Shell renders the full app (sidebar + editor column).
+templ Shell(p Page, d ShellData) {
+	<form id="lock-now-form" action="/lock" method="post" hidden>
+		<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+		<button type="submit" id="lock-now" class="sr-only" tabindex="-1"></button>
+	</form>
+	if p.Notice != "" {
+		<p class="flash flash-notice" role="status">{ p.Notice }</p>
+	}
+	if p.Alert != "" {
+		<p class="flash flash-alert" role="alert">{ p.Alert }</p>
+	}
+	<div
+		class={ shellClass(d) }
+		data-controller="layout lock offline confirm"
+		data-lock-enabled-value={ fmt.Sprint(d.AutoLock) }
+		data-lock-on-label-value={ p.T("app.auto_lock_on") }
+		data-lock-off-label-value={ p.T("app.auto_lock_off") }
+	>
+		<p class="offline-banner" data-offline-target="banner" hidden>{ p.T("chat.offline") }</p>
+		<header class="mobile-top">
+			@Wordmark()
+			<button type="button" class="icon-btn" data-action="theme#cycle" data-theme-button title={ p.T("auth.theme") } aria-label={ p.T("auth.theme") }>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 3a5 5 0 0 0 0 10Z" fill="currentColor"></path></svg>
+			</button>
+			<button type="button" class="icon-btn" data-action="lock#lock" title={ p.T("app.lock") } aria-label={ p.T("app.lock") }>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.4" y="7.2" width="9.2" height="6.4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M5.3 7.2V5.4a2.7 2.7 0 0 1 5.4 0v1.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+			</button>
+			<button type="button" class="icon-btn" data-action="layout#toggleMenu" data-layout-target="menuButton" title={ p.T("app.more") } aria-label={ p.T("app.more") } aria-expanded="false">
+				<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="3.5" r="1.1" fill="currentColor"></circle><circle cx="8" cy="8" r="1.1" fill="currentColor"></circle><circle cx="8" cy="12.5" r="1.1" fill="currentColor"></circle></svg>
+			</button>
+			<div class="mobile-menu" data-layout-target="menu" hidden>
+				@LockButton(p)
+				@AutoLockButton(p, d.AutoLock)
+				@ChangePasswordButton(p)
+				@DeleteAllButton(p, d)
+				@SignOut(p)
+			</div>
+		</header>
+		<aside class="col-list">
+			<div class="list-head">
+				<div class="brand desktop-only">
+					@Wordmark()
+				</div>
+				<form action="/conversations/" method="post" class="desktop-only">
+					<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+					<button type="submit" class="btn-new">
+						<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>
+						<span>{ p.T("chat.new") }</span>
+					</button>
+				</form>
+				<form
+					action="/conversations/"
+					method="get"
+					class="search-form"
+					data-controller="search"
+					hx-get="/conversations/"
+					hx-target="#conversation-list"
+					hx-swap="outerHTML"
+					hx-trigger="input changed delay:300ms, submit"
+				>
+					<input
+						type="search"
+						name="q"
+						value={ d.Query }
+						placeholder={ p.T("app.search") }
+						class="search"
+						enterkeyhint="search"
+						autocomplete="off"
+					/>
+				</form>
+			</div>
+			@ConversationList(p, d)
+			<div class="sidebar-foot desktop-only">
+				@DeleteAllButton(p, d)
+				@LockButton(p)
+				@AutoLockButton(p, d.AutoLock)
+				@ChangePasswordButton(p)
+				@SignOut(p)
+			</div>
+		</aside>
+		if d.Current == nil {
+			<section class="col-editor">
+				@Thread(p, d)
+			</section>
+		} else {
+			<section class="col-editor" hx-ext="sse" sse-connect={ fmt.Sprintf("/conversations/%d/events", d.Current.Conv.ID) }>
+				@Thread(p, d)
+			</section>
+		}
+		<form action="/conversations/" method="post" class="fab-form">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<button type="submit" class="fab">
+				<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>
+				<span>{ p.T("chat.new") }</span>
+			</button>
+		</form>
+		<dialog class="confirm-dialog" data-confirm-target="box" data-action="click->confirm#backdrop">
+			<p data-confirm-target="message">{ p.T("chat.delete_all_confirm") }</p>
+			<div class="confirm-actions">
+				<button type="button" class="btn-dialog" data-action="confirm#close">{ p.T("app.cancel") }</button>
+				<button type="button" class="btn-dialog danger" data-confirm-target="destroy">{ p.T("app.delete") }</button>
+			</div>
+		</dialog>
+	</div>
+}
+
+func shellClass(d ShellData) string {
+	if d.Current != nil {
+		return "app-shell is-editing"
+	}
+	return "app-shell"
+}
+
+templ LockButton(p Page) {
+	<form action="/lock" method="post">
+		<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+		<button type="submit" class="btn-io">
+			<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.4" y="7.2" width="9.2" height="6.4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M5.3 7.2V5.4a2.7 2.7 0 0 1 5.4 0v1.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+			<span>{ p.T("app.lock") }</span>
+		</button>
+	</form>
+}
+
+templ AutoLockButton(p Page, enabled bool) {
+	<button type="button" class="btn-io" data-action="lock#togglePreference">
+		<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 5.2v3.1l2.1 1.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+		<span data-auto-lock-label>
+			if enabled {
+				{ p.T("app.auto_lock_off") }
+			} else {
+				{ p.T("app.auto_lock_on") }
+			}
+		</span>
+	</button>
+}
+
+templ ChangePasswordButton(p Page) {
+	<a href="/password/edit" class="btn-io">
+		<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="5.4" cy="8" r="2.5" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M7.8 8h5.4v2.1M11.2 8v1.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+		<span>{ p.T("auth.change_password") }</span>
+	</a>
+}
+
+templ DeleteAllButton(p Page, d ShellData) {
+	<button
+		type="button"
+		class="btn-io"
+		data-action="confirm#open"
+		data-url="/conversations/"
+		data-message={ p.T("chat.delete_all_confirm") }
+		disabled?={ !d.HasConversations }
+	>
+		<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4.4h9.6M6.2 4.4V3.2h3.6v1.2M5.1 6.2l.4 6.2h5l.4-6.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+		<span>{ p.T("chat.delete_all") }</span>
+	</button>
+}

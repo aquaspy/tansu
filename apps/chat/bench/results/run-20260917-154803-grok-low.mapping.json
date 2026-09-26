@@ -1,0 +1,47 @@
+{
+ "search-news": {
+  "A": "grok420m"
+ },
+ "search-fact": {
+  "A": "grok420m"
+ },
+ "search-greet": {
+  "A": "grok420m"
+ },
+ "reason-logic": {
+  "A": "grok420m"
+ },
+ "reason-math": {
+  "A": "grok420m"
+ },
+ "reason-compare": {
+  "A": "grok420m"
+ },
+ "write-email-pt": {
+  "A": "grok420m"
+ },
+ "write-summary": {
+  "A": "grok420m"
+ },
+ "write-tone": {
+  "A": "grok420m"
+ },
+ "code-ruby": {
+  "A": "grok420m"
+ },
+ "code-debug": {
+  "A": "grok420m"
+ },
+ "explain-concept": {
+  "A": "grok420m"
+ },
+ "explain-history": {
+  "A": "grok420m"
+ },
+ "vision-dot": {
+  "A": "grok420m"
+ },
+ "cache-t2": {
+  "A": "grok420m"
+ }
+}

@@ -1,0 +1,8 @@
+/.git/
+/.gitignore
+/.env*
+/storage/
+/bench/
+Dockerfile*
+docker-compose.yml
+README.md

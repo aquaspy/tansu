@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Dev loop: Tailwind watcher + templ watcher/proxy + the Go server.
+# Needs: go, templ, tailwindcss (standalone) on PATH.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+export PATH="$HOME/.local/bin:$PATH"
+
+tailwindcss --input web/static/css/input.css --output web/static/css/app.css --watch &
+TAILWIND_PID=$!
+trap "kill $TAILWIND_PID" EXIT
+
+# templ restarts the server on template changes and live-reloads the browser.
+# App: http://127.0.0.1:3000 — proxied with reload: http://127.0.0.1:7331
+templ generate --watch --proxy=http://127.0.0.1:3000 --cmd="go run ./cmd/kurachat serve"
