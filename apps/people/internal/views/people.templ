@@ -1,0 +1,464 @@
+package views
+
+templ LockNow(p Page) {
+	<form id="lock-now-form" action="/lock" method="post">
+		<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+		<button type="submit" id="lock-now" class="sr-only" tabindex="-1" aria-hidden="true"></button>
+	</form>
+}
+
+templ Flashes(p Page) {
+	if p.Notice != "" {
+		<p class="flash flash-notice" role="status">{ p.Notice }</p>
+	}
+	if p.Alert != "" {
+		<p class="flash flash-alert" role="alert">{ p.Alert }</p>
+	}
+}
+
+templ PeopleHeader(p Page, autoLock bool, back bool) {
+	<header class="people-top">
+		if back {
+			<a href="/" class="icon-btn" aria-label={ p.T("app.all") }>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.2 3.4 5.6 8l4.6 4.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+			</a>
+		}
+		@Wordmark()
+		<button type="button" class="icon-btn people-top-tool" data-action="theme#cycle" data-theme-button title={ p.T("auth.theme") } aria-label={ p.T("auth.theme") }>
+			<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 3a5 5 0 0 0 0 10Z" fill="currentColor"></path></svg>
+		</button>
+		<button type="button" class="icon-btn desktop-only" data-action="lock#lock" title={ p.T("app.lock") } aria-label={ p.T("app.lock") }>
+			<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.4" y="7.2" width="9.2" height="6.4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M5.3 7.2V5.4a2.7 2.7 0 0 1 5.4 0v1.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+		</button>
+		if !back {
+			<button type="button" class="icon-btn" data-action="composer#openPerson" title={ p.T("app.add_person") } aria-label={ p.T("app.add_person") }>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>
+			</button>
+		}
+		<button type="button" class="icon-btn" data-action="menu#toggle" data-menu-target="menuButton" title={ p.T("app.more") } aria-label={ p.T("app.more") } aria-expanded="false">
+			<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="3.5" r="1.1" fill="currentColor"></circle><circle cx="8" cy="8" r="1.1" fill="currentColor"></circle><circle cx="8" cy="12.5" r="1.1" fill="currentColor"></circle></svg>
+		</button>
+		<div class="mobile-menu" data-menu-target="menu" hidden>
+			<form action="/lock" method="post">
+				<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+				<button type="submit" class="btn-io">
+					<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.4" y="7.2" width="9.2" height="6.4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M5.3 7.2V5.4a2.7 2.7 0 0 1 5.4 0v1.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+					<span>{ p.T("app.lock") }</span>
+				</button>
+			</form>
+			@AutoLockButton(p, autoLock)
+			<a href="/birthdays.json" class="btn-io" download>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.2" y="4.2" width="9.6" height="8.6" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M5.4 3.2v2.2M10.6 3.2v2.2M3.2 7.2h9.6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+				<span>{ p.T("app.calendar_export") }</span>
+			</a>
+			<a href="/birthdays.ics" class="btn-io" download>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v8M5 8.2 8 11.2 11 8.2M3 13.2h10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+				<span>{ p.T("app.birthdays_export") }</span>
+			</a>
+			@ChangePasswordButton(p)
+			@ApiTokensButton(p)
+			@SignOut(p)
+		</div>
+	</header>
+}
+
+templ IndexPage(p Page, d IndexData, dlg DialogData) {
+	@LockNow(p)
+	@Flashes(p)
+	<div
+		class="people"
+		data-controller="composer confirm menu lock offline"
+		data-lock-enabled-value={ LockEnabledValue(d.AutoLock) }
+		data-lock-on-label-value={ p.T("app.auto_lock_on") }
+		data-lock-off-label-value={ p.T("app.auto_lock_off") }
+	>
+		<p class="offline-banner" data-offline-target="banner" hidden>{ p.T("app.offline") }</p>
+		@PeopleHeader(p, d.AutoLock, false)
+		<main class="people-inner">
+			if len(d.Upcoming) > 0 {
+				<section class="upcoming" aria-label={ p.T("app.upcoming") }>
+					<h2>{ p.T("app.upcoming") }</h2>
+					<ul>
+						for _, u := range d.Upcoming {
+							<li>
+								<a class="upcoming-item" href={ templ.SafeURL(PersonURL(u.Person)) }>
+									<span class="avatar avatar-sm" style={ AvatarStyle(u.Person.Name) } aria-hidden="true">{ Initials(u.Person.Name) }</span>
+									<span class="upcoming-main">
+										<span class="upcoming-name">{ u.Person.Name }</span>
+										<span class="upcoming-sub">
+											{ CountdownLabel(p, u.Days) }
+											if TurnsLabel(p, u.Person, u.Date) != "" {
+												<span> · { TurnsLabel(p, u.Person, u.Date) }</span>
+											}
+										</span>
+									</span>
+								</a>
+							</li>
+						}
+					</ul>
+				</section>
+			}
+			<form class="search" action="/" method="get" role="search">
+				<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.2" fill="none" stroke="currentColor" stroke-width="1.4"></circle><path d="M10.4 10.4 13.6 13.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>
+				<input
+					type="search"
+					name="q"
+					value={ d.Q }
+					placeholder={ p.T("app.search") }
+					aria-label={ p.T("js.search_label") }
+					autocomplete="off"
+				/>
+				if d.Relationship != "" {
+					<input type="hidden" name="relationship" value={ d.Relationship }/>
+				}
+			</form>
+			if len(d.Relationships) > 0 {
+				<nav class="chips" aria-label={ p.T("app.relationship") }>
+					<a class={ "chip", templ.KV("is-on", d.Relationship == "") } href={ templ.SafeURL(ChipURL(d.Q, "")) }>{ p.T("app.all") }</a>
+					for _, rel := range d.Relationships {
+						<a class={ "chip", templ.KV("is-on", d.Relationship == rel) } href={ templ.SafeURL(ChipURL(d.Q, rel)) }>{ rel }</a>
+					}
+				</nav>
+			}
+			if len(d.People) == 0 {
+				<section class="empty">
+					<h1>{ p.T("app.empty_title") }</h1>
+					<p>{ p.T("app.empty_lede") }</p>
+					<button type="button" class="btn-primary empty-add" data-action="composer#openPerson">
+						{ p.T("app.add_person") }
+					</button>
+				</section>
+			} else {
+				<div class="grid">
+					for _, person := range d.People {
+						<a class="card" href={ templ.SafeURL(PersonURL(person)) }>
+							<span class="avatar" style={ AvatarStyle(person.Name) } aria-hidden="true">{ Initials(person.Name) }</span>
+							<span class="card-main">
+								<span class="card-name">{ PersonTitle(person) }</span>
+								if CardSub(p, person) != "" {
+									<span class="card-sub">{ CardSub(p, person) }</span>
+								}
+							</span>
+							if CountdownText(p, person, d.Today) != "" {
+								<span class={ CountdownClass(p, person, d.Today) }>{ CountdownText(p, person, d.Today) }</span>
+							}
+						</a>
+					}
+				</div>
+			}
+		</main>
+		<button type="button" class="fab" data-action="composer#openPerson" aria-label={ p.T("app.add_person") }>
+			<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>
+		</button>
+		@PersonDialog(p, dlg)
+		@ConfirmDialog(p)
+	</div>
+}
+
+templ ShowPage(p Page, d ShowData, dlg DialogData) {
+	@LockNow(p)
+	@Flashes(p)
+	<div
+		class="people"
+		data-controller="composer confirm menu lock offline"
+		data-lock-enabled-value={ LockEnabledValue(d.AutoLock) }
+		data-lock-on-label-value={ p.T("app.auto_lock_on") }
+		data-lock-off-label-value={ p.T("app.auto_lock_off") }
+	>
+		<p class="offline-banner" data-offline-target="banner" hidden>{ p.T("app.offline") }</p>
+		@PeopleHeader(p, d.AutoLock, true)
+		<main class="people-inner detail">
+			<section class="hero">
+				<span class="avatar avatar-xl" style={ AvatarStyle(d.Person.Name) } aria-hidden="true">{ Initials(d.Person.Name) }</span>
+				<div class="hero-main">
+					<h1>{ PersonTitle(d.Person) }</h1>
+					if HeroSub(d.Person) != "" {
+						<p class="hero-sub">{ HeroSub(d.Person) }</p>
+					}
+					if HeroBirthday(p, d.Person, d.Today) != "" {
+						<p class="hero-bday">{ HeroBirthday(p, d.Person, d.Today) }</p>
+					}
+				</div>
+			</section>
+			<div class="detail-actions">
+				if d.Person.Phone != "" {
+					<a class="btn-io" href={ templ.SafeURL("tel:" + d.Person.Phone) }>
+						<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.6 2.8h2l1 2.6-1.3 1a7 7 0 0 0 2.3 2.3l1-1.3 2.6 1v2a1.4 1.4 0 0 1-1.5 1.4A10.3 10.3 0 0 1 3.2 4.3a1.4 1.4 0 0 1 1.4-1.5Z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"></path></svg>
+						<span>{ p.T("app.call") }</span>
+					</a>
+				}
+				if d.Person.Email != "" {
+					<a class="btn-io" href={ templ.SafeURL("mailto:" + d.Person.Email) }>
+						<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.6" y="4" width="10.8" height="8" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.2"></rect><path d="M3.4 5.4 8 8.8l4.6-3.4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+						<span>{ p.T("app.email_person") }</span>
+					</a>
+				}
+				<button type="button" class="btn-io" data-action="composer#openPerson">
+					<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11.3 3.1a1.4 1.4 0 0 1 2 2L5.8 12.6 3 13.5l.9-2.8Z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"></path></svg>
+					<span>{ p.T("app.edit_person") }</span>
+				</button>
+				if d.Person.HasBirthday() {
+					<a class="btn-io" href={ templ.SafeURL(PersonURL(d.Person) + "/calendar.json") } download>
+						<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v8M5 8.2 8 11.2 11 8.2M3 13.2h10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+						<span>{ p.T("app.send_to_calendar") }</span>
+					</a>
+				}
+				<button
+					type="button"
+					class="btn-io danger"
+					data-action="confirm#open"
+					data-url={ PersonURL(d.Person) }
+					data-redirect="/"
+					data-message={ p.T("js.delete_person_confirm", "name", d.Person.Name) }
+				>
+					<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 5h9M6.2 5V3.8h3.6V5M5.2 5v7.2A1 1 0 0 0 6.2 13.2h3.6a1 1 0 0 0 1-1V5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+					<span>{ p.T("app.delete") }</span>
+				</button>
+			</div>
+			if d.Person.HasBirthday() {
+				<p class="field-hint detail-hint">{ p.T("app.send_to_calendar_hint") }</p>
+			}
+			<div class="panels">
+				if len(Sizes(p, d.Person)) > 0 {
+					<section class="panel">
+						<h2>{ p.T("app.sizes") }</h2>
+						<dl class="size-grid">
+							for _, size := range Sizes(p, d.Person) {
+								<div>
+									<dt>{ size.Label }</dt>
+									<dd>{ size.Value }</dd>
+								</div>
+							}
+						</dl>
+					</section>
+				}
+				if d.Person.Phone != "" || d.Person.Email != "" || d.Person.Address != "" {
+					<section class="panel">
+						<h2>{ p.T("app.contact") }</h2>
+						<dl class="facts">
+							if d.Person.Phone != "" {
+								<div>
+									<dt>{ p.T("app.phone") }</dt>
+									<dd><a href={ templ.SafeURL("tel:" + d.Person.Phone) }>{ d.Person.Phone }</a></dd>
+								</div>
+							}
+							if d.Person.Email != "" {
+								<div>
+									<dt>{ p.T("app.email") }</dt>
+									<dd><a href={ templ.SafeURL("mailto:" + d.Person.Email) }>{ d.Person.Email }</a></dd>
+								</div>
+							}
+							if d.Person.Address != "" {
+								<div>
+									<dt>{ p.T("app.address") }</dt>
+									<dd><a href={ templ.SafeURL(MapsURL(d.Person.Address)) } target="_blank" rel="noopener noreferrer">{ d.Person.Address }</a></dd>
+								</div>
+							}
+						</dl>
+					</section>
+				}
+				if d.Person.Favorites != "" {
+					<section class="panel">
+						<h2>{ p.T("app.favorites") }</h2>
+						<p class="prose">{ d.Person.Favorites }</p>
+					</section>
+				}
+				if len(d.Attrs) > 0 {
+					<section class="panel">
+						<h2>{ p.T("app.custom") }</h2>
+						<dl class="facts">
+							for _, a := range d.Attrs {
+								<div>
+									<dt>{ a.Label }</dt>
+									<dd>{ a.Value }</dd>
+								</div>
+							}
+						</dl>
+					</section>
+				}
+				if d.Person.Notes != "" {
+					<section class="panel">
+						<h2>{ p.T("app.notes") }</h2>
+						<p class="prose">{ d.Person.Notes }</p>
+					</section>
+				}
+			</div>
+		</main>
+		@PersonDialog(p, dlg)
+		@ConfirmDialog(p)
+	</div>
+}
+
+templ PersonDialog(p Page, dlg DialogData) {
+	<datalist id="emoji-presets">
+		for _, preset := range EmojiPresets() {
+			<option value={ preset }></option>
+		}
+	</datalist>
+	<datalist id="rel-presets">
+		for _, rel := range dlg.Rels {
+			<option value={ rel }></option>
+		}
+	</datalist>
+	<dialog class="confirm-dialog form-dialog person-dialog" data-composer-target="personBox" data-action="click->composer#backdrop">
+		<p class="dialog-heading">{ dlg.Heading }</p>
+		<form action={ templ.SafeURL(dlg.Action) } method="post" class="auth-form">
+			<input type="hidden" name="_method" value={ dlg.Method }/>
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<label>
+				{ p.T("app.name") }
+				<input type="text" name="name" value={ dlg.Person.Name } required maxlength="200"/>
+			</label>
+			<div class="time-row">
+				<label>
+					{ p.T("app.nickname") }
+					<input type="text" name="nickname" value={ dlg.Person.Nickname } maxlength="80"/>
+				</label>
+				<label>
+					{ p.T("app.emoji") }
+					<input type="text" name="emoji" value={ dlg.Person.Emoji } list="emoji-presets" maxlength="16" autocomplete="off"/>
+				</label>
+			</div>
+			<label>
+				{ p.T("app.relationship") }
+				<input type="text" name="relationship" value={ dlg.Person.Relationship } list="rel-presets" maxlength="40" autocomplete="off"/>
+				<span class="field-hint">{ p.T("app.relationship_hint") }</span>
+			</label>
+			<fieldset class="date-fieldset">
+				<legend>{ p.T("app.birthday") }</legend>
+				<div class="date-row">
+					<label>
+						{ p.T("app.month") }
+						<select name="birth_month">
+							<option value="">—</option>
+							for _, opt := range MonthOptions(p) {
+								<option value={ opt.Value } selected?={ opt.Value == BirthMonth(dlg.Person) }>{ opt.Label }</option>
+							}
+						</select>
+					</label>
+					<label>
+						{ p.T("app.day") }
+						<input type="number" name="birth_day" value={ BirthDay(dlg.Person) } min="1" max="31" inputmode="numeric"/>
+					</label>
+					<label>
+						{ p.T("app.year") }
+						<input type="number" name="birth_year" value={ BirthYear(dlg.Person) } min="1900" max="2100" inputmode="numeric"/>
+					</label>
+				</div>
+				<p class="field-hint">{ p.T("app.year_hint") }</p>
+			</fieldset>
+			<div class="time-row">
+				<label>
+					{ p.T("app.phone") }
+					<input type="tel" name="phone" value={ dlg.Person.Phone } maxlength="40" autocomplete="off"/>
+				</label>
+				<label>
+					{ p.T("app.email") }
+					<input type="email" name="email" value={ dlg.Person.Email } maxlength="160" autocomplete="off"/>
+				</label>
+			</div>
+			<label>
+				{ p.T("app.address") }
+				<input type="text" name="address" value={ dlg.Person.Address } maxlength="500" autocomplete="off"/>
+			</label>
+			<fieldset class="date-fieldset">
+				<legend>{ p.T("app.sizes") }</legend>
+				<div class="size-row">
+					<label>
+						{ p.T("app.height") }
+						<input type="text" name="height" value={ dlg.Person.Height } maxlength="20" autocomplete="off" placeholder="1.65m"/>
+					</label>
+					<label>
+						{ p.T("app.ring_size") }
+						<input type="text" name="ring_size" value={ dlg.Person.RingSize } maxlength="20" autocomplete="off"/>
+					</label>
+					<label>
+						{ p.T("app.shoe_size") }
+						<input type="text" name="shoe_size" value={ dlg.Person.ShoeSize } maxlength="20" autocomplete="off"/>
+					</label>
+					<label>
+						{ p.T("app.shirt_size") }
+						<input type="text" name="shirt_size" value={ dlg.Person.ShirtSize } maxlength="20" autocomplete="off"/>
+					</label>
+					<label>
+						{ p.T("app.pants_size") }
+						<input type="text" name="pants_size" value={ dlg.Person.PantsSize } maxlength="20" autocomplete="off"/>
+					</label>
+				</div>
+			</fieldset>
+			<label>
+				{ p.T("app.favorites") }
+				<textarea name="favorites" rows="2">{ dlg.Person.Favorites }</textarea>
+				<span class="field-hint">{ p.T("app.favorites_hint") }</span>
+			</label>
+			<label>
+				{ p.T("app.notes") }
+				<textarea name="notes" rows="3">{ dlg.Person.Notes }</textarea>
+			</label>
+			<fieldset class="date-fieldset">
+				<legend>{ p.T("app.custom") }</legend>
+				<p class="field-hint">{ p.T("app.custom_hint") }</p>
+				<div class="attr-rows" data-composer-target="attrRows">
+					for _, a := range dlg.Attrs {
+						@AttrRow(p, a.Label, a.Value)
+					}
+					@AttrRow(p, "", "")
+				</div>
+				<template data-composer-target="attrTemplate">
+					@AttrRow(p, "", "")
+				</template>
+				<button type="button" class="btn-quiet" data-action="composer#addField">+ { p.T("app.add_field") }</button>
+			</fieldset>
+			<div class="confirm-actions">
+				<button type="button" class="btn-dialog" data-action="composer#closePerson">{ p.T("app.cancel") }</button>
+				<button type="submit" class="btn-dialog primary">{ p.T("app.save") }</button>
+			</div>
+		</form>
+		if dlg.DeleteURL != "" {
+			<button
+				type="button"
+				class="btn-dialog danger dialog-delete"
+				data-action="confirm#open"
+				data-url={ dlg.DeleteURL }
+				data-redirect="/"
+				data-message={ dlg.DeleteMsg }
+			>{ p.T("app.delete") }</button>
+		}
+	</dialog>
+}
+
+templ AttrRow(p Page, label string, value string) {
+	<div class="attr-row">
+		<input
+			type="text"
+			name="attr_label"
+			value={ label }
+			maxlength="80"
+			placeholder={ p.T("app.attr_label") }
+			aria-label={ p.T("app.attr_label") }
+			autocomplete="off"
+		/>
+		<input
+			type="text"
+			name="attr_value"
+			value={ value }
+			maxlength="500"
+			placeholder={ p.T("app.attr_value") }
+			aria-label={ p.T("app.attr_value") }
+			autocomplete="off"
+		/>
+		<button type="button" class="icon-btn attr-del" data-action="composer#removeField" aria-label={ p.T("app.remove") } title={ p.T("app.remove") }>
+			<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8h8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>
+		</button>
+	</div>
+}
+
+templ ConfirmDialog(p Page) {
+	<dialog class="confirm-dialog" data-confirm-target="box" data-action="click->confirm#backdrop">
+		<p data-confirm-target="message"></p>
+		<div class="confirm-actions">
+			<button type="button" class="btn-dialog" data-action="confirm#close">{ p.T("app.cancel") }</button>
+			<button type="button" class="btn-dialog danger" data-confirm-target="destroy" data-url="">{ p.T("app.delete") }</button>
+		</div>
+	</dialog>
+}
