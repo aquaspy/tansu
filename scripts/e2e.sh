@@ -24,6 +24,8 @@ build_all() {
 
 start_all() {
   build_all || { echo "build failed"; return 1; }
+  # Fresh fleet every start: stale users would poison signup assertions.
+  rm -rf "$WORK/data" "$WORK"/jar-*
   mkdir -p "$WORK/data"
   REG=$(for a in $CLIENTS; do
     dir=$(echo "$a" | cut -d: -f1); id=$(echo "$a" | cut -d: -f2); port=$(echo "$a" | cut -d: -f3)
