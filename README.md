@@ -8,7 +8,7 @@ cloud you did not choose.
 |---|---|---|---|
 | Tansu Account (SSO + hub) | `apps/account` | 3006 | `account.gettansu.com` |
 | Tansu Notes | `apps/notes` | 3000 | `notes.gettansu.com` |
-| Tansu Chat | `apps/chat` | 3000 | `chat.gettansu.com` |
+| Tansu Assistant | `apps/assistant` | 3000 | `assistant.gettansu.com` |
 | Tansu Calendar | `apps/calendar` | 3003 | `calendar.gettansu.com` |
 | Tansu Spend | `apps/spend` | 3004 | `spend.gettansu.com` |
 | Tansu People | `apps/people` | 3005 | `people.gettansu.com` |

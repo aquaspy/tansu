@@ -16,8 +16,8 @@ func (s *Server) handleUp(w http.ResponseWriter, _ *http.Request) {
 
 func (s *Server) handleManifest(w http.ResponseWriter, r *http.Request) {
 	manifest := map[string]any{
-		"name":       "TansuChat",
-		"short_name": "TansuChat",
+		"name":       "Tansu Assistant",
+		"short_name": "Assistant",
 		"icons": []map[string]string{
 			{"src": "/icon.png", "type": "image/png", "sizes": "512x512", "purpose": "any"},
 			{"src": "/icon.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable"},

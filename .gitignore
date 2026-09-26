@@ -14,7 +14,7 @@
 # Go build outputs (per-app binaries).
 apps/account/kuraaccount
 apps/notes/kuranotes
-apps/chat/kurachat
+apps/assistant/kurachat
 apps/calendar/kuracalendar
 apps/spend/kuraspend
 apps/people/kurapeople

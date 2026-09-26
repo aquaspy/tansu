@@ -10,9 +10,9 @@ WORK=$ROOT/.e2e
 ACCT=http://127.0.0.1:3206
 SECRET=e2e6-secret-0123456789
 
-# app dir -> "binary:port"
-APPS="account:kuraaccount:3206 notes:kuranotes:3200 chat:kurachat:3201 calendar:kuracalendar:3203 spend:kuraspend:3204 people:kurapeople:3205 home:kurahome:3207"
-CLIENTS="notes:kuranotes:3200 chat:kurachat:3201 calendar:kuracalendar:3203 spend:kuraspend:3204 people:kurapeople:3205 home:kurahome:3207"
+# app dir -> "binary:port" (dirs are new names, binary/client ids stay kura*)
+APPS="account:kuraaccount:3206 notes:kuranotes:3200 assistant:kurachat:3201 calendar:kuracalendar:3203 spend:kuraspend:3204 people:kurapeople:3205 home:kurahome:3207"
+CLIENTS="notes:kuranotes:3200 assistant:kurachat:3201 calendar:kuracalendar:3203 spend:kuraspend:3204 people:kurapeople:3205 home:kurahome:3207"
 
 build_all() {
   mkdir -p "$WORK"

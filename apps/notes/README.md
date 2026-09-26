@@ -26,7 +26,7 @@ TansuNotes goes the other direction.
 - **Honest about privacy.** Notes sit as plaintext in SQLite on *your* machine. There is no end-to-end encryption theater — the trust boundary is the server you run.
 - **Small enough to understand.** Go, SQLite, a service worker. If something breaks at 2 a.m., you can actually read the code.
 
-It is part of the **Tansu** family: the same calm shell as [TansuChat](https://github.com/aquaspy/TansuChat) — cookie auth, idle lock (per device), PWA offline reads, and Compose-on-localhost — plus [TansuHome](https://github.com/aquaspy/TansuHome), [TansuCalendar](https://github.com/aquaspy/TansuCalendar), and [TansuSpend](https://github.com/aquaspy/TansuSpend). Each app keeps its own database and volume on purpose.
+It is part of the **Tansu** family: the same calm shell as [Tansu Assistant](../assistant) — cookie auth, idle lock (per device), PWA offline reads, and Compose-on-localhost — plus [TansuHome](../home), [TansuCalendar](../calendar), and [TansuSpend](../spend). Each app keeps its own database and volume on purpose.
 
 ---
 
@@ -48,7 +48,7 @@ It is part of the **Tansu** family: the same calm shell as [TansuChat](https://g
 You need Docker on a VPS (or a home box). The app binds to localhost only — port 80/443 stay free for your proxy.
 
 ```bash
-git clone https://github.com/aquaspy/TansuNotes.git
+git clone ../notes.git
 cd KuraNotes
 cp .env.example .env
 ```
@@ -215,9 +215,9 @@ go vet ./...
 
 | App | Role |
 | --- | --- |
-| [TansuChat](https://github.com/aquaspy/TansuChat) | Private chat with your model |
-| [TansuHome](https://github.com/aquaspy/TansuHome) | Quiet start-page / homepage |
-| [TansuCalendar](https://github.com/aquaspy/TansuCalendar) | Personal calendar & birthdays |
-| [TansuSpend](https://github.com/aquaspy/TansuSpend) | Subscriptions & daily spend |
+| [Tansu Assistant](../assistant) | Private chat with your model |
+| [TansuHome](../home) | Quiet start-page / homepage |
+| [TansuCalendar](../calendar) | Personal calendar & birthdays |
+| [TansuSpend](../spend) | Subscriptions & daily spend |
 
 Same spirit. Separate databases. Your stack, your rules.

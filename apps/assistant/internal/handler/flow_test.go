@@ -252,7 +252,7 @@ func TestAuthFlow(t *testing.T) {
 	if code, body, _ := f.get("/", nil); code != 200 {
 		t.Fatalf("index = %d", code)
 	} else {
-		mustContain(t, body, "TansuChat")
+		mustContain(t, body, "Tansu Assistant")
 	}
 	if code, _, h := f.post("/lock", nil, nil); code != 303 || h.Get("Location") != "/unlock" {
 		t.Fatalf("lock = %d %q", code, h.Get("Location"))

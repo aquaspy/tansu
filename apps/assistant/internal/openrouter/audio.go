@@ -59,7 +59,7 @@ func (c *Client) Transcribe(ctx context.Context, audio []byte, filename, languag
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	req.Header.Set("Content-Type", w.FormDataContentType())
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("X-Title", "TansuChat")
+	req.Header.Set("X-Title", "Tansu Assistant")
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return out, audioErr(err)
@@ -105,7 +105,7 @@ func (c *Client) Speak(ctx context.Context, text, voice, format string) (body io
 	}
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Title", "TansuChat")
+	req.Header.Set("X-Title", "Tansu Assistant")
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return nil, "", audioErr(err)

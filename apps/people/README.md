@@ -26,7 +26,7 @@ TansuPeople is the second kind.
 - **No sync cosplay.** If you need CardDAV and phone sync, use something built for that. This app is for *you*, on a VPS you trust.
 - **Same Tansu shell.** Auth, idle lock (per device), PWA offline card views, Compose on localhost.
 
-Sister apps: [TansuNotes](https://github.com/aquaspy/TansuNotes), [TansuChat](https://github.com/aquaspy/TansuChat), [TansuHome](https://github.com/aquaspy/TansuHome), [TansuSpend](https://github.com/aquaspy/TansuSpend), [TansuCalendar](https://github.com/aquaspy/TansuCalendar). Each keeps its own volume — your people should not share a database with chat history.
+Sister apps: [TansuNotes](../notes), [Tansu Assistant](../assistant), [TansuHome](../home), [TansuSpend](../spend), [TansuCalendar](../calendar). Each keeps its own volume — your people should not share a database with chat history.
 
 ---
 
@@ -51,7 +51,7 @@ Sister apps: [TansuNotes](https://github.com/aquaspy/TansuNotes), [TansuChat](ht
 You need Docker on a VPS (or a home box). The app binds to localhost only — port 80/443 stay free for your proxy.
 
 ```bash
-git clone https://github.com/aquaspy/TansuPeople.git
+git clone ../people.git
 cd KuraPeople
 cp .env.example .env
 ```
@@ -193,10 +193,10 @@ go vet ./...
 
 | App | Role |
 | --- | --- |
-| [TansuNotes](https://github.com/aquaspy/TansuNotes) | Private notes |
-| [TansuChat](https://github.com/aquaspy/TansuChat) | Private chat with your model |
-| [TansuHome](https://github.com/aquaspy/TansuHome) | Quiet start-page / homepage |
-| [TansuSpend](https://github.com/aquaspy/TansuSpend) | Subscriptions & daily spend |
-| [TansuCalendar](https://github.com/aquaspy/TansuCalendar) | Personal calendar & birthdays |
+| [TansuNotes](../notes) | Private notes |
+| [Tansu Assistant](../assistant) | Private chat with your model |
+| [TansuHome](../home) | Quiet start-page / homepage |
+| [TansuSpend](../spend) | Subscriptions & daily spend |
+| [TansuCalendar](../calendar) | Personal calendar & birthdays |
 
 Same spirit. Separate databases. Your stack, your rules.

@@ -74,12 +74,12 @@ var strings_ = map[Locale]map[string]string{
 	EN: {
 		"pwa.description": "Private self-hosted chat as a PWA.",
 
-		"titles.app":      "TansuChat",
-		"titles.login":    "Sign in · TansuChat",
-		"titles.signup":   "Create account · TansuChat",
-		"titles.password": "Change password · TansuChat",
-		"titles.lock":     "Unlock · TansuChat",
-		"titles.shared":   "%{title} · TansuChat",
+		"titles.app":      "Tansu Assistant",
+		"titles.login":    "Sign in · Tansu Assistant",
+		"titles.signup":   "Create account · Tansu Assistant",
+		"titles.password": "Change password · Tansu Assistant",
+		"titles.lock":     "Unlock · Tansu Assistant",
+		"titles.shared":   "%{title} · Tansu Assistant",
 
 		"auth.sign_in":              "Sign in",
 		"auth.sign_in_lede":         "Your chats live on this server. Sign in to open them.",
@@ -125,7 +125,7 @@ var strings_ = map[Locale]map[string]string{
 		"app.share_stop":    "Remove link",
 		"app.copy":          "Copy",
 		"app.copied":        "Copied",
-		"app.shared_from":   "Shared from TansuChat",
+		"app.shared_from":   "Shared from Tansu Assistant",
 		"app.search":        "Search",
 
 		"chat.new":                "New chat",
@@ -180,7 +180,7 @@ var strings_ = map[Locale]map[string]string{
 		"chat.deep":               "Deep",
 		"chat.searched":           "web",
 		"chat.searched_deep":      "deep",
-		"chat.system_prompt": "You are TansuChat, a private assistant on the user's server.\n" +
+		"chat.system_prompt": "You are Tansu Assistant, a private assistant on the user's server.\n" +
 			"Be clear and useful. Short answers for simple questions; thorough for research, comparisons, numbers, or current facts.\n" +
 			"Reply in the user's language unless they write in another.\n",
 		"chat.system_note_plain":  "You cannot browse the web. Do not claim you searched.",
@@ -205,12 +205,12 @@ var strings_ = map[Locale]map[string]string{
 	PT: {
 		"pwa.description": "Chat privado self-hosted como PWA.",
 
-		"titles.app":      "TansuChat",
-		"titles.login":    "Entrar · TansuChat",
-		"titles.signup":   "Criar conta · TansuChat",
-		"titles.password": "Mudar senha · TansuChat",
-		"titles.lock":     "Desbloquear · TansuChat",
-		"titles.shared":   "%{title} · TansuChat",
+		"titles.app":      "Tansu Assistant",
+		"titles.login":    "Entrar · Tansu Assistant",
+		"titles.signup":   "Criar conta · Tansu Assistant",
+		"titles.password": "Mudar senha · Tansu Assistant",
+		"titles.lock":     "Desbloquear · Tansu Assistant",
+		"titles.shared":   "%{title} · Tansu Assistant",
 
 		"auth.sign_in":              "Entrar",
 		"auth.sign_in_lede":         "Os chats ficam neste servidor. Entre para abri-los.",
@@ -256,7 +256,7 @@ var strings_ = map[Locale]map[string]string{
 		"app.share_stop":    "Remover link",
 		"app.copy":          "Copiar",
 		"app.copied":        "Copiado",
-		"app.shared_from":   "Compartilhado pelo TansuChat",
+		"app.shared_from":   "Compartilhado pelo Tansu Assistant",
 		"app.search":        "Buscar",
 
 		"chat.new":                "Novo chat",
@@ -311,7 +311,7 @@ var strings_ = map[Locale]map[string]string{
 		"chat.searched":           "web",
 		"chat.searched_deep":      "deep",
 		"chat.cost_hint_est":      "Alguns turnos não têm o total faturado da API, então esta soma está incompleta.",
-		"chat.system_prompt": "Você é o TansuChat, um assistente privado no servidor do usuário.\n" +
+		"chat.system_prompt": "Você é o Tansu Assistant, um assistente privado no servidor do usuário.\n" +
 			"Seja claro e útil. Respostas curtas para perguntas simples; completo em pesquisa, comparações, números ou fatos atuais.\n" +
 			"Responda no idioma do usuário, a menos que ele escreva em outro.\n",
 		"chat.system_note_plain":  "Você não navega na web. Não diga que buscou.",

@@ -163,7 +163,7 @@ func (c *Client) post(ctx context.Context, path string, body map[string]any, yie
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("X-Title", "TansuChat")
+	req.Header.Set("X-Title", "Tansu Assistant")
 	resp, err := c.http.Do(req)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {

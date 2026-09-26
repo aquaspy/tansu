@@ -53,7 +53,7 @@ self.addEventListener("fetch", (event) => {
       if (cached) return cached;
       if (request.mode === "navigate" || (request.headers.get("Accept") || "").includes("text/html")) {
         return new Response(
-          `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>TansuChat</title><p>Offline. <a href="/">TansuChat</a></p>`,
+          `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Tansu Assistant</title><p>Offline. <a href="/">Tansu Assistant</a></p>`,
           { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } }
         );
       }

@@ -32,7 +32,7 @@ failure for people who never asked for it.
   logging anyone out of their apps.
 - **Same Tansu shell.** Auth, idle lock (per device), PWA, Compose on localhost.
 
-Sister apps: [TansuNotes](https://github.com/aquaspy/TansuNotes), [TansuChat](https://github.com/aquaspy/TansuChat), [TansuHome](https://github.com/aquaspy/TansuHome), [TansuSpend](https://github.com/aquaspy/TansuSpend), [TansuCalendar](https://github.com/aquaspy/TansuCalendar), [TansuPeople](https://github.com/aquaspy/TansuPeople). Each keeps its own volume.
+Sister apps: [TansuNotes](../notes), [Tansu Assistant](../assistant), [TansuHome](../home), [TansuSpend](../spend), [TansuCalendar](../calendar), [TansuPeople](../people). Each keeps its own volume.
 
 ---
 
@@ -56,7 +56,7 @@ order if any of those earns its place.
 ## Self-host (Docker Compose)
 
 ```bash
-git clone https://github.com/aquaspy/TansuAccount.git
+git clone ../account.git
 cd KuraAccount
 cp .env.example .env
 ```

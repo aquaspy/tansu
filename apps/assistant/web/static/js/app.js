@@ -1,4 +1,4 @@
-// TansuChat app bundle: vanilla JS behaviors for the data-controller /
+// Tansu Assistant app bundle: vanilla JS behaviors for the data-controller /
 // data-action attributes in the templates. Listeners are delegated from
 // the document so htmx swaps never orphan them.
 

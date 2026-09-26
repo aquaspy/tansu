@@ -1,8 +1,8 @@
-# TansuChat
+# Tansu Assistant
 
 **A calm place to talk to your model — on a machine you own.**
 
-TansuChat is a self-hosted chat PWA. One SQLite file, no Redis, no third-party chat UI logging your prompts into someone else's product. You bring an [OpenRouter](https://openrouter.ai/settings/keys) API key. Keys stay on the server. Conversations sync across your devices because they live in *your* database.
+Tansu Assistant is a self-hosted chat PWA. One SQLite file, no Redis, no third-party chat UI logging your prompts into someone else's product. You bring an [OpenRouter](https://openrouter.ai/settings/keys) API key. Keys stay on the server. Conversations sync across your devices because they live in *your* database.
 
 One static Go binary (~14 MB, ~20 MB RAM) serves the whole app: pages, streaming replies, uploads, and the PWA shell.
 
@@ -17,7 +17,7 @@ One static Go binary (~14 MB, ~20 MB RAM) serves the whole app: pages, streaming
 
 ## Philosophy
 
-Public chat products are optimized for engagement and billing. TansuChat is optimized for **quality replies** and **obvious cost**.
+Public chat products are optimized for engagement and billing. Tansu Assistant is optimized for **quality replies** and **obvious cost**.
 
 - **Any model, one env var.** Replies come from OpenRouter. Out of the box you get a short menu of cheap-but-capable models (luna, deepseek flash, opus 5.5, muse glimmer, grok) — plenty for daily chat, and swappable: set `OPENROUTER_MODELS` to a comma-separated list for your own picker, or `OPENROUTER_MODEL` to a single slug to hide the picker entirely. Each chat also remembers its own reasoning effort (default from `OPENROUTER_REASONING_EFFORT`). No code changes either way.
 - **Explicit web search.** The model answers from its own knowledge unless the globe toggle in the composer is on for that turn. Search runs through OpenRouter's web plugin (pinned to the Exa engine, so results don't change when you switch models) and comes back with a Sources fold under the reply. A second toggle switches that turn to deep search (deeper Exa mode, more results) for research questions. Titles and compaction never search.
@@ -25,7 +25,7 @@ Public chat products are optimized for engagement and billing. TansuChat is opti
 - **Honest threat model.** Messages are plaintext SQLite on this server. They are sent to OpenRouter, which routes them to a provider to generate replies. On search turns the question also reaches the search engine (Exa by default) via OpenRouter. Attached photos and PDFs live on this server's disk and are **re-sent** on later turns while that message is still in the model window. Deleting a chat purges its attachments. Word and PowerPoint uploads are converted to PDF locally first (headless LibreOffice, never leaves this server) and enter the same pipeline. PDFs are parsed by OpenRouter's file-parser plugin (mistral-ocr engine): the file leaves OpenRouter for Mistral's OCR API under OpenRouter's own key — Mistral does not train on it but retains it 30 days — and it is re-parsed on every turn it is attached to, so per-page OCR fees repeat per turn. Every request enforces Zero Data Retention provider routing (`provider.zdr`), on top of whatever ZDR you set on the OpenRouter account — but that covers *model provider* routing only: per OpenRouter's docs ZDR does not extend to plugins, so neither the search queries (Exa offers ZDR on Enterprise plans only) nor the Mistral OCR step are under ZDR. Chat turns send a `session_id` (the conversation id) so OpenRouter keeps one conversation on a warm provider cache — that is billing/latency, not storing the transcript. Share links let anyone with the URL read that chat (including photos). This is **not** end-to-end encryption.
 - **Same calm shell as the rest of Tansu.** Cookie auth, idle lock (per device), PWA offline *reads*, Compose bound to localhost, signup you can shut off.
 
-It sits next to [TansuNotes](https://github.com/aquaspy/TansuNotes), [TansuHome](https://github.com/aquaspy/TansuHome), [TansuCalendar](https://github.com/aquaspy/TansuCalendar), and [TansuSpend](https://github.com/aquaspy/TansuSpend) — same family, **separate** volume and database. Notes never leave your VPS; chat *must* leave toward OpenRouter. Mixing them would be the wrong kind of clever.
+It sits next to [TansuNotes](../notes), [TansuHome](../home), [TansuCalendar](../calendar), and [TansuSpend](../spend) — same family, **separate** volume and database. Notes never leave your VPS; chat *must* leave toward OpenRouter. Mixing them would be the wrong kind of clever.
 
 ---
 
@@ -48,7 +48,7 @@ It sits next to [TansuNotes](https://github.com/aquaspy/TansuNotes), [TansuHome]
 ## Self-host (Docker Compose)
 
 ```bash
-git clone https://github.com/aquaspy/TansuChat.git
+git clone ../assistant.git
 cd KuraChat
 cp .env.example .env
 ```
@@ -56,7 +56,7 @@ cp .env.example .env
 Edit `.env`. At minimum:
 
 ```bash
-KURA_HOST=chat.gettansu.com
+KURA_HOST=assistant.gettansu.com
 OPENROUTER_API_KEY=sk-or-...  # from https://openrouter.ai/settings/keys
 SIGNUP_ENABLED=true       # first account, then false
 FORCE_SSL=false           # true once HTTPS terminates in front
@@ -116,7 +116,7 @@ Live replies stream over **plain SSE** (`/conversations/:id/events`) — no WebS
 **Caddy:**
 
 ```
-chat.gettansu.com {
+assistant.gettansu.com {
   reverse_proxy 127.0.0.1:3000
 }
 ```
@@ -165,7 +165,7 @@ Web search costs one plugin fee per searched turn (Exa `auto`: $0.007 for up to 
 
 `OPENROUTER_REASONING_EFFORT` (default **`xhigh`**) is how hard the model thinks (`none` / `low` / `medium` / `high` / `xhigh` / `max`, model permitting), overridable per chat in the settings row. Reasoning tokens are billed as output, so `xhigh` trades money and latency for harder thinking on every turn. Titles and compaction summaries always use `none`.
 
-Cached input is cheaper than a full prompt when the conversation prefix is unchanged. gpt-6-luna raises its rates past **272k** prompt tokens; compaction exists to stay under that, not because the model’s window is small (it is ~1M). The model sees the thread until about **150k** estimated tokens. Past that, a short rolling summary plus about **32k** of recent raw messages (`CHAT_KEEP_RECENT_TOKENS`). The full transcript stays in SQLite. Attached images are resized to JPEG before the model sees them; image tokens bill as input (and should cache on follow-ups since the prefix is stable). TansuChat does not generate pictures.
+Cached input is cheaper than a full prompt when the conversation prefix is unchanged. gpt-6-luna raises its rates past **272k** prompt tokens; compaction exists to stay under that, not because the model’s window is small (it is ~1M). The model sees the thread until about **150k** estimated tokens. Past that, a short rolling summary plus about **32k** of recent raw messages (`CHAT_KEEP_RECENT_TOKENS`). The full transcript stays in SQLite. Attached images are resized to JPEG before the model sees them; image tokens bill as input (and should cache on follow-ups since the prefix is stable). Tansu Assistant does not generate pictures.
 
 ---
 
@@ -271,7 +271,7 @@ They sit on the same commit until the next change is under test.
 
 | App | Role |
 | --- | --- |
-| [TansuNotes](https://github.com/aquaspy/TansuNotes) | Private notes |
-| [TansuHome](https://github.com/aquaspy/TansuHome) | Quiet start-page / homepage |
-| [TansuCalendar](https://github.com/aquaspy/TansuCalendar) | Personal calendar & birthdays |
-| [TansuSpend](https://github.com/aquaspy/TansuSpend) | Subscriptions & daily spend |
+| [TansuNotes](../notes) | Private notes |
+| [TansuHome](../home) | Quiet start-page / homepage |
+| [TansuCalendar](../calendar) | Personal calendar & birthdays |
+| [TansuSpend](../spend) | Subscriptions & daily spend |

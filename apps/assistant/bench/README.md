@@ -1,7 +1,7 @@
-# TansuChat bench
+# Tansu Assistant bench
 
 A small, reproducible harness that compares chat models on **billed cost**
-(tokens and latency as supporting signals) — the numbers behind TansuChat's
+(tokens and latency as supporting signals) — the numbers behind Tansu Assistant's
 "obvious cost" claim. It is a dev tool, not app code: nothing here is
 loaded by the Rails app.
 
@@ -12,7 +12,7 @@ acceptable — but those never collapse into a number.
 ## Official suite
 
 Grok models via the xAI API, all on low reasoning effort (effort is pinned
-so the bench isolates *model* differences; TansuChat itself defaults to
+so the bench isolates *model* differences; Tansu Assistant itself defaults to
 medium effort on web turns):
 
 - `grok-build-0.1`, `grok-4.3`, `grok-4.20-0309-reasoning`,
@@ -46,7 +46,7 @@ Note: `grok-build-0.1`, `grok-4.20-0309-reasoning`, and
 `grok-4.20-0309-non-reasoning` reject the `reasoningEffort` parameter
 (verified 2026-09-17), so `--effort` is a no-op for them — the harness
 retries without it and records `effort_param: false`.
-`grok-4.20-multi-agent-0309` does accept it. TansuChat itself omits the
+`grok-4.20-multi-agent-0309` does accept it. Tansu Assistant itself omits the
 parameter for the rejecting models (see `Xai::Client::NO_EFFORT_PREFIXES`).
 
 Options: `--cap USD` (default 2.00, hard stop), `--out FILE`,

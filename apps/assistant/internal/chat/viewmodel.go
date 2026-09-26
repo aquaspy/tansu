@@ -7,7 +7,7 @@ import (
 )
 
 func pageFor(locale i18n.Locale) views.Page {
-	return views.Page{L: locale, Title: "TansuChat"}
+	return views.Page{L: locale, Title: "Tansu Assistant"}
 }
 
 // messageView builds one transcript row for pages and SSE events.

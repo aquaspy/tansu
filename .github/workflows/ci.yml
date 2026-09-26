@@ -18,7 +18,7 @@ jobs:
           - app: notes
             cmd: ./cmd/kuranotes
             bin: kuranotes
-          - app: chat
+          - app: assistant
             cmd: ./cmd/kurachat
             bin: kurachat
           - app: calendar

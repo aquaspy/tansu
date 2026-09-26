@@ -85,7 +85,7 @@ func TestStreamBody(t *testing.T) {
 	if c.headers.Get("Authorization") != "Bearer x" {
 		t.Fatalf("auth = %q", c.headers.Get("Authorization"))
 	}
-	if c.headers.Get("X-Title") != "TansuChat" {
+	if c.headers.Get("X-Title") != "Tansu Assistant" {
 		t.Fatalf("title = %q", c.headers.Get("X-Title"))
 	}
 }
