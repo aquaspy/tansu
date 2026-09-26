@@ -49,8 +49,8 @@ Sister apps: [TansuNotes](../notes), [Tansu Assistant](../assistant), [TansuHome
 You need Docker on a VPS (or a home box). The app binds to localhost only — port 80/443 stay free for your proxy.
 
 ```bash
-git clone ../calendar.git
-cd KuraCalendar
+git clone https://github.com/aquaspy/tansu.git
+cd tansu/apps/calendar
 cp .env.example .env
 ```
 
@@ -203,6 +203,8 @@ go vet ./...
 | `KURA_HOST` | Public hostname (comma-separated if several) |
 | `BIND` | Default `127.0.0.1:3003` |
 | `DATA_DIR` | Where `kuracalendar.sqlite3` lives. Default `storage` (`/data` in Docker) |
+| `KURA_ACCOUNT_URL` | Tansu Account base URL. Empty = standalone, no SSO button |
+| `KURA_CLIENT_ID` / `KURA_CLIENT_SECRET` | This app's OAuth credentials (must match its registry entry). See [Deploy the suite](../../README.md#deploy-the-suite) |
 
 ---
 

@@ -56,8 +56,8 @@ order if any of those earns its place.
 ## Self-host (Docker Compose)
 
 ```bash
-git clone ../account.git
-cd KuraAccount
+git clone https://github.com/aquaspy/tansu.git
+cd tansu/apps/account
 cp .env.example .env
 ```
 

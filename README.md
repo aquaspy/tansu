@@ -44,6 +44,134 @@ first-party OAuth2 code flow with mandatory PKCE, static client registry,
 opaque tokens. Each app keeps working standalone — the Account only adds the
 "Entrar com Tansu" door next to the local login.
 
+## Deploy the suite
+
+One VPS, Docker, and seven DNS `A` records pointing at it
+(`account`, `notes`, `assistant`, `calendar`, `spend`, `people`, `home` under
+your domain). Each app is its own Compose project with its own volume — there
+is no shared database and no orchestrator to learn.
+
+**1. Clone and give each app a localhost port.** Three apps default to 3000,
+so pick distinct `BIND`s:
+
+```sh
+git clone https://github.com/aquaspy/tansu.git
+cd tansu
+for a in account notes assistant calendar spend people home; do
+  cp apps/$a/.env.example apps/$a/.env
+done
+```
+
+| App | `.env` `BIND` | `KURA_HOST` |
+|---|---|---|
+| account | `127.0.0.1:3006` | `account.gettansu.com` |
+| notes | `127.0.0.1:3000` | `notes.gettansu.com` |
+| assistant | `127.0.0.1:3001` | `assistant.gettansu.com` |
+| calendar | `127.0.0.1:3003` | `calendar.gettansu.com` |
+| spend | `127.0.0.1:3004` | `spend.gettansu.com` |
+| people | `127.0.0.1:3005` | `people.gettansu.com` |
+| home | `127.0.0.1:3007` | `home.gettansu.com` |
+
+Set `FORCE_SSL=true` in every `.env` (Caddy terminates HTTPS below).
+Keep `SIGNUP_ENABLED=true` until the first accounts exist, then flip to
+`false` everywhere.
+
+**2. Mint one client secret per app** (16+ chars each; they never travel
+except over your own HTTPS):
+
+```sh
+for a in notes assistant calendar spend people home; do
+  echo "$a: $(openssl rand -hex 24)"
+done
+```
+
+**3. Register the six apps on the Account.** In `apps/account/.env`,
+`KURA_CLIENTS_JSON` is one JSON array — ids must match each app's
+`KURA_CLIENT_ID`, secrets the matching `KURA_CLIENT_SECRET`, and each
+`redirect_uris` entry must be exactly `https://<host>/login/kura/callback`:
+
+```json
+[
+  {"id": "kuranotes", "secret": "<notes-secret>", "name": "Tansu Notes", "home": "https://notes.gettansu.com/", "icon": "📝", "redirect_uris": ["https://notes.gettansu.com/login/kura/callback"]},
+  {"id": "kurachat", "secret": "<assistant-secret>", "name": "Tansu Assistant", "home": "https://assistant.gettansu.com/", "icon": "✨", "redirect_uris": ["https://assistant.gettansu.com/login/kura/callback"]},
+  {"id": "kuracalendar", "secret": "<calendar-secret>", "name": "Tansu Calendar", "home": "https://calendar.gettansu.com/", "icon": "📅", "redirect_uris": ["https://calendar.gettansu.com/login/kura/callback"]},
+  {"id": "kuraspend", "secret": "<spend-secret>", "name": "Tansu Spend", "home": "https://spend.gettansu.com/", "icon": "💸", "redirect_uris": ["https://spend.gettansu.com/login/kura/callback"]},
+  {"id": "kurapeople", "secret": "<people-secret>", "name": "Tansu People", "home": "https://people.gettansu.com/", "icon": "🧑", "redirect_uris": ["https://people.gettansu.com/login/kura/callback"]},
+  {"id": "kurahome", "secret": "<home-secret>", "name": "Tansu Home", "home": "https://home.gettansu.com/", "icon": "🏠", "redirect_uris": ["https://home.gettansu.com/login/kura/callback"]}
+]
+```
+
+**4. Point each app at the Account.** In every app `.env` except the
+Account's own:
+
+```bash
+KURA_ACCOUNT_URL=https://account.gettansu.com
+KURA_CLIENT_ID=kuranotes            # kurachat, kuracalendar, ...
+KURA_CLIENT_SECRET=<matching-secret>
+```
+
+Leave `KURA_ACCOUNT_URL` empty on any app to keep it standalone — its local
+login keeps working exactly as before, Account or no Account.
+
+**5. Boot everything, Account first:**
+
+```sh
+for a in account notes assistant calendar spend people home; do
+  (cd apps/$a && docker compose up -d --build)
+done
+```
+
+**6. Front it with Caddy** (automatic HTTPS for all seven hosts):
+
+```
+account.gettansu.com {
+  reverse_proxy 127.0.0.1:3006
+}
+notes.gettansu.com {
+  reverse_proxy 127.0.0.1:3000
+}
+assistant.gettansu.com {
+  reverse_proxy 127.0.0.1:3001
+}
+calendar.gettansu.com {
+  reverse_proxy 127.0.0.1:3003
+}
+spend.gettansu.com {
+  reverse_proxy 127.0.0.1:3004
+}
+people.gettansu.com {
+  reverse_proxy 127.0.0.1:3005
+}
+home.gettansu.com {
+  reverse_proxy 127.0.0.1:3007
+}
+```
+
+Then create the first Account user in the browser (or
+`docker compose exec web ./kuraaccount create` with `EMAIL`/`PASSWORD`),
+open each app once via "Entrar com Tansu", and flip `SIGNUP_ENABLED=false`
+in all seven `.env` files followed by `docker compose up -d` per app.
+(`restart` does **not** reload `.env`.)
+
+**Updates** are per app, in any order — the SSO protocol is backwards
+compatible and apps never go down together unless you take them down:
+
+```sh
+cd tansu && git pull
+(cd apps/notes && docker compose up -d --build)
+```
+
+**Backups** are the seven volumes (one SQLite file each, plus Assistant
+uploads). Any consistent copy works; per app:
+
+```sh
+(cd apps/notes && docker compose exec web tar -C /data -cf - . > notes-backup.tar)
+```
+
+Volumes: `kura_account_data`, `kura_notes_data`, `kura_chat_data`,
+`kura_calendar_data`, `kura_spend_data`, `kura_people_data`,
+`kura_home_data`.
+
 ## Layout
 
 Each app is independent: its own `go.mod`, Dockerfile, CI job, and SQLite

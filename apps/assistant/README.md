@@ -48,8 +48,8 @@ It sits next to [TansuNotes](../notes), [TansuHome](../home), [TansuCalendar](..
 ## Self-host (Docker Compose)
 
 ```bash
-git clone ../assistant.git
-cd KuraChat
+git clone https://github.com/aquaspy/tansu.git
+cd tansu/apps/assistant
 cp .env.example .env
 ```
 
@@ -264,6 +264,8 @@ They sit on the same commit until the next change is under test.
 | `KURA_HOST` | Public hostname allowlist. Share links use the request host |
 | `BIND` | Default `127.0.0.1:3000` |
 | `DATA_DIR` | SQLite + uploads. Default `storage` (Compose: `/data`) |
+| `KURA_ACCOUNT_URL` | Tansu Account base URL. Empty = standalone, no SSO button |
+| `KURA_CLIENT_ID` / `KURA_CLIENT_SECRET` | This app's OAuth credentials (must match its registry entry). See [Deploy the suite](../../README.md#deploy-the-suite) |
 
 ---
 
