@@ -7,6 +7,7 @@ templ Thread(p Page, d ShellData) {
 	if d.Current == nil {
 		<p class="empty-editor">{ p.T("chat.empty") }</p>
 	} else {
+		<div class="thread-col" data-controller="examples">
 		<div
 			class="editor-bar"
 			data-controller="confirm share"
@@ -28,8 +29,19 @@ templ Thread(p Page, d ShellData) {
 				<input type="hidden" name="csrf_token" value={ p.CSRF }/>
 				@TitleField(p, d.Current.Conv.ID, d.Current.Conv.Title)
 			</form>
+			@ModeMenu(p, threadMode(d), len(d.Current.Messages) == 0)
+			if d.Current.Conv.AllowsTools() && AppStatusKind(d.Current.Badges) != "ok" {
+				<span class="bar-status" data-thread-chrome hidden?={ len(d.Current.Messages) == 0 }>
+					@AppStatus(p, d.Current.Badges)
+				</span>
+			}
 			<span class="bar-spacer"></span>
 			@ChatCost(p, d.Current.Conv.ID, d.Current.Cost)
+			if d.Current.Conv.AllowsTools() {
+				<button type="button" class="icon-btn" data-action="examples#open" title={ p.T("chat.what_can_i_do") } aria-label={ p.T("chat.what_can_i_do") }>
+					<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.7a4.1 4.1 0 0 0-2.3 7.5c.35.25.55.65.55 1.05V11h3.5v-.75c0-.4.2-.8.55-1.05A4.1 4.1 0 0 0 8 1.7Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path><path d="M6.3 12.2h3.4M6.7 13.6h2.6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+				</button>
+			}
 			@ShareButton(p, d.Current.Conv.ID, d.Current.Conv.ShareToken != "")
 			<button
 				type="button"
@@ -53,23 +65,19 @@ templ Thread(p Page, d ShellData) {
 				<p class="share-heading">{ p.T("app.share") }</p>
 				@SharePanel(p, d.Current.Conv.ID, d.Current.Conv.ShareToken != "", d.Current.ShareURL, d.Query)
 			</dialog>
+			if d.Current.Conv.AllowsTools() {
+				@ExampleSheet(p)
+			}
 		</div>
-		<div class="transcript" id="transcript" data-controller="transcript">
-			if d.Current.Conv.AllowsTools() && len(d.Current.Messages) == 0 {
-				@ExampleBoard(p)
+		<div class={ transcriptClass(len(d.Current.Messages) == 0) } id="transcript" data-controller="transcript">
+			if len(d.Current.Messages) == 0 {
+				@ModeHero(p, threadMode(d), d.Current.Badges, false)
 			}
 			for _, m := range d.Current.Messages {
 				@MessageArticle(p, m, d.Current.Conv.ID, d.Current.Inflight)
 			}
 		</div>
 		<div class="composer-dock">
-			@ModeSwitcher(p, threadMode(d))
-			if d.Current.Conv.AllowsTools() {
-				@AppBadges(d.Current.Badges)
-				if len(d.Current.Messages) > 0 {
-					@ExampleDrawer(p)
-				}
-			}
 			<div class="chat-settings">
 				<form
 					action={ templ.SafeURL(fmt.Sprintf("/conversations/%d/settings", d.Current.Conv.ID)) }
@@ -122,6 +130,7 @@ templ Thread(p Page, d ShellData) {
 				</form>
 			</div>
 			@Composer(p, d)
+		</div>
 		</div>
 	}
 }
