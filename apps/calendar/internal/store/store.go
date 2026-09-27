@@ -160,7 +160,7 @@ func migrate(db *sql.DB) error {
 		ON birthdays(user_id, source_key) WHERE source_key != ''`); err != nil {
 		return err
 	}
-	return nil
+	return migrateLocalBirthdays(db)
 }
 
 func hasColumn(db *sql.DB, table, column string) (bool, error) {

@@ -119,7 +119,11 @@ func (s *Server) handleImport(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	for _, in := range imported.Birthdays {
-		if _, errs, err := s.Store.CreateBirthday(user.ID, in); err == nil && len(errs) == 0 {
+		ev, errs := store.EventInputFromBirthday(in)
+		if len(errs) > 0 {
+			continue
+		}
+		if _, errs, err := s.Store.CreateEvent(user.ID, ev); err == nil && len(errs) == 0 {
 			count++
 		}
 	}
@@ -309,11 +313,9 @@ func formMonthDay(r *http.Request) (int, int) {
 }
 
 func (s *Server) handleBirthdaysCreate(w http.ResponseWriter, r *http.Request) {
-	user := UserOf(r)
-	if s.webCreateLimited(w, r, "birthday:"+itoa64(user.ID)) {
-		return
-	}
-	s.saveBirthday(w, r, user.ID, 0, true)
+	flashAlert(s, r, i18n.T(LocaleOf(r), "app.birthday_retired"))
+	month, day := formMonthDay(r)
+	http.Redirect(w, r, views.CalPath(landingDate(r, month, day)), http.StatusSeeOther)
 }
 
 func (s *Server) handleBirthdaysUpdate(w http.ResponseWriter, r *http.Request) {

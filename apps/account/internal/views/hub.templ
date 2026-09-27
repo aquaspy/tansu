@@ -87,7 +87,7 @@ templ HubPage(p Page, d HubData) {
 			} else {
 				<nav class="apps" aria-label={ p.T("hub.apps") }>
 					for _, client := range d.Clients {
-						<a class="app-card" href={ templ.SafeURL(AppHref(client, IsLinked(d, client))) }>
+						<a class="app-card" href={ templ.SafeURL(AppHref(client)) }>
 							<span class="app-icon" aria-hidden="true">{ ClientIcon(client) }</span>
 							<span class="app-main">
 								<span class="app-name">{ client.Name }</span>
@@ -105,6 +105,15 @@ templ HubPage(p Page, d HubData) {
 						</a>
 					}
 				</nav>
+				if connect := AssistantConnectHref(d.Clients); connect != "" {
+					<section class="suite-link">
+						<div>
+							<h2>{ p.T("hub.link_title") }</h2>
+							<p>{ p.T("hub.link_lede") }</p>
+						</div>
+						<a class="suite-link-btn" href={ templ.SafeURL(connect) }>{ p.T("hub.link_action") }</a>
+					</section>
+				}
 			}
 		</main>
 	</div>

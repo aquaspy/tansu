@@ -222,6 +222,25 @@ func TestKuraCallbackRespectsClosedSignup(t *testing.T) {
 	}
 }
 
+func TestKuraStartUsesExistingSession(t *testing.T) {
+	f, done := withAccount(t, `{}`, nil)
+	defer done()
+	digest, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
+	if _, err := f.store.CreateUser("ada@example.com", string(digest)); err != nil {
+		t.Fatal(err)
+	}
+	code, _, _ := f.methodCall(http.MethodPost, "/login", url.Values{
+		"email": {"ada@example.com"}, "password": {"password123"},
+	}, nil)
+	if code != http.StatusSeeOther {
+		t.Fatalf("login: %d", code)
+	}
+	code, _, hdr := f.get("/login/kura", nil)
+	if code != http.StatusSeeOther || hdr.Get("Location") != "/" {
+		t.Fatalf("start with session = %d loc %q, want 303 /", code, hdr.Get("Location"))
+	}
+}
+
 func TestKuraButtonOnlyWhenConfigured(t *testing.T) {
 	f, done := withAccount(t, `{}`, nil)
 	defer done()

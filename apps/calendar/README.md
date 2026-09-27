@@ -2,7 +2,7 @@
 
 **A calendar that remembers people and days — not every meeting protocol on earth.**
 
-TansuCalendar is a quiet personal calendar PWA. Mark days, keep yearly birthdays, turn on public holidays for the countries you care about. Several people can share one server with separate accounts. One static Go binary (~14 MB, ~20 MB RAM) serves the whole app on a single SQLite file. No Redis. No CalDAV. No ICS-as-the-database.
+TansuCalendar is a quiet personal calendar PWA. Mark days, see birthdays that Tansu People syncs in, turn on public holidays for the countries you care about. Several people can share one server with separate accounts. One static Go binary (~14 MB, ~20 MB RAM) serves the whole app on a single SQLite file. No Redis. No CalDAV. No ICS-as-the-database.
 
 > **Why does the code say `kura`?** This project started life as Kura; Tansu is
 > the new public name. Internal identifiers — Go module paths, `KURA_*` env
@@ -19,7 +19,7 @@ Calendar software tends to become infrastructure: invite RSVPs, free/busy, timez
 
 TansuCalendar is the second kind.
 
-- **Days you mark, birthdays that repeat.** Simple events with times when you need them. Birthdays that come back every year without ceremony.
+- **Days you mark.** Simple events with times when you need them, including a yearly repeat. Birthdays are kept in Tansu People and show up here when the two apps share `KURA_SYNC_SECRET`.
 - **Holidays as packs, not plugins.** Flip on Brazil, the United States, Slovenia, and/or Czechia. Enough for a life that spans places — not a marketplace of calendar feeds.
 - **Your data stays a file.** Export JSON when you want a copy. Import adds; it does not overwrite your life by accident.
 - **No protocol cosplay.** If you need CalDAV and shared free/busy, use something built for that. This app is for *you*, on a VPS you trust.
@@ -32,7 +32,7 @@ Sister apps: [TansuNotes](../notes), [Tansu Assistant](../assistant), [TansuSpen
 ## What you get
 
 - Multi-user accounts on one instance
-- Month (and day) views with events and birthdays
+- Month (and day) views with events and People-synced birthdays
 - Recurring events (daily, weekly, monthly, yearly, optional end date) and emoji on events and birthdays
 - Holiday packs: **BR**, **US**, **SI**, **CZ**
 - JSON export / import (import adds rows; it does not replace)
@@ -158,7 +158,7 @@ Sign out **and** wait for the cache wipe. Until then, another person who opens t
 
 **Export** downloads JSON of events and birthdays.
 
-**Import** accepts that same JSON (a Rails-era export works too). It **adds** rows; it does not replace existing ones. Cap is 500 events + 500 birthdays per import; rows that fail validation are skipped and not counted.
+**Import** accepts that same JSON (a Rails-era export works too). It **adds** rows; it does not replace existing ones. Birthday rows in the file become yearly all-day events. Cap is 500 events + 500 birthdays per import; rows that fail validation are skipped and not counted.
 
 ---
 

@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -89,6 +90,71 @@ func TestEventRepeatValidation(t *testing.T) {
 	norm, errs := ValidateEvent(in)
 	if len(errs) > 0 || norm.Repeat != "weekly" {
 		t.Fatalf("normalize: %+v %+v", norm, errs)
+	}
+}
+
+func TestEventInputFromBirthday(t *testing.T) {
+	in, errs := EventInputFromBirthday(BirthdayInput{
+		Name: "Leap", Month: "2", Day: "29", Year: "1990", Body: "note", Emoji: "🎂",
+	})
+	if len(errs) != 0 || in.StartsOn != "2000-02-29" || in.Repeat != "yearly" || in.Emoji != "🎂" {
+		t.Fatalf("feb29: %+v %+v", in, errs)
+	}
+	if !strings.Contains(in.Body, "1990") || !strings.Contains(in.Body, "note") {
+		t.Fatalf("body = %q", in.Body)
+	}
+	in, errs = EventInputFromBirthday(BirthdayInput{Name: "Ada", Month: "8", Day: "11", Year: "1990"})
+	if len(errs) != 0 || in.StartsOn != "1990-08-11" || in.EndsOn != "1990-08-11" || in.Body != "" {
+		t.Fatalf("dated: %+v %+v", in, errs)
+	}
+}
+
+func TestMigrateLocalBirthdaysToYearlyEvents(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "cal.sqlite3")
+	st, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u := seedUser(t, st, "ada@example.com")
+	if _, errs, err := st.CreateBirthday(u.ID, BirthdayInput{
+		Name: "Mom", Month: "8", Day: "11", Year: "1960", Emoji: "🌸",
+	}); err != nil || len(errs) > 0 {
+		t.Fatalf("local: %v %+v", err, errs)
+	}
+	if _, errs, err := st.UpsertSyncedBirthday(u.ID, "people:4", BirthdayInput{
+		Name: "Ada", Month: "3", Day: "14", Year: "1990",
+	}); err != nil || len(errs) > 0 {
+		t.Fatalf("synced: %v %+v", err, errs)
+	}
+	st.Close()
+
+	st, err = Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := st.CountBirthdays(u.ID); n != 1 {
+		t.Fatalf("synced birthdays = %d", n)
+	}
+	rows, err := st.ListBirthdays(u.ID)
+	if err != nil || len(rows) != 1 || rows[0].Name != "Ada" {
+		t.Fatalf("rows: %+v %v", rows, err)
+	}
+	if n := st.CountEvents(u.ID); n != 1 {
+		t.Fatalf("events = %d", n)
+	}
+	series, err := st.ListRepeatingEvents(u.ID)
+	if err != nil || len(series) != 1 || series[0].Title != "Mom" || series[0].Repeat != "yearly" || series[0].StartsOn != "1960-08-11" || series[0].Emoji != "🌸" {
+		t.Fatalf("series: %+v %v", series, err)
+	}
+	st.Close()
+
+	st, err = Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	if st.CountEvents(u.ID) != 1 || st.CountBirthdays(u.ID) != 1 {
+		t.Fatalf("second open events=%d birthdays=%d", st.CountEvents(u.ID), st.CountBirthdays(u.ID))
 	}
 }
 

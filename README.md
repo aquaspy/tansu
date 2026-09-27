@@ -158,7 +158,8 @@ people.gettansu.com {
 
 Then create the first Account user in the browser (or
 `docker compose exec web ./kuraaccount create` with `EMAIL`/`PASSWORD`),
-open each app once via "Entrar com Tansu", and flip `SIGNUP_ENABLED=false`
+open each app once from the Account hub (the tile runs "Entrar com Tansu"
+for you), and flip `SIGNUP_ENABLED=false`
 in all six `.env` files followed by `docker compose up -d` per app.
 (`restart` does **not** reload `.env`.)
 

@@ -222,6 +222,49 @@ func TestKuraCallbackRespectsClosedSignup(t *testing.T) {
 	}
 }
 
+func TestKuraStartUsesExistingSession(t *testing.T) {
+	f, done := withAccount(t, `{}`, nil)
+	defer done()
+	digest, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
+	if _, err := f.store.CreateUser("ada@example.com", string(digest)); err != nil {
+		t.Fatal(err)
+	}
+	code, _, _ := f.methodCall(http.MethodPost, "/login", url.Values{
+		"email": {"ada@example.com"}, "password": {"password123"},
+	}, nil)
+	if code != http.StatusSeeOther {
+		t.Fatalf("login: %d", code)
+	}
+	code, _, hdr := f.get("/login/kura", nil)
+	if code != http.StatusSeeOther || hdr.Get("Location") != "/" {
+		t.Fatalf("start with session = %d loc %q, want 303 /", code, hdr.Get("Location"))
+	}
+	code, _, hdr = f.get("/login/kura?next=/apps", nil)
+	if code != http.StatusSeeOther || hdr.Get("Location") != "/apps" {
+		t.Fatalf("next = %d loc %q, want 303 /apps", code, hdr.Get("Location"))
+	}
+	code, _, hdr = f.get("/login/kura?next=https://evil.example/apps", nil)
+	if code != http.StatusSeeOther || hdr.Get("Location") != "/" {
+		t.Fatalf("evil next = %d loc %q, want 303 /", code, hdr.Get("Location"))
+	}
+}
+
+func TestKuraCallbackHonorsNext(t *testing.T) {
+	f, done := withAccount(t, `{"sub":"acct-next","email":"next@example.com"}`, nil)
+	defer done()
+	u, _ := url.Parse(f.server.URL)
+	f.client.Jar.SetCookies(u, []*http.Cookie{{Name: kuraNextCookie, Value: "/apps", Path: "/"}})
+	code, _, hdr := kuraCallback(t, f, "state-next")
+	if code != http.StatusSeeOther || hdr.Get("Location") != "/apps" {
+		t.Fatalf("callback next = %d loc %q, want 303 /apps", code, hdr.Get("Location"))
+	}
+	f.client.Jar.SetCookies(u, []*http.Cookie{{Name: kuraNextCookie, Value: "https://evil.example", Path: "/"}})
+	code, _, hdr = kuraCallback(t, f, "state-next-evil")
+	if code != http.StatusSeeOther || hdr.Get("Location") != "/" {
+		t.Fatalf("evil cookie = %d loc %q, want 303 /", code, hdr.Get("Location"))
+	}
+}
+
 func TestKuraButtonOnlyWhenConfigured(t *testing.T) {
 	f, done := withAccount(t, `{}`, nil)
 	defer done()

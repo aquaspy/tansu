@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -495,6 +496,112 @@ func parseBirthdayInput(in BirthdayInput) (birthdayParsed, []FieldError) {
 func ValidateBirthday(in BirthdayInput) []FieldError {
 	_, errs := parseBirthdayInput(in)
 	return errs
+}
+
+// EventInputFromBirthday turns a calendar-typed birthday into a yearly
+// all-day event so the date, name, emoji, notes, and birth year stay.
+// Feb 29 in a non-leap year anchors on 2000 (a leap year); the original
+// year is kept in the notes. People-synced rows are not passed here.
+func EventInputFromBirthday(in BirthdayInput) (EventInput, []FieldError) {
+	p, errs := parseBirthdayInput(in)
+	if len(errs) > 0 {
+		return EventInput{}, errs
+	}
+	year := p.Year
+	if year == 0 {
+		year = 2000
+	}
+	day := p.Day
+	if day > DaysInMonth(year, p.Month) {
+		if p.Month == 2 && p.Day == 29 {
+			year = 2000
+			day = 29
+		} else {
+			day = DaysInMonth(year, p.Month)
+		}
+	}
+	date := fmt.Sprintf("%04d-%02d-%02d", year, p.Month, day)
+	body := p.Body
+	if p.Year != 0 && p.Year != year {
+		note := strconv.Itoa(p.Year)
+		switch {
+		case body == "":
+			body = note
+		case runeLen(note)+1+runeLen(body) <= EventBodyMax:
+			body = note + "\n" + body
+		}
+	}
+	return EventInput{
+		Title: p.Name, Body: body, AllDay: true,
+		StartsOn: date, EndsOn: date,
+		Emoji: p.Emoji, Repeat: "yearly",
+	}, nil
+}
+
+// migrateLocalBirthdays copies birthdays that were typed in Calendar
+// (no People source key) onto yearly events, then deletes those rows.
+// Synced rows stay so People can keep updating them.
+func migrateLocalBirthdays(db *sql.DB) error {
+	rows, err := db.Query(`SELECT id, user_id, name, month, day, IFNULL(year, 0), body, emoji, created_at, updated_at
+		FROM birthdays WHERE source_key = ''`)
+	if err != nil {
+		return err
+	}
+	type row struct {
+		id, userID       int64
+		name             string
+		month, day, yr   int
+		body, emoji      string
+		created, updated string
+	}
+	var list []row
+	for rows.Next() {
+		var r row
+		if err := rows.Scan(&r.id, &r.userID, &r.name, &r.month, &r.day, &r.yr, &r.body, &r.emoji, &r.created, &r.updated); err != nil {
+			rows.Close()
+			return err
+		}
+		list = append(list, r)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+	if len(list) == 0 {
+		return nil
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, r := range list {
+		in, errs := EventInputFromBirthday(BirthdayInput{
+			Name: r.name, Month: strconv.Itoa(r.month), Day: strconv.Itoa(r.day),
+			Year: zeroYear(r.yr), Body: r.body, Emoji: r.emoji,
+		})
+		if len(errs) > 0 {
+			continue
+		}
+		if _, err := tx.Exec(`INSERT INTO events
+			(user_id, title, body, all_day, starts_on, ends_on, emoji, repeat, created_at, updated_at)
+			VALUES (?, ?, ?, 1, ?, ?, ?, 'yearly', ?, ?)`,
+			r.userID, in.Title, in.Body, in.StartsOn, in.EndsOn, in.Emoji, r.created, r.updated); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(`DELETE FROM birthdays WHERE id = ?`, r.id); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func zeroYear(year int) string {
+	if year == 0 {
+		return ""
+	}
+	return strconv.Itoa(year)
 }
 
 // ObservedOn mirrors Birthday#observed_on? (Feb 29 falls on Feb 28 in

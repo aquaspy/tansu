@@ -80,11 +80,21 @@ run_test() {
     echo "signup: 303"
   fi
   FAIL=0
+  curl -s -b $WORK/jarA $ACCT/ -o $WORK/hub-before.html
+  if ! grep -q 'login/kura?next=%2Fapps' $WORK/hub-before.html; then
+    echo "hub missing Connect apps link"; FAIL=1
+  else
+    echo "hub connect-apps link: OK"
+  fi
   for a in $CLIENTS; do
     dir=$(echo "$a" | cut -d: -f1); id=$(echo "$a" | cut -d: -f2); port=$(echo "$a" | cut -d: -f3)
     JAR=$WORK/jar-$id
     rm -f $JAR
-    AUTHZ=$(curl -s -c $JAR -o /dev/null -w "%{redirect_url}" http://127.0.0.1:$port/login/kura)
+    HREF=$(grep -o "http://127.0.0.1:$port/login/kura" $WORK/hub-before.html | head -1)
+    if [ -z "$HREF" ]; then
+      echo "$id: hub tile is not an SSO start"; FAIL=1; continue
+    fi
+    AUTHZ=$(curl -s -c $JAR -o /dev/null -w "%{redirect_url}" "$HREF")
     case "$AUTHZ" in
       "$ACCT/authorize?"*) ;;
       *) echo "$id: BAD authorize: $AUTHZ"; FAIL=1; continue ;;
@@ -97,9 +107,16 @@ run_test() {
     CODE=$(curl -s -b $JAR -c $JAR -o /dev/null -w "%{http_code} %{redirect_url}" "$CALLBACK")
     HOME=$(curl -s -b $JAR -o /dev/null -w "%{http_code}" http://127.0.0.1:$port/)
     if [ "$CODE" = "303 http://127.0.0.1:$port/" ] && [ "$HOME" = "200" ]; then
-      echo "$id: OK (callback 303, home 200)"
+      echo "$id: OK (hub SSO, callback 303, home 200)"
     else
-      echo "$id: FAIL callback=[$CODE] home=[$HOME]"; FAIL=1
+      echo "$id: FAIL callback=[$CODE] home=[$HOME]"; FAIL=1; continue
+    fi
+    # A second hub click must not stop on the login door.
+    AGAIN=$(curl -s -b $JAR -o /dev/null -w "%{http_code} %{redirect_url}" "$HREF")
+    if [ "$AGAIN" = "303 http://127.0.0.1:$port/" ]; then
+      echo "$id: already signed in, hub opens home"
+    else
+      echo "$id: FAIL second hub hop=[$AGAIN]"; FAIL=1
     fi
   done
   curl -s -b $WORK/jarA $ACCT/ -o $WORK/hub.html -w "hub: %{http_code}\n"

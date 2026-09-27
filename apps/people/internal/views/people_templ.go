@@ -1784,7 +1784,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 160, "\" method=\"post\" class=\"auth-form\"><input type=\"hidden\" name=\"_method\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 160, "\" method=\"post\" class=\"auth-form person-form\"><input type=\"hidden\" name=\"_method\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1810,14 +1810,14 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 162, "\"> <label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 162, "\"><div class=\"person-fields\"><label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var106 string
 		templ_7745c5c3_Var106, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.name"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 311, Col: 21}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 312, Col: 21}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var106))
 		if templ_7745c5c3_Err != nil {
@@ -1830,7 +1830,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var107 string
 		templ_7745c5c3_Var107, templ_7745c5c3_Err = templ.ResolveAttributeValue(dlg.Person.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 312, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 313, Col: 58}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var107)
 		if templ_7745c5c3_Err != nil {
@@ -1843,7 +1843,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var108 string
 		templ_7745c5c3_Var108, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.nickname"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 316, Col: 26}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 317, Col: 26}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var108))
 		if templ_7745c5c3_Err != nil {
@@ -1856,7 +1856,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var109 string
 		templ_7745c5c3_Var109, templ_7745c5c3_Err = templ.ResolveAttributeValue(dlg.Person.Nickname)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 317, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 318, Col: 67}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var109)
 		if templ_7745c5c3_Err != nil {
@@ -1869,7 +1869,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var110 string
 		templ_7745c5c3_Var110, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.emoji"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 320, Col: 23}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 321, Col: 23}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var110))
 		if templ_7745c5c3_Err != nil {
@@ -1882,7 +1882,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var111 string
 		templ_7745c5c3_Var111, templ_7745c5c3_Err = templ.ResolveAttributeValue(dlg.Person.Emoji)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 321, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 322, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var111)
 		if templ_7745c5c3_Err != nil {
@@ -1895,7 +1895,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var112 string
 		templ_7745c5c3_Var112, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.relationship"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 325, Col: 29}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 326, Col: 29}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var112))
 		if templ_7745c5c3_Err != nil {
@@ -1908,7 +1908,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var113 string
 		templ_7745c5c3_Var113, templ_7745c5c3_Err = templ.ResolveAttributeValue(dlg.Person.Relationship)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 326, Col: 74}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 327, Col: 74}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var113)
 		if templ_7745c5c3_Err != nil {
@@ -1921,7 +1921,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var114 string
 		templ_7745c5c3_Var114, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.relationship_hint"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 327, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 328, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var114))
 		if templ_7745c5c3_Err != nil {
@@ -1934,7 +1934,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var115 string
 		templ_7745c5c3_Var115, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.birthday"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 330, Col: 33}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 331, Col: 33}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var115))
 		if templ_7745c5c3_Err != nil {
@@ -1947,7 +1947,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var116 string
 		templ_7745c5c3_Var116, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.month"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 333, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 334, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var116))
 		if templ_7745c5c3_Err != nil {
@@ -1965,7 +1965,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 			var templ_7745c5c3_Var117 string
 			templ_7745c5c3_Var117, templ_7745c5c3_Err = templ.ResolveAttributeValue(opt.Value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 337, Col: 33}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 338, Col: 33}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var117)
 			if templ_7745c5c3_Err != nil {
@@ -1988,7 +1988,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 			var templ_7745c5c3_Var118 string
 			templ_7745c5c3_Var118, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 337, Col: 97}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 338, Col: 97}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var118))
 			if templ_7745c5c3_Err != nil {
@@ -2006,7 +2006,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var119 string
 		templ_7745c5c3_Var119, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.day"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 342, Col: 22}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 343, Col: 22}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var119))
 		if templ_7745c5c3_Err != nil {
@@ -2019,7 +2019,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var120 string
 		templ_7745c5c3_Var120, templ_7745c5c3_Err = templ.ResolveAttributeValue(BirthDay(dlg.Person))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 343, Col: 72}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 344, Col: 72}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var120)
 		if templ_7745c5c3_Err != nil {
@@ -2032,7 +2032,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var121 string
 		templ_7745c5c3_Var121, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.year"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 346, Col: 23}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 347, Col: 23}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var121))
 		if templ_7745c5c3_Err != nil {
@@ -2045,7 +2045,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var122 string
 		templ_7745c5c3_Var122, templ_7745c5c3_Err = templ.ResolveAttributeValue(BirthYear(dlg.Person))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 347, Col: 74}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 348, Col: 74}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var122)
 		if templ_7745c5c3_Err != nil {
@@ -2058,7 +2058,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var123 string
 		templ_7745c5c3_Var123, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.year_hint"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 350, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 351, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var123))
 		if templ_7745c5c3_Err != nil {
@@ -2071,7 +2071,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var124 string
 		templ_7745c5c3_Var124, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.phone"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 354, Col: 23}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 355, Col: 23}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var124))
 		if templ_7745c5c3_Err != nil {
@@ -2084,7 +2084,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var125 string
 		templ_7745c5c3_Var125, templ_7745c5c3_Err = templ.ResolveAttributeValue(dlg.Person.Phone)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 355, Col: 60}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 356, Col: 60}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var125)
 		if templ_7745c5c3_Err != nil {
@@ -2097,7 +2097,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var126 string
 		templ_7745c5c3_Var126, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.email"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 358, Col: 23}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 359, Col: 23}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var126))
 		if templ_7745c5c3_Err != nil {
@@ -2110,7 +2110,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var127 string
 		templ_7745c5c3_Var127, templ_7745c5c3_Err = templ.ResolveAttributeValue(dlg.Person.Email)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 359, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 360, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var127)
 		if templ_7745c5c3_Err != nil {
@@ -2123,7 +2123,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var128 string
 		templ_7745c5c3_Var128, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.address"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 363, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 364, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var128))
 		if templ_7745c5c3_Err != nil {
@@ -2136,7 +2136,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var129 string
 		templ_7745c5c3_Var129, templ_7745c5c3_Err = templ.ResolveAttributeValue(dlg.Person.Address)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 364, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 365, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var129)
 		if templ_7745c5c3_Err != nil {
@@ -2149,7 +2149,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var130 string
 		templ_7745c5c3_Var130, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.sizes"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 367, Col: 30}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 368, Col: 30}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var130))
 		if templ_7745c5c3_Err != nil {
@@ -2162,7 +2162,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var131 string
 		templ_7745c5c3_Var131, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.height"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 370, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 371, Col: 25}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var131))
 		if templ_7745c5c3_Err != nil {
@@ -2175,7 +2175,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var132 string
 		templ_7745c5c3_Var132, templ_7745c5c3_Err = templ.ResolveAttributeValue(dlg.Person.Height)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 371, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 372, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var132)
 		if templ_7745c5c3_Err != nil {
@@ -2188,7 +2188,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var133 string
 		templ_7745c5c3_Var133, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.ring_size"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 374, Col: 28}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 375, Col: 28}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var133))
 		if templ_7745c5c3_Err != nil {
@@ -2201,7 +2201,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var134 string
 		templ_7745c5c3_Var134, templ_7745c5c3_Err = templ.ResolveAttributeValue(dlg.Person.RingSize)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 375, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 376, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var134)
 		if templ_7745c5c3_Err != nil {
@@ -2214,7 +2214,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var135 string
 		templ_7745c5c3_Var135, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.shoe_size"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 378, Col: 28}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 379, Col: 28}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var135))
 		if templ_7745c5c3_Err != nil {
@@ -2227,7 +2227,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var136 string
 		templ_7745c5c3_Var136, templ_7745c5c3_Err = templ.ResolveAttributeValue(dlg.Person.ShoeSize)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 379, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 380, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var136)
 		if templ_7745c5c3_Err != nil {
@@ -2240,7 +2240,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var137 string
 		templ_7745c5c3_Var137, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.shirt_size"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 382, Col: 29}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 383, Col: 29}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var137))
 		if templ_7745c5c3_Err != nil {
@@ -2253,7 +2253,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var138 string
 		templ_7745c5c3_Var138, templ_7745c5c3_Err = templ.ResolveAttributeValue(dlg.Person.ShirtSize)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 383, Col: 71}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 384, Col: 71}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var138)
 		if templ_7745c5c3_Err != nil {
@@ -2266,7 +2266,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var139 string
 		templ_7745c5c3_Var139, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.pants_size"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 386, Col: 29}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 387, Col: 29}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var139))
 		if templ_7745c5c3_Err != nil {
@@ -2279,7 +2279,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var140 string
 		templ_7745c5c3_Var140, templ_7745c5c3_Err = templ.ResolveAttributeValue(dlg.Person.PantsSize)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 387, Col: 71}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 388, Col: 71}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var140)
 		if templ_7745c5c3_Err != nil {
@@ -2292,7 +2292,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var141 string
 		templ_7745c5c3_Var141, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.favorites"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 392, Col: 26}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 393, Col: 26}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var141))
 		if templ_7745c5c3_Err != nil {
@@ -2305,7 +2305,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var142 string
 		templ_7745c5c3_Var142, templ_7745c5c3_Err = templ.JoinStringErrs(dlg.Person.Favorites)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 393, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 394, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var142))
 		if templ_7745c5c3_Err != nil {
@@ -2318,7 +2318,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var143 string
 		templ_7745c5c3_Var143, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.favorites_hint"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 394, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 395, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var143))
 		if templ_7745c5c3_Err != nil {
@@ -2331,7 +2331,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var144 string
 		templ_7745c5c3_Var144, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.notes"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 397, Col: 22}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 398, Col: 22}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var144))
 		if templ_7745c5c3_Err != nil {
@@ -2344,7 +2344,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var145 string
 		templ_7745c5c3_Var145, templ_7745c5c3_Err = templ.JoinStringErrs(dlg.Person.Notes)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 398, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 399, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var145))
 		if templ_7745c5c3_Err != nil {
@@ -2357,7 +2357,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var146 string
 		templ_7745c5c3_Var146, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.custom"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 401, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 402, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var146))
 		if templ_7745c5c3_Err != nil {
@@ -2370,7 +2370,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var147 string
 		templ_7745c5c3_Var147, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.custom_hint"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 402, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 403, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var147))
 		if templ_7745c5c3_Err != nil {
@@ -2405,20 +2405,20 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var148 string
 		templ_7745c5c3_Var148, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.add_field"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 412, Col: 100}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 413, Col: 100}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var148))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 211, "</button></fieldset><div class=\"confirm-actions\"><button type=\"button\" class=\"btn-dialog\" data-action=\"composer#closePerson\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 211, "</button></fieldset></div><div class=\"person-actions\"><button type=\"button\" class=\"btn-dialog\" data-action=\"composer#closePerson\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var149 string
 		templ_7745c5c3_Var149, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.cancel"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 415, Col: 99}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 417, Col: 99}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var149))
 		if templ_7745c5c3_Err != nil {
@@ -2431,7 +2431,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 		var templ_7745c5c3_Var150 string
 		templ_7745c5c3_Var150, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.save"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 416, Col: 70}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 418, Col: 70}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var150))
 		if templ_7745c5c3_Err != nil {
@@ -2449,7 +2449,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 			var templ_7745c5c3_Var151 string
 			templ_7745c5c3_Var151, templ_7745c5c3_Err = templ.ResolveAttributeValue(dlg.DeleteURL)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 424, Col: 28}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 426, Col: 28}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var151)
 			if templ_7745c5c3_Err != nil {
@@ -2462,7 +2462,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 			var templ_7745c5c3_Var152 string
 			templ_7745c5c3_Var152, templ_7745c5c3_Err = templ.ResolveAttributeValue(dlg.DeleteMsg)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 426, Col: 32}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 428, Col: 32}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var152)
 			if templ_7745c5c3_Err != nil {
@@ -2475,7 +2475,7 @@ func PersonDialog(p Page, dlg DialogData) templ.Component {
 			var templ_7745c5c3_Var153 string
 			templ_7745c5c3_Var153, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.delete"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 427, Col: 23}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 429, Col: 23}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var153))
 			if templ_7745c5c3_Err != nil {
@@ -2522,7 +2522,7 @@ func AttrRow(p Page, label string, value string) templ.Component {
 		var templ_7745c5c3_Var155 string
 		templ_7745c5c3_Var155, templ_7745c5c3_Err = templ.ResolveAttributeValue(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 437, Col: 16}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 439, Col: 16}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var155)
 		if templ_7745c5c3_Err != nil {
@@ -2535,7 +2535,7 @@ func AttrRow(p Page, label string, value string) templ.Component {
 		var templ_7745c5c3_Var156 string
 		templ_7745c5c3_Var156, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.T("app.attr_label"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 439, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 441, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var156)
 		if templ_7745c5c3_Err != nil {
@@ -2548,7 +2548,7 @@ func AttrRow(p Page, label string, value string) templ.Component {
 		var templ_7745c5c3_Var157 string
 		templ_7745c5c3_Var157, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.T("app.attr_label"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 440, Col: 37}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 442, Col: 37}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var157)
 		if templ_7745c5c3_Err != nil {
@@ -2561,7 +2561,7 @@ func AttrRow(p Page, label string, value string) templ.Component {
 		var templ_7745c5c3_Var158 string
 		templ_7745c5c3_Var158, templ_7745c5c3_Err = templ.ResolveAttributeValue(value)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 446, Col: 16}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 448, Col: 16}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var158)
 		if templ_7745c5c3_Err != nil {
@@ -2574,7 +2574,7 @@ func AttrRow(p Page, label string, value string) templ.Component {
 		var templ_7745c5c3_Var159 string
 		templ_7745c5c3_Var159, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.T("app.attr_value"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 448, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 450, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var159)
 		if templ_7745c5c3_Err != nil {
@@ -2587,7 +2587,7 @@ func AttrRow(p Page, label string, value string) templ.Component {
 		var templ_7745c5c3_Var160 string
 		templ_7745c5c3_Var160, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.T("app.attr_value"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 449, Col: 37}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 451, Col: 37}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var160)
 		if templ_7745c5c3_Err != nil {
@@ -2600,7 +2600,7 @@ func AttrRow(p Page, label string, value string) templ.Component {
 		var templ_7745c5c3_Var161 string
 		templ_7745c5c3_Var161, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.T("app.remove"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 452, Col: 115}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 454, Col: 115}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var161)
 		if templ_7745c5c3_Err != nil {
@@ -2613,7 +2613,7 @@ func AttrRow(p Page, label string, value string) templ.Component {
 		var templ_7745c5c3_Var162 string
 		templ_7745c5c3_Var162, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.T("app.remove"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 452, Col: 143}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 454, Col: 143}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var162)
 		if templ_7745c5c3_Err != nil {
@@ -2655,7 +2655,7 @@ func ConfirmDialog(p Page) templ.Component {
 		var templ_7745c5c3_Var164 string
 		templ_7745c5c3_Var164, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.cancel"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 462, Col: 91}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 464, Col: 91}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var164))
 		if templ_7745c5c3_Err != nil {
@@ -2668,7 +2668,7 @@ func ConfirmDialog(p Page) templ.Component {
 		var templ_7745c5c3_Var165 string
 		templ_7745c5c3_Var165, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("app.delete"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 463, Col: 112}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/people.templ`, Line: 465, Col: 112}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var165))
 		if templ_7745c5c3_Err != nil {

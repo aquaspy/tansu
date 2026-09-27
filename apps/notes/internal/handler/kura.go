@@ -67,6 +67,12 @@ func (s *Server) handleKuraStart(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
+	// Already inside the app: the hub can point here every time without
+	// minting another code.
+	if UserOf(r) != nil && sessionUsable(r) {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
 	state, err := randomHex(32)
 	if err != nil {
 		http.Error(w, "try again", http.StatusInternalServerError)

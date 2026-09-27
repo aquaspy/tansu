@@ -304,9 +304,10 @@ templ PersonDialog(p Page, dlg DialogData) {
 	</datalist>
 	<dialog class="confirm-dialog form-dialog person-dialog" data-composer-target="personBox" data-action="click->composer#backdrop">
 		<p class="dialog-heading">{ dlg.Heading }</p>
-		<form action={ templ.SafeURL(dlg.Action) } method="post" class="auth-form">
+		<form action={ templ.SafeURL(dlg.Action) } method="post" class="auth-form person-form">
 			<input type="hidden" name="_method" value={ dlg.Method }/>
 			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<div class="person-fields">
 			<label>
 				{ p.T("app.name") }
 				<input type="text" name="name" value={ dlg.Person.Name } required maxlength="200"/>
@@ -411,7 +412,8 @@ templ PersonDialog(p Page, dlg DialogData) {
 				</template>
 				<button type="button" class="btn-quiet" data-action="composer#addField">+ { p.T("app.add_field") }</button>
 			</fieldset>
-			<div class="confirm-actions">
+			</div>
+			<div class="person-actions">
 				<button type="button" class="btn-dialog" data-action="composer#closePerson">{ p.T("app.cancel") }</button>
 				<button type="submit" class="btn-dialog primary">{ p.T("app.save") }</button>
 			</div>

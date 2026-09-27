@@ -253,20 +253,38 @@ func ClientIcon(c *store.Client) string {
 // IsLinked reports whether the user connected an app.
 func IsLinked(d HubData, c *store.Client) bool { return d.Linked[c.ID] }
 
-// AppHref opens a connected app at its home, and starts SSO for one
-// that is not connected yet.
-func AppHref(c *store.Client, linked bool) string {
+// AppHref starts the app's existing PKCE login. The Account session, when
+// present, finishes authorize without another click. An empty home has
+// nothing to open.
+func AppHref(c *store.Client) string {
 	home := strings.TrimSpace(c.Home)
 	if home == "" {
 		return "/"
-	}
-	if linked {
-		return home
 	}
 	if !strings.HasSuffix(home, "/") {
 		home += "/"
 	}
 	return home + "login/kura"
+}
+
+// assistantClientID is the static registry id for Tansu Assistant.
+const assistantClientID = "kurachat"
+
+// AssistantConnectHref opens Assistant on its connect-apps page after SSO.
+// next is restricted to /apps by the Assistant. Empty when Assistant is
+// not registered.
+func AssistantConnectHref(clients []*store.Client) string {
+	for _, c := range clients {
+		if c == nil || c.ID != assistantClientID {
+			continue
+		}
+		base := AppHref(c)
+		if base == "/" {
+			return ""
+		}
+		return base + "?next=" + url.QueryEscape("/apps")
+	}
+	return ""
 }
 
 // WithNext appends a next query when the authorize hop is present.
