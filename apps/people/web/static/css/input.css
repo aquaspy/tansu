@@ -725,8 +725,15 @@ input:focus, select:focus, textarea:focus {
 .size-grid dt { font-size: 0.75rem; color: var(--muted); }
 .size-grid dd { margin: 0; font-weight: 600; }
 
-/* Person dialog form. The field list scrolls; Save stays in view. */
-.confirm-dialog.person-dialog {
+/* Person dialog form. The field list scrolls; Save stays in view.
+   A closed <dialog> is display:none in the user-agent sheet. Author
+   display:flex is more specific, so it painted the create form on
+   load and a later showModal() stacked a second copy on top. Flex
+   applies only while the dialog is open. */
+.confirm-dialog.person-dialog:not([open]) {
+  display: none;
+}
+.confirm-dialog.person-dialog[open] {
   display: flex;
   flex-direction: column;
   width: min(34rem, calc(100vw - 1rem - env(safe-area-inset-left) - env(safe-area-inset-right)));
@@ -843,13 +850,19 @@ input:focus, select:focus, textarea:focus {
   }
   .fab svg { width: 1.45rem; height: 1.45rem; display: block; }
   .confirm-dialog { margin-top: 12dvh; margin-bottom: auto; }
-  .confirm-dialog.person-dialog {
+  .confirm-dialog.person-dialog[open] {
     margin-top: max(0.5rem, env(safe-area-inset-top));
     margin-bottom: max(0.5rem, env(safe-area-inset-bottom));
   }
   .person-actions .btn-dialog { min-height: 2.75rem; padding: 0.55rem 1rem; }
   .theme-switch { width: min(14.5rem, 100%); padding: 0.28rem; }
   .theme-choice { height: 2.75rem; }
+}
+
+/* More specific than .fab { display: grid } inside the mobile query,
+   and than .icon-btn / .btn-io. One person dialog; + cannot open another. */
+.people:has(dialog.person-dialog[open]) [data-action~="composer#openPerson"] {
+  display: none;
 }
 
 @media (min-width: 861px) {
