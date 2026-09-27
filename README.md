@@ -71,8 +71,10 @@ done
 | people | `127.0.0.1:3005` | `people.gettansu.com` |
 
 Set `FORCE_SSL=true` in every `.env` (Caddy terminates HTTPS below).
-Keep `SIGNUP_ENABLED=true` until the first accounts exist, then flip to
-`false` everywhere.
+Keep Account `SIGNUP_ENABLED=true` until the first Account user exists, then
+flip it to `false`. The other apps can stay `SIGNUP_ENABLED=false`: a
+completed Account SSO still creates their local user. Password signup on
+those apps stays closed.
 
 On a hosted Account, also set `RESEND_API_KEY` and `RESEND_FROM` (a sender
 verified at Resend). Signup then creates the account only after the person
@@ -157,11 +159,10 @@ people.gettansu.com {
 ```
 
 Then create the first Account user in the browser (or
-`docker compose exec web ./kuraaccount create` with `EMAIL`/`PASSWORD`),
-open each app once from the Account hub (the tile runs "Entrar com Tansu"
-for you), and flip `SIGNUP_ENABLED=false`
-in all six `.env` files followed by `docker compose up -d` per app.
-(`restart` does **not** reload `.env`.)
+`docker compose exec web ./kuraaccount create` with `EMAIL`/`PASSWORD`)
+and flip Account `SIGNUP_ENABLED=false`. The other apps can ship with
+`SIGNUP_ENABLED=false` already: opening one from the hub still creates
+that app's local user. (`restart` does **not** reload `.env`.)
 
 **Updates** are per app, in any order — the SSO protocol is backwards
 compatible and apps never go down together unless you take them down:

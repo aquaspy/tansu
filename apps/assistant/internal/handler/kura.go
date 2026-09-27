@@ -193,11 +193,10 @@ func (s *Server) handleKuraCallback(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if user == nil {
-		if !s.Config.SignupEnabled {
-			fail(http.StatusUnprocessableEntity, "auth.kura_signup_closed")
-			return
-		}
-		// Provision: the digest is unusable, password login stays closed.
+		// A completed Account SSO callback provisions the local user even
+		// when SIGNUP_ENABLED is false. Public /signup and password
+		// registration stay gated. The digest is unusable, so password
+		// login stays closed for this user.
 		digest, err := randomHex(32)
 		if err != nil {
 			fail(http.StatusUnprocessableEntity, "auth.kura_failed")
