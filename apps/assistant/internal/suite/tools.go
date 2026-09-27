@@ -15,31 +15,46 @@ import (
 
 // Names the model can call. Deletes are held for a confirm button.
 const (
-	NotesSearch  = "notes_search"
-	NotesRead    = "notes_read"
-	NotesCreate  = "notes_create"
-	NotesUpdate  = "notes_update"
-	NotesDelete  = "notes_delete"
-	CalList      = "calendar_list"
-	CalCreate    = "calendar_create"
-	CalUpdate    = "calendar_update"
-	CalDelete    = "calendar_delete"
-	PeopleSearch = "people_search"
-	PeopleRead   = "people_read"
-	PeopleCreate = "people_create"
-	PeopleUpdate = "people_update"
-	PeopleDelete = "people_delete"
-	SpendMonth   = "spend_month"
-	SpendList    = "spend_list"
-	SpendCreate  = "spend_create"
-	SpendUpdate  = "spend_update"
-	SpendDelete  = "spend_delete"
+	NotesSearch             = "notes_search"
+	NotesRead               = "notes_read"
+	NotesCreate             = "notes_create"
+	NotesUpdate             = "notes_update"
+	NotesDelete             = "notes_delete"
+	NotesFolders            = "notes_folders"
+	NotesFolderRename       = "notes_folder_rename"
+	NotesFolderDelete       = "notes_folder_delete"
+	CalList                 = "calendar_list"
+	CalRead                 = "calendar_read"
+	CalCreate               = "calendar_create"
+	CalUpdate               = "calendar_update"
+	CalDelete               = "calendar_delete"
+	PeopleSearch            = "people_search"
+	PeopleRead              = "people_read"
+	PeopleCreate            = "people_create"
+	PeopleUpdate            = "people_update"
+	PeopleDelete            = "people_delete"
+	SpendMonth              = "spend_month"
+	SpendList               = "spend_list"
+	SpendRead               = "spend_read"
+	SpendCreate             = "spend_create"
+	SpendUpdate             = "spend_update"
+	SpendDelete             = "spend_delete"
+	SpendSubscriptionList   = "spend_subscription_list"
+	SpendSubscriptionRead   = "spend_subscription_read"
+	SpendSubscriptionCreate = "spend_subscription_create"
+	SpendSubscriptionUpdate = "spend_subscription_update"
+	SpendSubscriptionDelete = "spend_subscription_delete"
+	SpendPaymentDayList     = "spend_payment_day_list"
+	SpendPaymentDayRead     = "spend_payment_day_read"
+	SpendPaymentDayCreate   = "spend_payment_day_create"
+	SpendPaymentDayUpdate   = "spend_payment_day_update"
+	SpendPaymentDayDelete   = "spend_payment_day_delete"
 )
 
 // IsDelete reports a tool that waits for the confirm button.
 func IsDelete(name string) bool {
 	switch name {
-	case NotesDelete, CalDelete, PeopleDelete, SpendDelete:
+	case NotesDelete, NotesFolderDelete, CalDelete, PeopleDelete, SpendDelete, SpendSubscriptionDelete, SpendPaymentDayDelete:
 		return true
 	}
 	return false
@@ -68,6 +83,9 @@ func strProp(desc string) map[string]any {
 }
 func intProp(desc string) map[string]any {
 	return map[string]any{"type": "integer", "description": desc}
+}
+func boolProp(desc string) map[string]any {
+	return map[string]any{"type": "boolean", "description": desc}
 }
 
 func sizesSchema() map[string]any {
@@ -120,28 +138,94 @@ func peopleFields() map[string]any {
 		"shoe_size":      strProp("changes only the shoe size"),
 		"shirt_size":     strProp("changes only the shirt size"),
 		"pants_size":     strProp("changes only the pants size"),
-		"favorites":      strProp(""),
-		"notes":          strProp("free text that does not fit a field above"),
+		"favorites":      strProp("On update, an empty string clears favorites. Omit the key to leave them unchanged."),
+		"notes":          strProp("Free text that does not fit a field above. On update, an empty string clears notes, including a lone dash. Omit the key to leave notes unchanged. A dash is text, not a blank."),
 		"attrs":          attrsSchema(),
+	}
+}
+
+func noteFields() map[string]any {
+	return map[string]any{
+		"body":   strProp("full text. The first non-blank line is the title. There is no separate title column and there are no tags."),
+		"title":  strProp("optional. Placed on the first line. On update without body, the rest of the note is kept."),
+		"folder": strProp("folder name. inbox or blank moves the note to the inbox. all is reserved."),
+	}
+}
+
+func eventFields() map[string]any {
+	return map[string]any{
+		"title":        strProp("required on create"),
+		"starts_on":    strProp("YYYY-MM-DD. 19/09/2026 is day/month/year."),
+		"ends_on":      strProp("YYYY-MM-DD. Defaults to starts_on."),
+		"all_day":      boolProp("true for an all-day event. Timed events need false plus starts_at and ends_at. Omit this when you send a time and it is treated as false."),
+		"starts_at":    strProp("HH:MM. 2:30 PM and 14h30 are accepted."),
+		"ends_at":      strProp("HH:MM"),
+		"body":         strProp("notes. There is no location or attendee field; put a place or guests here."),
+		"emoji":        strProp("single emoji"),
+		"repeat":       strProp("none, daily, weekly, monthly, or yearly"),
+		"repeat_until": strProp("YYYY-MM-DD. Omit to repeat forever. Ignored when repeat is none."),
+	}
+}
+
+func expenseFields() map[string]any {
+	return map[string]any{
+		"title":        strProp("short name of the expense"),
+		"amount":       strProp("decimal money such as 25.50 or 25,50. Use this or amount_cents."),
+		"amount_cents": intProp("integer cents, such as 2550 for 25.50. If both are sent, amount_cents wins."),
+		"currency":     strProp("BRL, USD, or EUR. Default BRL."),
+		"spent_on":     strProp("YYYY-MM-DD. 19/09/2026 is day/month/year."),
+		"category":     strProp("food, transport, home, health, leisure, or other"),
+		"notes":        strProp("free text that is not a category, amount, or currency. There are no tags or splits."),
+	}
+}
+
+func subscriptionFields() map[string]any {
+	return map[string]any{
+		"title":         strProp("name of the recurring bill"),
+		"amount":        strProp("decimal money such as 19.90. Use this or amount_cents."),
+		"amount_cents":  intProp("integer cents. If both are sent, amount_cents wins."),
+		"currency":      strProp("BRL, USD, or EUR. Default BRL."),
+		"interval":      strProp("monthly (default) or yearly"),
+		"due_day":       intProp("1-31, optional"),
+		"billing_month": intProp("1-12, yearly only. Monthly subscriptions ignore it."),
+		"active":        boolProp("defaults to true. false pauses the subscription."),
+		"notes":         strProp("free text that does not fit a field above"),
+	}
+}
+
+func paymentDayFields() map[string]any {
+	return map[string]any{
+		"title":   strProp("what the reminder is for"),
+		"due_day": intProp("1-31, required on create"),
+		"active":  boolProp("defaults to true"),
+		"notes":   strProp("free text. A payment day does not log an expense."),
 	}
 }
 
 func toolset(app string) []openrouter.Tool {
 	switch app {
 	case "notes":
+		updateNote := noteFields()
+		updateNote["id"] = intProp("note id")
 		return []openrouter.Tool{
-			{Name: NotesSearch, Description: "Search notes. Returns id, title, preview, folder. No full body.", Parameters: obj(map[string]any{"q": strProp("text"), "folder": strProp("folder or empty")}, nil)},
-			{Name: NotesRead, Description: "Read one note body by id.", Parameters: obj(map[string]any{"id": intProp("note id")}, []string{"id"})},
-			{Name: NotesCreate, Description: "Create a note. First line of body is the title.", Parameters: obj(map[string]any{"body": strProp("full text"), "folder": strProp("optional folder")}, []string{"body"})},
-			{Name: NotesUpdate, Description: "Change a note. Send body to replace the text, folder to move it, or both.", Parameters: obj(map[string]any{"id": intProp("note id"), "body": strProp("new text"), "folder": strProp("folder name; inbox moves it to the inbox")}, []string{"id"})},
+			{Name: NotesSearch, Description: "Search notes. Returns id, title, preview, folder. No full body.", Parameters: obj(map[string]any{"q": strProp("text"), "folder": strProp("folder or empty for every folder")}, nil)},
+			{Name: NotesRead, Description: "Read one note by id, including the full body and folder.", Parameters: obj(map[string]any{"id": intProp("note id")}, []string{"id"})},
+			{Name: NotesCreate, Description: "Create a note. The first non-blank line of body is the title. Optional title is placed on that first line in front of body. folder is optional; inbox means the inbox. There are no tags. Do not wrap fields in a note object.", Parameters: obj(noteFields(), nil)},
+			{Name: NotesUpdate, Description: "Change a note by id. Partial: send body to replace the text, title to rewrite the first line and keep the rest, folder to move it, or any combination. inbox moves it to the inbox. There are no tags.", Parameters: obj(updateNote, []string{"id"})},
 			{Name: NotesDelete, Description: "Ask to delete one note. It does not run until the person confirms.", Parameters: obj(map[string]any{"id": intProp("note id")}, []string{"id"})},
+			{Name: NotesFolders, Description: "List folders and how many notes are in each. An empty name is the inbox.", Parameters: obj(map[string]any{}, nil)},
+			{Name: NotesFolderRename, Description: "Rename a folder and move every note in it. inbox and all are reserved.", Parameters: obj(map[string]any{"from": strProp("current folder name"), "to": strProp("new folder name")}, []string{"from", "to"})},
+			{Name: NotesFolderDelete, Description: "Ask to delete every note in one folder. It does not run until the person confirms. Never pass all. inbox clears the inbox.", Parameters: obj(map[string]any{"folder": strProp("folder name")}, []string{"folder"})},
 		}
 	case "calendar":
+		updateEvent := eventFields()
+		updateEvent["id"] = intProp("event id")
 		return []openrouter.Tool{
-			{Name: CalList, Description: "List events from a date to a date (YYYY-MM-DD).", Parameters: obj(map[string]any{"from": strProp("YYYY-MM-DD"), "to": strProp("YYYY-MM-DD")}, []string{"from", "to"})},
-			{Name: CalCreate, Description: "Create an event. Timed events need all_day false plus starts_at and ends_at (HH:MM).", Parameters: obj(map[string]any{"title": strProp(""), "starts_on": strProp("YYYY-MM-DD"), "ends_on": strProp(""), "all_day": map[string]any{"type": "boolean"}, "starts_at": strProp("HH:MM"), "ends_at": strProp("HH:MM"), "body": strProp(""), "emoji": strProp(""), "repeat": strProp("none|daily|weekly|monthly|yearly")}, []string{"title", "starts_on"})},
-			{Name: CalUpdate, Description: "Update an event by id. Send only fields that change. Timed events need all_day false plus starts_at and ends_at.", Parameters: obj(map[string]any{"id": intProp(""), "title": strProp(""), "starts_on": strProp("YYYY-MM-DD"), "ends_on": strProp(""), "all_day": map[string]any{"type": "boolean"}, "starts_at": strProp("HH:MM"), "ends_at": strProp("HH:MM"), "body": strProp(""), "emoji": strProp(""), "repeat": strProp("none|daily|weekly|monthly|yearly"), "repeat_until": strProp("YYYY-MM-DD")}, []string{"id"})},
-			{Name: CalDelete, Description: "Ask to delete one event. It does not run until the person confirms.", Parameters: obj(map[string]any{"id": intProp("")}, []string{"id"})},
+			{Name: CalList, Description: "List events from a date to a date (YYYY-MM-DD), including times, repeat, and repeat_until. Series are expanded, so id can repeat.", Parameters: obj(map[string]any{"from": strProp("YYYY-MM-DD"), "to": strProp("YYYY-MM-DD")}, []string{"from", "to"})},
+			{Name: CalRead, Description: "Read one event by id, including body, times, repeat, and repeat_until.", Parameters: obj(map[string]any{"id": intProp("event id")}, []string{"id"})},
+			{Name: CalCreate, Description: "Create an event. title and starts_on are required. All-day is the default. Timed events need all_day false plus starts_at and ends_at (HH:MM; 2:30 PM and 14h30 work). repeat is none, daily, weekly, monthly, or yearly. repeat_until bounds a series; omit it to repeat forever. There is no location or attendee field; put a place or guests in body. Do not wrap fields in an event object. Birthdays belong on a person in People.", Parameters: obj(eventFields(), []string{"title", "starts_on"})},
+			{Name: CalUpdate, Description: "Update an event by id. Partial merge: send only fields that change. Timed events need all_day false plus starts_at and ends_at. repeat_until bounds a series.", Parameters: obj(updateEvent, []string{"id"})},
+			{Name: CalDelete, Description: "Ask to delete one event. It does not run until the person confirms. Deleting a series deletes every occurrence.", Parameters: obj(map[string]any{"id": intProp("event id")}, []string{"id"})},
 		}
 	case "people":
 		updateFields := peopleFields()
@@ -150,16 +234,33 @@ func toolset(app string) []openrouter.Tool {
 			{Name: PeopleSearch, Description: "Search people. Returns id, name, nickname, relationship, a short notes clip.", Parameters: obj(map[string]any{"q": strProp("text")}, nil)},
 			{Name: PeopleRead, Description: "Read one person by id, including address, height, sizes, favorites, notes, and attrs.", Parameters: obj(map[string]any{"id": intProp("person id")}, []string{"id"})},
 			{Name: PeopleCreate, Description: "Create a person. Only name is required. Store address, height, sizes, favorites, and attrs (label/value rows such as CPF, Pix, or an extra email) in those fields, not only in notes. Birthday is YYYY-MM-DD (or MM-DD if the year is unknown), or birthday_month, birthday_day, and optional birthday_year. Sizes are {ring, shoe, shirt, pants} or flat ring_size, shoe_size, shirt_size, pants_size. Do not wrap fields in a person object. Birthdays sync to Calendar from People.", Parameters: obj(peopleFields(), []string{"name"})},
-			{Name: PeopleUpdate, Description: "Update a person by id. Partial merge: send only fields that change and omit the rest. Birthday is YYYY-MM-DD (or MM-DD), or birthday_month, birthday_day, and optional birthday_year. Sizes are {ring, shoe, shirt, pants} or flat ring_size, shoe_size, shirt_size, pants_size; only sizes you include are written. attrs replaces the whole list when the key is present — omit attrs to keep existing rows, and do not send attrs unless those rows should change. Use address, sizes, and attrs instead of parking those facts only in notes.", Parameters: obj(updateFields, []string{"id"})},
+			{Name: PeopleUpdate, Description: "Update a person by id. Partial merge: send only fields that change and omit the rest. Birthday is YYYY-MM-DD (or MM-DD), or birthday_month, birthday_day, and optional birthday_year. Sizes are {ring, shoe, shirt, pants} or flat ring_size, shoe_size, shirt_size, pants_size; only sizes you include are written. An empty string clears that size, and clears notes, favorites, address, phone, email, nickname, relationship, emoji, or height. A dash in notes is text; send an empty string to remove it. attrs replaces the whole list when the key is present — omit attrs to keep existing rows, and do not send attrs unless those rows should change. Use address, sizes, and attrs instead of parking those facts only in notes.", Parameters: obj(updateFields, []string{"id"})},
 			{Name: PeopleDelete, Description: "Ask to delete one person. It does not run until the person confirms.", Parameters: obj(map[string]any{"id": intProp("")}, []string{"id"})},
 		}
 	case "spend":
+		updateExpense := expenseFields()
+		updateExpense["id"] = intProp("expense id")
+		updateSub := subscriptionFields()
+		updateSub["id"] = intProp("subscription id")
+		updatePay := paymentDayFields()
+		updatePay["id"] = intProp("payment day id")
 		return []openrouter.Tool{
-			{Name: SpendMonth, Description: "Month totals in home currency.", Parameters: obj(map[string]any{"year": intProp(""), "month": intProp("1-12")}, []string{"year", "month"})},
-			{Name: SpendList, Description: "List expenses for YYYY-MM. No note text.", Parameters: obj(map[string]any{"month": strProp("YYYY-MM"), "category": strProp("food|transport|home|health|leisure|other")}, nil)},
-			{Name: SpendCreate, Description: "Log one expense. amount_cents is an integer.", Parameters: obj(map[string]any{"title": strProp(""), "amount_cents": intProp(""), "currency": strProp("BRL|USD|EUR"), "spent_on": strProp("YYYY-MM-DD"), "category": strProp(""), "notes": strProp("")}, []string{"title", "amount_cents", "spent_on"})},
-			{Name: SpendUpdate, Description: "Update an expense by id. Send only fields that change.", Parameters: obj(map[string]any{"id": intProp(""), "title": strProp(""), "amount_cents": intProp(""), "currency": strProp("BRL|USD|EUR"), "spent_on": strProp("YYYY-MM-DD"), "category": strProp(""), "notes": strProp("")}, []string{"id"})},
-			{Name: SpendDelete, Description: "Ask to delete one expense. It does not run until the person confirms.", Parameters: obj(map[string]any{"id": intProp("")}, []string{"id"})},
+			{Name: SpendMonth, Description: "Month totals in home currency, plus the expenses, subscriptions, and payment days counted that month.", Parameters: obj(map[string]any{"year": intProp("year, such as 2026"), "month": intProp("1-12")}, []string{"year", "month"})},
+			{Name: SpendList, Description: "List expenses for YYYY-MM. Includes category, amount_cents, currency, and a short notes clip.", Parameters: obj(map[string]any{"month": strProp("YYYY-MM"), "category": strProp("food, transport, home, health, leisure, or other")}, nil)},
+			{Name: SpendRead, Description: "Read one expense by id, including notes.", Parameters: obj(map[string]any{"id": intProp("expense id")}, []string{"id"})},
+			{Name: SpendCreate, Description: "Log one expense, not a subscription. Send amount_cents (integer cents: 2550 is 25.50) or amount (a decimal such as 25.50 or 25,50). currency is BRL, USD, or EUR (default BRL). category is food, transport, home, health, leisure, or other. Put a category, amount, or currency in those fields, not only in notes. There are no tags or splits. Do not wrap fields in an expense object.", Parameters: obj(expenseFields(), []string{"title", "spent_on"})},
+			{Name: SpendUpdate, Description: "Update an expense by id. Partial merge: send only fields that change. amount_cents is integer cents; amount is a decimal. category is food, transport, home, health, leisure, or other.", Parameters: obj(updateExpense, []string{"id"})},
+			{Name: SpendDelete, Description: "Ask to delete one expense. It does not run until the person confirms.", Parameters: obj(map[string]any{"id": intProp("expense id")}, []string{"id"})},
+			{Name: SpendSubscriptionList, Description: "List subscriptions (recurring bills). Pass active true to hide paused ones.", Parameters: obj(map[string]any{"active": boolProp("true lists only active subscriptions")}, nil)},
+			{Name: SpendSubscriptionRead, Description: "Read one subscription by id, including interval, due_day, billing_month, active, and notes.", Parameters: obj(map[string]any{"id": intProp("subscription id")}, []string{"id"})},
+			{Name: SpendSubscriptionCreate, Description: "Create a subscription, which is a recurring bill and not a one-off expense. title and an amount are required. interval is monthly (default) or yearly. due_day is 1-31. billing_month is 1-12 and only applies to yearly. active defaults to true. Use amount_cents or amount the same way as an expense. Do not wrap fields in a subscription object.", Parameters: obj(subscriptionFields(), []string{"title"})},
+			{Name: SpendSubscriptionUpdate, Description: "Update a subscription by id. Partial merge: send only fields that change. active false pauses it. interval monthly clears billing_month.", Parameters: obj(updateSub, []string{"id"})},
+			{Name: SpendSubscriptionDelete, Description: "Ask to delete one subscription. It does not run until the person confirms.", Parameters: obj(map[string]any{"id": intProp("subscription id")}, []string{"id"})},
+			{Name: SpendPaymentDayList, Description: "List payment-day reminders. They do not change the leftover and they are not expenses.", Parameters: obj(map[string]any{}, nil)},
+			{Name: SpendPaymentDayRead, Description: "Read one payment day by id.", Parameters: obj(map[string]any{"id": intProp("payment day id")}, []string{"id"})},
+			{Name: SpendPaymentDayCreate, Description: "Create a payment-day reminder. title and due_day (1-31) are required. It does not log an expense and it does not change the leftover. active defaults to true. Do not wrap fields in a payment_day object.", Parameters: obj(paymentDayFields(), []string{"title", "due_day"})},
+			{Name: SpendPaymentDayUpdate, Description: "Update a payment day by id. Partial merge: send only fields that change.", Parameters: obj(updatePay, []string{"id"})},
+			{Name: SpendPaymentDayDelete, Description: "Ask to delete one payment day. It does not run until the person confirms.", Parameters: obj(map[string]any{"id": intProp("payment day id")}, []string{"id"})},
 		}
 	}
 	return nil
@@ -182,6 +283,14 @@ func Execute(ctx context.Context, c *Client, name string, args map[string]any, a
 	app := appOf(name)
 	if IsDelete(name) && !approvedDelete {
 		return Outcome{Body: `{"error":"needs_confirm"}`, App: app}
+	}
+	args = unwrapArgs(name, args)
+	if name == NotesUpdate {
+		merged, err := mergeNoteTitle(ctx, c, args)
+		if err != nil {
+			return Outcome{Body: `{"ok":false,"error":"unavailable"}`, App: app}
+		}
+		args = merged
 	}
 	method, path, body, kind, write := route(name, args)
 	if method == "" {
@@ -221,10 +330,10 @@ func Execute(ctx context.Context, c *Client, name string, args map[string]any, a
 	switch {
 	case kind == "month":
 		shaped = raw
-	case strings.HasSuffix(name, "_search") || name == CalList || name == SpendList:
-		shaped, serr = ShapeList(listKind(name), raw)
+	case isListTool(name):
+		shaped, serr = ShapeList(listKey(name), raw)
 	case strings.HasSuffix(name, "_read") || strings.HasSuffix(name, "_create") || strings.HasSuffix(name, "_update"):
-		shaped, serr = ShapeOne(oneKind(name), raw)
+		shaped, serr = ShapeOne(objectKey(name), raw)
 	}
 	if serr != nil {
 		shaped = raw
@@ -236,9 +345,12 @@ func Execute(ctx context.Context, c *Client, name string, args map[string]any, a
 	if IsDelete(name) && strings.TrimSpace(out.Body) == "" {
 		out.Body = `{"ok":true}`
 	}
-	out.Title = titleFrom(out.Body, oneKind(name))
+	out.Title = titleFrom(out.Body, objectKey(name))
+	if out.OK && out.Title == "" {
+		out.Title = firstArgString(args, "title", "name", "folder", "to")
+	}
 	if out.ID == 0 {
-		out.ID = idFrom(out.Body, oneKind(name))
+		out.ID = idFrom(out.Body, objectKey(name))
 	}
 	return out
 }
@@ -257,30 +369,59 @@ func appOf(name string) string {
 	return ""
 }
 
-func listKind(name string) string {
+func isListTool(name string) bool {
+	switch name {
+	case NotesSearch, NotesFolders, PeopleSearch, CalList, SpendList, SpendSubscriptionList, SpendPaymentDayList:
+		return true
+	}
+	return false
+}
+
+func listKey(name string) string {
 	switch name {
 	case NotesSearch:
 		return "notes"
+	case NotesFolders:
+		return "folders"
 	case PeopleSearch:
 		return "people"
 	case CalList:
 		return "events"
 	case SpendList:
 		return "expenses"
+	case SpendSubscriptionList:
+		return "subscriptions"
+	case SpendPaymentDayList:
+		return "payment_days"
 	}
 	return ""
 }
 
-func oneKind(name string) string {
-	switch appOf(name) {
-	case "notes":
-		return "notes"
-	case "people":
-		return "people"
-	case "calendar":
-		return "events"
-	case "spend":
-		return "expenses"
+func objectKey(name string) string {
+	switch {
+	case strings.Contains(name, "subscription"):
+		return "subscription"
+	case strings.Contains(name, "payment_day"):
+		return "payment_day"
+	case strings.HasPrefix(name, "notes_folder"):
+		return ""
+	case strings.HasPrefix(name, "notes"):
+		return "note"
+	case strings.HasPrefix(name, "people"):
+		return "person"
+	case strings.HasPrefix(name, "calendar"):
+		return "event"
+	case strings.HasPrefix(name, "spend"):
+		return "expense"
+	}
+	return ""
+}
+
+func firstArgString(args map[string]any, keys ...string) string {
+	for _, key := range keys {
+		if s := strings.TrimSpace(strArg(args, key)); s != "" {
+			return s
+		}
 	}
 	return ""
 }
@@ -299,12 +440,11 @@ func idArg(args map[string]any) int64 {
 	return 0
 }
 
-func titleFrom(payload, kind string) string {
+func titleFrom(payload, key string) string {
 	var doc map[string]any
-	if json.Unmarshal([]byte(payload), &doc) != nil {
+	if key == "" || json.Unmarshal([]byte(payload), &doc) != nil {
 		return ""
 	}
-	key := map[string]string{"notes": "note", "people": "person", "events": "event", "expenses": "expense"}[kind]
 	m, _ := doc[key].(map[string]any)
 	if m == nil {
 		return ""
@@ -316,12 +456,11 @@ func titleFrom(payload, kind string) string {
 	return s
 }
 
-func idFrom(payload, kind string) int64 {
+func idFrom(payload, key string) int64 {
 	var doc map[string]any
-	if json.Unmarshal([]byte(payload), &doc) != nil {
+	if key == "" || json.Unmarshal([]byte(payload), &doc) != nil {
 		return 0
 	}
-	key := map[string]string{"notes": "note", "people": "person", "events": "event", "expenses": "expense"}[kind]
 	m, _ := doc[key].(map[string]any)
 	if m == nil {
 		return 0
@@ -335,29 +474,44 @@ func route(name string, args map[string]any) (method, path string, body any, kin
 	switch name {
 	case NotesSearch:
 		q.Set("limit", "20")
-		if s, _ := args["q"].(string); s != "" {
+		if s := strArg(args, "q"); s != "" {
 			q.Set("q", s)
 		}
-		if s, _ := args["folder"].(string); s != "" {
+		if s := strings.TrimSpace(strArg(args, "folder")); s != "" {
+			if strings.EqualFold(s, "inbox") {
+				s = "inbox"
+			}
 			q.Set("folder", s)
 		}
 		return http.MethodGet, "/api/v1/notes?" + q.Encode(), nil, "notes", false
 	case NotesRead:
 		return http.MethodGet, "/api/v1/notes/" + strconv.FormatInt(id, 10), nil, "notes", false
 	case NotesCreate:
-		return http.MethodPost, "/api/v1/notes", map[string]any{"note": pick(args, "body", "folder")}, "notes", true
+		return http.MethodPost, "/api/v1/notes", map[string]any{"note": noteBody(args)}, "notes", true
 	case NotesUpdate:
-		return http.MethodPatch, "/api/v1/notes/" + strconv.FormatInt(id, 10), map[string]any{"note": pick(args, "body", "folder")}, "notes", true
+		return http.MethodPatch, "/api/v1/notes/" + strconv.FormatInt(id, 10), map[string]any{"note": noteBody(args)}, "notes", true
 	case NotesDelete:
 		return http.MethodDelete, "/api/v1/notes/" + strconv.FormatInt(id, 10), nil, "notes", true
+	case NotesFolders:
+		return http.MethodGet, "/api/v1/folders", nil, "folders", false
+	case NotesFolderRename:
+		return http.MethodPatch, "/api/v1/folders", map[string]any{
+			"from": strings.TrimSpace(strArg(args, "from")),
+			"to":   strings.TrimSpace(strArg(args, "to")),
+		}, "folders", true
+	case NotesFolderDelete:
+		q.Set("folder", strings.TrimSpace(strArg(args, "folder")))
+		return http.MethodDelete, "/api/v1/folders?" + q.Encode(), nil, "folders", true
 	case CalList:
-		q.Set("from", strArg(args, "from"))
-		q.Set("to", strArg(args, "to"))
+		q.Set("from", normalizeDateOrRaw(strArg(args, "from")))
+		q.Set("to", normalizeDateOrRaw(strArg(args, "to")))
 		return http.MethodGet, "/api/v1/events?" + q.Encode(), nil, "events", false
+	case CalRead:
+		return http.MethodGet, "/api/v1/events/" + strconv.FormatInt(id, 10), nil, "events", false
 	case CalCreate:
-		return http.MethodPost, "/api/v1/events", map[string]any{"event": pick(args, "title", "starts_on", "ends_on", "all_day", "starts_at", "ends_at", "body", "emoji", "repeat", "repeat_until")}, "events", true
+		return http.MethodPost, "/api/v1/events", map[string]any{"event": eventBody(args)}, "events", true
 	case CalUpdate:
-		return http.MethodPatch, "/api/v1/events/" + strconv.FormatInt(id, 10), map[string]any{"event": pick(args, "title", "starts_on", "ends_on", "all_day", "starts_at", "ends_at", "body", "emoji", "repeat", "repeat_until")}, "events", true
+		return http.MethodPatch, "/api/v1/events/" + strconv.FormatInt(id, 10), map[string]any{"event": eventBody(args)}, "events", true
 	case CalDelete:
 		return http.MethodDelete, "/api/v1/events/" + strconv.FormatInt(id, 10), nil, "events", true
 	case PeopleSearch:
@@ -375,26 +529,56 @@ func route(name string, args map[string]any) (method, path string, body any, kin
 	case PeopleDelete:
 		return http.MethodDelete, "/api/v1/people/" + strconv.FormatInt(id, 10), nil, "people", true
 	case SpendMonth:
-		y, _ := args["year"].(float64)
-		m, _ := args["month"].(float64)
-		return http.MethodGet, fmt.Sprintf("/api/v1/months/%d/%d", int(y), int(m)), nil, "month", false
+		return http.MethodGet, fmt.Sprintf("/api/v1/months/%d/%d", intField(args, "year"), intField(args, "month")), nil, "month", false
 	case SpendList:
 		q.Set("limit", "20")
 		if s := strArg(args, "month"); s != "" {
-			q.Set("month", s)
+			q.Set("month", normalizeMonth(s))
 		}
 		if s := strArg(args, "category"); s != "" {
-			q.Set("category", s)
+			q.Set("category", normalizeCategory(s))
 		}
 		return http.MethodGet, "/api/v1/expenses?" + q.Encode(), nil, "expenses", false
+	case SpendRead:
+		return http.MethodGet, "/api/v1/expenses/" + strconv.FormatInt(id, 10), nil, "expenses", false
 	case SpendCreate:
-		return http.MethodPost, "/api/v1/expenses", map[string]any{"expense": pick(args, "title", "amount_cents", "currency", "spent_on", "category", "notes")}, "expenses", true
+		return http.MethodPost, "/api/v1/expenses", map[string]any{"expense": expenseBody(args)}, "expenses", true
 	case SpendUpdate:
-		return http.MethodPatch, "/api/v1/expenses/" + strconv.FormatInt(id, 10), map[string]any{"expense": pick(args, "title", "amount_cents", "currency", "spent_on", "category", "notes")}, "expenses", true
+		return http.MethodPatch, "/api/v1/expenses/" + strconv.FormatInt(id, 10), map[string]any{"expense": expenseBody(args)}, "expenses", true
 	case SpendDelete:
 		return http.MethodDelete, "/api/v1/expenses/" + strconv.FormatInt(id, 10), nil, "expenses", true
+	case SpendSubscriptionList:
+		if b, ok := boolArg(args["active"]); ok && b {
+			q.Set("active", "true")
+		}
+		return http.MethodGet, withQuery("/api/v1/subscriptions", q), nil, "subscriptions", false
+	case SpendSubscriptionRead:
+		return http.MethodGet, "/api/v1/subscriptions/" + strconv.FormatInt(id, 10), nil, "subscriptions", false
+	case SpendSubscriptionCreate:
+		return http.MethodPost, "/api/v1/subscriptions", map[string]any{"subscription": subscriptionBody(args)}, "subscriptions", true
+	case SpendSubscriptionUpdate:
+		return http.MethodPatch, "/api/v1/subscriptions/" + strconv.FormatInt(id, 10), map[string]any{"subscription": subscriptionBody(args)}, "subscriptions", true
+	case SpendSubscriptionDelete:
+		return http.MethodDelete, "/api/v1/subscriptions/" + strconv.FormatInt(id, 10), nil, "subscriptions", true
+	case SpendPaymentDayList:
+		return http.MethodGet, "/api/v1/payment_days", nil, "payment_days", false
+	case SpendPaymentDayRead:
+		return http.MethodGet, "/api/v1/payment_days/" + strconv.FormatInt(id, 10), nil, "payment_days", false
+	case SpendPaymentDayCreate:
+		return http.MethodPost, "/api/v1/payment_days", map[string]any{"payment_day": paymentDayBody(args)}, "payment_days", true
+	case SpendPaymentDayUpdate:
+		return http.MethodPatch, "/api/v1/payment_days/" + strconv.FormatInt(id, 10), map[string]any{"payment_day": paymentDayBody(args)}, "payment_days", true
+	case SpendPaymentDayDelete:
+		return http.MethodDelete, "/api/v1/payment_days/" + strconv.FormatInt(id, 10), nil, "payment_days", true
 	}
 	return "", "", nil, "", false
+}
+
+func withQuery(path string, q url.Values) string {
+	if enc := q.Encode(); enc != "" {
+		return path + "?" + enc
+	}
+	return path
 }
 
 func strArg(args map[string]any, k string) string {
@@ -402,14 +586,20 @@ func strArg(args map[string]any, k string) string {
 	return s
 }
 
-func pick(args map[string]any, keys ...string) map[string]any {
-	out := map[string]any{}
-	for _, k := range keys {
-		if v, ok := args[k]; ok && v != nil && v != "" {
-			out[k] = v
-		}
+// putClearable copies a field the caller sent. Absent and null stay
+// omitted so a partial update does not change it. A blank or
+// whitespace-only string is sent as "" and clears the field. "-" is text.
+// Other types, such as a numeric height, are forwarded as given.
+func putClearable(args, out map[string]any, key string) {
+	v, ok := args[key]
+	if !ok || v == nil {
+		return
 	}
-	return out
+	if s, isStr := v.(string); isStr {
+		out[key] = strings.TrimSpace(s)
+		return
+	}
+	out[key] = v
 }
 
 // stampOK records whether the tool result is a saved record. The model is
@@ -442,7 +632,14 @@ func stampOK(payload string, ok bool) string {
 // present.
 func personBody(args map[string]any) map[string]any {
 	args = flattenPerson(args)
-	out := pick(args, "name", "nickname", "relationship", "emoji", "phone", "email", "address", "height", "favorites", "notes")
+	out := map[string]any{}
+	// A blank name is a 422 and would reject the whole update, so omit it.
+	if s, ok := nonemptyString(args, "name"); ok {
+		out["name"] = s
+	}
+	for _, key := range []string{"nickname", "relationship", "emoji", "phone", "email", "address", "height", "favorites", "notes"} {
+		putClearable(args, out, key)
+	}
 	if month, day, year, present := birthdayParts(args); present {
 		bday := map[string]any{}
 		if month != 0 {
@@ -470,14 +667,13 @@ func personBody(args map[string]any) map[string]any {
 // sizesBody accepts a nested sizes object or flat ring_size/shoe_size keys.
 // Only sizes that were sent are included. The People API writes just those
 // keys, so a shoe-only update does not clear ring, shirt, or pants.
+// An empty string is sent and clears that one size.
 func sizesBody(args map[string]any) map[string]any {
 	out := map[string]any{}
 	if obj, ok := args["sizes"].(map[string]any); ok {
 		for _, key := range []string{"ring", "shoe", "shirt", "pants"} {
-			if v, ok := obj[key]; ok {
-				if s := scalarString(v); s != "" {
-					out[key] = s
-				}
+			if v, ok := obj[key]; ok && v != nil {
+				out[key] = scalarString(v)
 			}
 		}
 	}
@@ -487,10 +683,8 @@ func sizesBody(args map[string]any) map[string]any {
 		{"shirt_size", "shirt"},
 		{"pants_size", "pants"},
 	} {
-		if v, ok := args[pair.flat]; ok {
-			if s := scalarString(v); s != "" {
-				out[pair.key] = s
-			}
+		if v, ok := args[pair.flat]; ok && v != nil {
+			out[pair.key] = scalarString(v)
 		}
 	}
 	return out
@@ -546,21 +740,7 @@ func scalarString(v any) string {
 }
 
 func flattenPerson(args map[string]any) map[string]any {
-	inner, ok := args["person"].(map[string]any)
-	if !ok {
-		return args
-	}
-	out := make(map[string]any, len(inner)+len(args))
-	for k, v := range inner {
-		out[k] = v
-	}
-	for k, v := range args {
-		if k == "person" || v == nil || v == "" {
-			continue
-		}
-		out[k] = v
-	}
-	return out
+	return flattenRecord(args, "person")
 }
 
 func birthdayParts(args map[string]any) (month, day, year int, present bool) {

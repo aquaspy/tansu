@@ -412,7 +412,20 @@ func TestAgentPeopleDeleteConfirm(t *testing.T) {
 
 func TestToolRulesMentionStructuredPeopleFields(t *testing.T) {
 	got := toolRules(i18n.EN, time.UTC)
-	for _, s := range []string{"address", "attrs", "sizes", "notes", "omit attrs"} {
+	for _, s := range []string{"address", "attrs", "sizes", "notes", "omit attrs", "empty string", "dash"} {
+		if !strings.Contains(got, s) {
+			t.Fatalf("missing %q in %s", s, got)
+		}
+	}
+}
+
+func TestToolRulesMentionSuiteFields(t *testing.T) {
+	got := toolRules(i18n.EN, time.UTC)
+	for _, s := range []string{
+		"amount_cents", "Subscriptions", "Payment days", "due_day",
+		"all_day", "repeat_until", "no location",
+		"no tags", "first line", "notes_folders",
+	} {
 		if !strings.Contains(got, s) {
 			t.Fatalf("missing %q in %s", s, got)
 		}
