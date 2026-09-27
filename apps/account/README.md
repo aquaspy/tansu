@@ -32,7 +32,7 @@ failure for people who never asked for it.
   logging anyone out of their apps.
 - **Same Tansu shell.** Auth, idle lock (per device), PWA, Compose on localhost.
 
-Sister apps: [TansuNotes](../notes), [Tansu Assistant](../assistant), [TansuHome](../home), [TansuSpend](../spend), [TansuCalendar](../calendar), [TansuPeople](../people). Each keeps its own volume.
+Sister apps: [TansuNotes](../notes), [Tansu Assistant](../assistant), [TansuSpend](../spend), [TansuCalendar](../calendar), [TansuPeople](../people). Each keeps its own volume.
 
 ---
 

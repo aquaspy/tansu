@@ -1,7 +1,0 @@
-/.git/
-/.gitignore
-/.env*
-/storage/
-Dockerfile*
-docker-compose.yml
-README.md

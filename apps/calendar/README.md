@@ -25,7 +25,7 @@ TansuCalendar is the second kind.
 - **No protocol cosplay.** If you need CalDAV and shared free/busy, use something built for that. This app is for *you*, on a VPS you trust.
 - **Same Tansu shell.** Auth, idle lock (per device), PWA offline month views, Compose on localhost.
 
-Sister apps: [TansuNotes](../notes), [Tansu Assistant](../assistant), [TansuHome](../home), [TansuSpend](../spend). Each keeps its own volume — a calendar should not share a database with chat history.
+Sister apps: [TansuNotes](../notes), [Tansu Assistant](../assistant), [TansuSpend](../spend), [TansuPeople](../people). Each keeps its own volume — a calendar should not share a database with chat history.
 
 ---
 
@@ -60,7 +60,7 @@ Edit `.env`. At minimum:
 KURA_HOST=calendar.gettansu.com
 SIGNUP_ENABLED=true       # first account, then flip to false
 FORCE_SSL=false           # true once HTTPS terminates in front
-BIND=127.0.0.1:3003       # 3003 if Notes/Assistant/Home already took 3000+
+BIND=127.0.0.1:3003       # 3003 if Notes or Assistant already took 3000
 ```
 
 Then:
@@ -214,7 +214,6 @@ go vet ./...
 | --- | --- |
 | [TansuNotes](../notes) | Private notes |
 | [Tansu Assistant](../assistant) | Private chat with your model |
-| [TansuHome](../home) | Quiet start-page / homepage |
 | [TansuSpend](../spend) | Subscriptions & daily spend |
 
 Same spirit. Separate databases. Your stack, your rules.

@@ -21,6 +21,10 @@ type Config struct {
 	KuraClientID     string
 	KuraClientSecret string
 
+	// KuraAssistantURL is the Assistant origin allowed to finish an app link.
+	// Empty disables /agent/connect.
+	KuraAssistantURL string
+
 	// CalendarURL + SyncSecret push birthdays into Tansu Calendar.
 	// Both empty keeps People standalone.
 	CalendarURL string
@@ -38,6 +42,7 @@ func Load() Config {
 		KuraAccountURL:   strings.TrimSuffix(envOr("KURA_ACCOUNT_URL", ""), "/"),
 		KuraClientID:     envOr("KURA_CLIENT_ID", "kurapeople"),
 		KuraClientSecret: envOr("KURA_CLIENT_SECRET", ""),
+		KuraAssistantURL: strings.TrimRight(strings.TrimSpace(os.Getenv("KURA_ASSISTANT_URL")), "/"),
 		CalendarURL:      strings.TrimSuffix(envOr("KURA_CALENDAR_URL", ""), "/"),
 		SyncSecret:       envOr("KURA_SYNC_SECRET", ""),
 	}

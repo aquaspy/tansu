@@ -204,7 +204,7 @@ func (s *Server) handleKuraCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.setSessionCookie(w, r, sess.ID)
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, s.takeAgentReturn(w, r), http.StatusSeeOther)
 }
 
 // kuraStateCookie is the browser binding for one SSO attempt.

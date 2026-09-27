@@ -19,8 +19,9 @@ const baseURL = "https://openrouter.ai/api/v1"
 // Error is a failed API call; TimeoutError is a network timeout.
 // Code carries the HTTP or provider error code when known (0 otherwise).
 type Error struct {
-	Msg  string
-	Code int
+	Msg    string
+	Code   int
+	Detail string // response body snippet, for callers that branch on it
 }
 
 func (e *Error) Error() string { return e.Msg }
@@ -75,7 +76,28 @@ func New(apiKey, model string) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) body(messages []any, maxCompletionTokens *int, reasoningEffort string, stream bool, sessionID string, search *SearchOptions, files *FileOptions) map[string]any {
+// Tool is one function the model may call. The app executes it.
+type Tool struct {
+	Name        string
+	Description string
+	Parameters  map[string]any
+}
+
+// Wire is the chat-completions tool object.
+func (t Tool) Wire() map[string]any {
+	params := t.Parameters
+	if params == nil {
+		params = map[string]any{"type": "object", "properties": map[string]any{}}
+	}
+	return map[string]any{
+		"type": "function",
+		"function": map[string]any{
+			"name": t.Name, "description": t.Description, "parameters": params,
+		},
+	}
+}
+
+func (c *Client) body(messages []any, maxCompletionTokens *int, reasoningEffort string, stream bool, sessionID string, search *SearchOptions, files *FileOptions, tools []Tool) map[string]any {
 	b := map[string]any{
 		"model":    c.model,
 		"messages": messages,
@@ -101,6 +123,13 @@ func (c *Client) body(messages []any, maxCompletionTokens *int, reasoningEffort 
 	if len(plugins) > 0 {
 		b["plugins"] = plugins
 	}
+	if len(tools) > 0 {
+		wire := make([]any, 0, len(tools))
+		for _, t := range tools {
+			wire = append(wire, t.Wire())
+		}
+		b["tools"] = wire
+	}
 	return b
 }
 
@@ -113,7 +142,14 @@ func (c *Client) body(messages []any, maxCompletionTokens *int, reasoningEffort 
 // and is returned.
 func (c *Client) StreamChat(ctx context.Context, messages []any, maxCompletionTokens *int, reasoningEffort, sessionID string, search *SearchOptions, files *FileOptions, yield func(map[string]any) error) error {
 	return c.post(ctx, "/chat/completions",
-		c.body(messages, maxCompletionTokens, reasoningEffort, true, sessionID, search, files),
+		c.body(messages, maxCompletionTokens, reasoningEffort, true, sessionID, search, files, nil),
+		yield)
+}
+
+// StreamChatTools is StreamChat with function tools attached.
+func (c *Client) StreamChatTools(ctx context.Context, messages []any, maxCompletionTokens *int, reasoningEffort, sessionID string, search *SearchOptions, files *FileOptions, tools []Tool, yield func(map[string]any) error) error {
+	return c.post(ctx, "/chat/completions",
+		c.body(messages, maxCompletionTokens, reasoningEffort, true, sessionID, search, files, tools),
 		yield)
 }
 
@@ -121,7 +157,7 @@ func (c *Client) StreamChat(ctx context.Context, messages []any, maxCompletionTo
 func (c *Client) Complete(ctx context.Context, messages []any, maxCompletionTokens *int, reasoningEffort string) (map[string]any, error) {
 	var out map[string]any
 	err := c.post(ctx, "/chat/completions",
-		c.body(messages, maxCompletionTokens, reasoningEffort, false, "", nil, nil),
+		c.body(messages, maxCompletionTokens, reasoningEffort, false, "", nil, nil, nil),
 		func(ev map[string]any) error { out = ev; return nil })
 	if err != nil {
 		return nil, err
@@ -177,7 +213,8 @@ func (c *Client) post(ctx context.Context, path string, body map[string]any, yie
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return &Error{Msg: fmt.Sprintf("http_%d", resp.StatusCode), Code: resp.StatusCode}
+		snip, _ := io.ReadAll(io.LimitReader(resp.Body, 400))
+		return &Error{Msg: fmt.Sprintf("http_%d", resp.StatusCode), Code: resp.StatusCode, Detail: string(snip)}
 	}
 	if yield == nil {
 		_, _ = io.Copy(io.Discard, resp.Body)

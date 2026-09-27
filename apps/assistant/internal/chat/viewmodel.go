@@ -26,7 +26,7 @@ func (s *Service) messageView(locale i18n.Locale, m *store.Message, convID int64
 		}
 	}
 	if m.Role == store.RoleAssistant {
-		mv.BodyHTML = Render(orEllipsis(m.Content))
+		mv.BodyHTML = Render(orEllipsis(visibleContent(m.Content, shared)))
 		mv.Citations = StoredCitations(m.Citations)
 		if u := m.UsageMap(); u != nil {
 			if model, _ := u["model"].(string); model != "" {
@@ -34,6 +34,9 @@ func (s *Service) messageView(locale i18n.Locale, m *store.Message, convID int64
 			}
 			_, mv.Searched = u["search_engine"]
 			mv.Deep, _ = u["search_deep"].(bool)
+		}
+		if !shared {
+			mv.Actions = s.actionCards(locale, m)
 		}
 		if m.Failed() && !shared {
 			if inflight, err := s.Store.InflightExists(convID); err == nil && !inflight {

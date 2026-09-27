@@ -413,6 +413,14 @@ func (s *Server) Routes() *chi.Mux {
 	r.Get("/password/edit", s.handlePasswordEdit)
 	r.Patch("/password", s.handlePasswordUpdate)
 
+	r.Route("/apps", func(r chi.Router) {
+		r.Use(s.requireAuth, s.requireUnlock)
+		r.Get("/", s.handleApps)
+		r.Get("/{app}/connect", s.handleAppConnect)
+		r.Get("/{app}/callback", s.handleAppCallback)
+		r.Post("/{app}/disconnect", s.handleAppDisconnect)
+	})
+
 	r.Route("/conversations", func(r chi.Router) {
 		r.Use(s.requireAuth, s.requireUnlock)
 		r.Get("/", s.handleConversationsIndex)
@@ -428,6 +436,7 @@ func (s *Server) Routes() *chi.Mux {
 		r.Delete("/{id}/share", s.handleShareDestroy)
 		r.Post("/{id}/messages", s.handleMessagesCreate)
 		r.Post("/{id}/messages/{mid}/retry", s.handleMessagesRetry)
+		r.Post("/{id}/messages/{mid}/tool", s.handleToolDecision)
 		r.Post("/{id}/voice/transcribe", s.handleVoiceTranscribe)
 		r.Post("/{id}/voice/speak", s.handleVoiceSpeak)
 		r.Post("/{id}/voice/polish", s.handleVoicePolish)

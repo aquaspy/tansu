@@ -3,10 +3,12 @@
 package config
 
 import (
+	"encoding/hex"
 	"net"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Config struct {
@@ -49,6 +51,16 @@ type Config struct {
 	ChatWindowTokens     int
 	ChatKeepRecentTokens int
 	ChatReplyMaxTokens   int // 0 = no cap
+
+	// Sibling apps the Assistant can act on. Empty URL hides that app.
+	// AppsKey encrypts the per-user tokens; nil disables linking.
+	NotesURL    string
+	CalendarURL string
+	SpendURL    string
+	PeopleURL   string
+	AppsKey     []byte
+	TimeZone    *time.Location
+	ToolModel   string
 }
 
 func Load() Config {
@@ -89,7 +101,39 @@ func Load() Config {
 		ChatWindowTokens:     intEnv("CHAT_WINDOW_TOKENS", 150000),
 		ChatKeepRecentTokens: intEnv("CHAT_KEEP_RECENT_TOKENS", 32000),
 		ChatReplyMaxTokens:   intEnv("CHAT_REPLY_MAX_TOKENS", 0),
+
+		NotesURL:    strings.TrimRight(strings.TrimSpace(os.Getenv("KURA_NOTES_URL")), "/"),
+		CalendarURL: strings.TrimRight(strings.TrimSpace(os.Getenv("KURA_CALENDAR_URL")), "/"),
+		SpendURL:    strings.TrimRight(strings.TrimSpace(os.Getenv("KURA_SPEND_URL")), "/"),
+		PeopleURL:   strings.TrimRight(strings.TrimSpace(os.Getenv("KURA_PEOPLE_URL")), "/"),
+		AppsKey:     decodeKey(os.Getenv("KURA_APPS_KEY")),
+		TimeZone:    loadZone(os.Getenv("KURA_TIMEZONE")),
+		ToolModel:   strings.TrimSpace(os.Getenv("KURA_TOOL_MODEL")),
 	}
+}
+
+func decodeKey(raw string) []byte {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	b, err := hex.DecodeString(raw)
+	if err != nil || len(b) != 32 {
+		return nil
+	}
+	return b
+}
+
+func loadZone(name string) *time.Location {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		name = "America/Sao_Paulo"
+	}
+	loc, err := time.LoadLocation(name)
+	if err != nil {
+		loc, _ = time.LoadLocation("America/Sao_Paulo")
+	}
+	return loc
 }
 
 // AccountEnabled reports whether Kura Account SSO is configured.

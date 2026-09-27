@@ -106,6 +106,7 @@ var strings_ = map[Locale]map[string]string{
 		"titles.lock":     "Unlock · TansuNotes",
 		"titles.shared":   "%{title} · TansuNotes",
 		"titles.tokens":   "API tokens · TansuNotes",
+		"titles.agent":    "Link Assistant · TansuNotes",
 
 		"api.invalid_folder": "Pick a folder to clear.",
 
@@ -124,6 +125,12 @@ var strings_ = map[Locale]map[string]string{
 		"tokens.revoked":          "Token revoked.",
 		"tokens.name_blank":       "Name can't be blank.",
 		"tokens.too_many":         "Ten tokens is enough. Revoke one first.",
+
+		"agent.title":      "Link Tansu Assistant",
+		"agent.lede":       "Tansu Assistant will read and change everything in this account, including deleting it. It can do that even while this app is locked. Text it reads is sent to the model, the same way a chat message is.",
+		"agent.session":    "This session: %{email}",
+		"agent.confirm":    "Allow",
+		"agent.bad_request": "This link is not valid.",
 
 		"auth.sign_in":              "Sign in",
 		"auth.sign_in_lede":         "Your notes live on this server. Sign in to open them.",
@@ -223,6 +230,7 @@ var strings_ = map[Locale]map[string]string{
 		"titles.lock":     "Desbloquear · TansuNotes",
 		"titles.shared":   "%{title} · TansuNotes",
 		"titles.tokens":   "Tokens de API · TansuNotes",
+		"titles.agent":    "Ligar o Assistant · TansuNotes",
 
 		"api.invalid_folder": "Escolha uma pasta para limpar.",
 
@@ -241,6 +249,12 @@ var strings_ = map[Locale]map[string]string{
 		"tokens.revoked":          "Token revogado.",
 		"tokens.name_blank":       "Nome não pode ficar em branco.",
 		"tokens.too_many":         "Dez tokens bastam. Revogue um antes.",
+
+		"agent.title":       "Ligar o Tansu Assistant",
+		"agent.lede":        "O Tansu Assistant vai ler e alterar tudo nesta conta, inclusive apagar. Ele faz isso mesmo com este app trancado. O texto que ele ler segue para o modelo, como uma mensagem de chat.",
+		"agent.session":     "Esta sessão: %{email}",
+		"agent.confirm":     "Permitir",
+		"agent.bad_request": "Este link não é válido.",
 
 		"auth.sign_in":              "Entrar",
 		"auth.sign_in_lede":         "As notas ficam neste servidor. Entre para abri-las.",

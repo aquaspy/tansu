@@ -152,6 +152,7 @@ var strings_ = map[Locale]map[string]string{
 		"titles.password": "Change password · TansuPeople",
 		"titles.lock":     "Unlock · TansuPeople",
 		"titles.tokens":   "API tokens · TansuPeople",
+		"titles.agent":    "Link Assistant · TansuPeople",
 
 		"tokens.title":            "API tokens",
 		"tokens.lede":             "Tokens let AI agents and other apps manage your people through the API. A token has full access to your cards, and keeps working while the app is locked. Treat it like a password.",
@@ -168,6 +169,12 @@ var strings_ = map[Locale]map[string]string{
 		"tokens.revoked":          "Token revoked.",
 		"tokens.name_blank":       "Name can't be blank.",
 		"tokens.too_many":         "Ten tokens is enough. Revoke one first.",
+
+		"agent.title":       "Link Tansu Assistant",
+		"agent.lede":        "Tansu Assistant will read and change everything in this account, including deleting it. It can do that even while this app is locked. Text it reads is sent to the model, the same way a chat message is.",
+		"agent.session":     "This session: %{email}",
+		"agent.confirm":     "Allow",
+		"agent.bad_request": "This link is not valid.",
 
 		"auth.sign_in":              "Sign in",
 		"auth.sign_in_lede":         "Your people live on this server. Sign in to open them.",
@@ -309,6 +316,7 @@ var strings_ = map[Locale]map[string]string{
 		"titles.password": "Mudar senha · TansuPeople",
 		"titles.lock":     "Desbloquear · TansuPeople",
 		"titles.tokens":   "Tokens de API · TansuPeople",
+		"titles.agent":    "Ligar o Assistant · TansuPeople",
 
 		"tokens.title":            "Tokens de API",
 		"tokens.lede":             "Tokens permitem que agentes de IA e outros apps gerenciem suas pessoas pela API. Um token tem acesso total aos cards e continua valendo com o app bloqueado. Trate como uma senha.",
@@ -325,6 +333,12 @@ var strings_ = map[Locale]map[string]string{
 		"tokens.revoked":          "Token revogado.",
 		"tokens.name_blank":       "Nome não pode ficar em branco.",
 		"tokens.too_many":         "Dez tokens bastam. Revogue um antes.",
+
+		"agent.title":       "Ligar o Tansu Assistant",
+		"agent.lede":        "O Tansu Assistant vai ler e alterar tudo nesta conta, inclusive apagar. Ele faz isso mesmo com este app trancado. O texto que ele ler segue para o modelo, como uma mensagem de chat.",
+		"agent.session":     "Esta sessão: %{email}",
+		"agent.confirm":     "Permitir",
+		"agent.bad_request": "Este link não é válido.",
 
 		"auth.sign_in":              "Entrar",
 		"auth.sign_in_lede":         "Suas pessoas ficam neste servidor. Entre para abri-las.",

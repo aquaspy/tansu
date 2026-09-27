@@ -11,10 +11,11 @@ const (
 	RoleUser      = "user"
 	RoleAssistant = "assistant"
 
-	StatusPending   = "pending"
-	StatusStreaming = "streaming"
-	StatusComplete  = "complete"
-	StatusFailed    = "failed"
+	StatusPending    = "pending"
+	StatusStreaming  = "streaming"
+	StatusComplete   = "complete"
+	StatusFailed     = "failed"
+	StatusConfirming = "confirming"
 )
 
 type Message struct {
@@ -29,6 +30,7 @@ type Message struct {
 	Citations      string // JSON array or ""
 	Raw            string // JSON object or ""
 	TokenUsage     string // JSON object or ""
+	ToolTrace      string // JSON object or ""
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 
@@ -38,11 +40,11 @@ type Message struct {
 
 func scanMessage(row interface{ Scan(...any) error }) (*Message, error) {
 	m := &Message{}
-	var status, content, errStr, citations, raw, usage sql.NullString
+	var status, content, errStr, citations, raw, usage, trace sql.NullString
 	var web, deep int
 	var created, updated string
 	err := row.Scan(&m.ID, &m.ConversationID, &m.Role, &status, &content, &errStr,
-		&web, &deep, &citations, &raw, &usage, &created, &updated)
+		&web, &deep, &citations, &raw, &usage, &trace, &created, &updated)
 	if err != nil {
 		return nil, err
 	}
@@ -54,13 +56,14 @@ func scanMessage(row interface{ Scan(...any) error }) (*Message, error) {
 	m.Citations = citations.String
 	m.Raw = raw.String
 	m.TokenUsage = usage.String
+	m.ToolTrace = trace.String
 	m.CreatedAt, _ = parseTime(created)
 	m.UpdatedAt, _ = parseTime(updated)
 	return m, nil
 }
 
 const messageCols = `id, conversation_id, role, status, content, error, web,
-	deep, citations, raw, token_usage, created_at, updated_at`
+	deep, citations, raw, token_usage, tool_trace, created_at, updated_at`
 
 func nullIfEmpty(s string) any {
 	if s == "" {
@@ -170,7 +173,7 @@ func (s *Store) Transcript(conversationID int64) ([]*Message, error) {
 	rows, err := s.db.Query(`SELECT `+messageCols+` FROM messages
 		WHERE conversation_id = ?
 		AND (role = 'user'
-			OR (role = 'assistant' AND status IN ('pending', 'streaming', 'failed'))
+			OR (role = 'assistant' AND status IN ('pending', 'streaming', 'failed', 'confirming'))
 			OR (role = 'assistant' AND status = 'complete' AND content IS NOT NULL AND content != ''))
 		ORDER BY id`, conversationID)
 	if err != nil {
@@ -233,7 +236,7 @@ func (s *Store) CompactRows(conversationID, assistantID, throughID int64) ([]*Me
 	rows, err := s.db.Query(`SELECT `+messageCols+` FROM messages
 		WHERE conversation_id = ? AND id <= ? AND (? = 0 OR id > ?)
 		AND (role = 'user'
-			OR (role = 'assistant' AND status IN ('pending', 'streaming', 'failed'))
+			OR (role = 'assistant' AND status IN ('pending', 'streaming', 'failed', 'confirming'))
 			OR (role = 'assistant' AND status = 'complete' AND content IS NOT NULL AND content != ''))
 		ORDER BY id`, conversationID, assistantID, throughID, throughID)
 	if err != nil {
@@ -345,6 +348,12 @@ func (s *Store) CompleteAssistant(id int64, c Completion) error {
 		WHERE id = ?`,
 		c.Content, nullIfEmpty(c.Citations), nullIfEmpty(c.TokenUsage),
 		nullIfEmpty(c.Raw), nullIfEmpty(c.Error), now(), id)
+	return err
+}
+
+func (s *Store) SetTokenUsage(id int64, usage string) error {
+	_, err := s.db.Exec(`UPDATE messages SET token_usage = ?, updated_at = ? WHERE id = ?`,
+		nullIfEmpty(usage), now(), id)
 	return err
 }
 

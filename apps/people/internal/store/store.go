@@ -74,6 +74,15 @@ CREATE TABLE IF NOT EXISTS api_tokens (
   updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS index_api_tokens_on_user_id ON api_tokens(user_id);
+
+CREATE TABLE IF NOT EXISTS agent_grants (
+  code_digest TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  challenge TEXT NOT NULL,
+  token TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

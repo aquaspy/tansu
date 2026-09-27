@@ -26,12 +26,14 @@ func runServe(cfg config.Config) error {
 	// every 5 minutes.
 	_ = st.DeleteStaleSessions(store.SessionMaxAge)
 	_ = st.DeleteStaleKuraLogins(store.KuraLoginTTL)
+	_ = st.DeleteStaleAgentGrants()
 	go func() {
 		t := time.NewTicker(5 * time.Minute)
 		defer t.Stop()
 		for range t.C {
 			_ = st.DeleteStaleSessions(store.SessionMaxAge)
 			_ = st.DeleteStaleKuraLogins(store.KuraLoginTTL)
+	_ = st.DeleteStaleAgentGrants()
 		}
 	}()
 

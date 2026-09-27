@@ -226,7 +226,7 @@ func methodOverride(next http.Handler) http.Handler {
 // token API is exempt: it never reads cookies, like ActionController::API.
 func (s *Server) csrfMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/api/") {
+		if strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/agent/exchange" {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -437,8 +437,13 @@ func (s *Server) Routes() *chi.Mux {
 		r.Post("/{id}/delete", s.handleTokensDestroy)
 	})
 
+	r.Get("/agent/connect", s.handleAgentConnect)
+	r.Post("/agent/connect", s.handleAgentConnectCreate)
+	r.Post("/agent/exchange", s.handleAgentExchange)
+
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(s.requireAPIToken)
+		r.Delete("/token", s.handleAPITokenDestroy)
 		r.Get("/people", s.handleAPIPeopleIndex)
 		r.Post("/people", s.handleAPIPeopleCreate)
 		r.Get("/people/{id}", s.handleAPIPeopleShow)

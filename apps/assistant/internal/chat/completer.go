@@ -12,6 +12,7 @@ import (
 	"github.com/aquasp/kurachat/internal/i18n"
 	"github.com/aquasp/kurachat/internal/openrouter"
 	"github.com/aquasp/kurachat/internal/store"
+	"github.com/aquasp/kurachat/internal/suite"
 	"github.com/aquasp/kurachat/internal/views"
 )
 
@@ -71,6 +72,13 @@ type Service struct {
 	APIKey  string
 	// Catalog answers vision-capability questions; nil fails open.
 	Catalog *openrouter.Catalog
+
+	// SuiteApps and SuiteKey enable sibling actions. An empty key
+	// leaves the assistant as chat only.
+	SuiteApps []suite.App
+	SuiteKey  []byte
+	Zone      *time.Location
+	ToolModel string
 
 	// NewClient builds the provider client; override in tests.
 	NewClient func(model string) (LLMClient, error)
@@ -185,6 +193,41 @@ func (s *Service) Run(assistantID int64, locale i18n.Locale) {
 	client, err := s.client(model)
 	if err != nil {
 		s.fail(conv.ID, assistant, err, locale)
+		return
+	}
+	if links, _ := s.readyLinks(conv.UserID); len(links) > 0 {
+		if s.ToolModel != "" {
+			for _, m := range s.Config.Models {
+				if m == s.ToolModel {
+					model = s.ToolModel
+					break
+				}
+			}
+		}
+		client, err = s.client(model)
+		if err != nil {
+			s.fail(conv.ID, assistant, err, locale)
+			return
+		}
+		var maxOut *int
+		if s.Config.ReplyMaxTokens > 0 {
+			maxOut = &s.Config.ReplyMaxTokens
+		}
+		mode, maxResults := s.Config.Search.Mode, s.Config.Search.MaxResults
+		if deep {
+			mode, maxResults = s.Config.Search.DeepMode, s.Config.Search.DeepMaxResults
+		}
+		var searchOpts *openrouter.SearchOptions
+		if search {
+			searchOpts = &openrouter.SearchOptions{Engine: s.Config.Search.Engine, Mode: mode, MaxResults: maxResults}
+		}
+		var fileOpts *openrouter.FileOptions
+		if hasPDF {
+			fileOpts = &openrouter.FileOptions{Engine: s.Config.PDFEngine}
+		}
+		s.runAgent(ctx, conv, assistant, locale, client, input, maxOut, effort, searchOpts, fileOpts, search, deep, mode, maxResults)
+		s.autoTitle(conv, locale)
+		s.maybeCompact(conv, assistant, locale)
 		return
 	}
 	var maxOut *int

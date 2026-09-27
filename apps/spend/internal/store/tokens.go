@@ -159,3 +159,47 @@ func (s *Store) DeleteToken(userID, id int64) error {
 	_, err := s.db.Exec(`DELETE FROM api_tokens WHERE id = ? AND user_id = ?`, id, userID)
 	return err
 }
+
+// AssistantTokenName is the single token Tansu Assistant holds for this user.
+const AssistantTokenName = "Tansu Assistant"
+
+// MintAssistantToken revokes every token with AssistantTokenName for this
+// user and inserts a fresh one, in one transaction. A double submit leaves
+// a single row.
+func (s *Store) MintAssistantToken(userID int64) (*APIToken, string, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, "", err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`DELETE FROM api_tokens WHERE user_id = ? AND name = ?`,
+		userID, AssistantTokenName); err != nil {
+		return nil, "", err
+	}
+	var count int
+	if err := tx.QueryRow(`SELECT COUNT(*) FROM api_tokens WHERE user_id = ?`, userID).Scan(&count); err != nil {
+		return nil, "", err
+	}
+	if count >= TokenCap {
+		return nil, "", ErrTokenTooMany
+	}
+	raw, err := GenerateRawToken()
+	if err != nil {
+		return nil, "", err
+	}
+	ts := now()
+	res, err := tx.Exec(`INSERT INTO api_tokens
+		(user_id, name, prefix, token_digest, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)`,
+		userID, AssistantTokenName, raw[:12], DigestToken(raw), ts, ts)
+	if err != nil {
+		return nil, "", err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, "", err
+	}
+	id, _ := res.LastInsertId()
+	tok := &APIToken{ID: id, UserID: userID, Name: AssistantTokenName, Prefix: raw[:12]}
+	tok.CreatedAt, _ = parseTime(ts)
+	return tok, raw, nil
+}

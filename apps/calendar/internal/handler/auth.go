@@ -129,7 +129,7 @@ func (s *Server) handleLoginCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.setSessionCookie(w, r, sess.ID)
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, s.takeAgentReturn(w, r), http.StatusSeeOther)
 }
 
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
@@ -182,7 +182,7 @@ func (s *Server) handleUnlockCreate(w http.ResponseWriter, r *http.Request) {
 		_ = s.Store.UnlockSession(sess.ID)
 	}
 	s.setSuiteLock(w, r, false)
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, s.takeAgentReturn(w, r), http.StatusSeeOther)
 }
 
 func (s *Server) handleLock(w http.ResponseWriter, r *http.Request) {

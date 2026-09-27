@@ -11,8 +11,8 @@ ACCT=http://127.0.0.1:3206
 SECRET=e2e6-secret-0123456789
 
 # app dir -> "binary:port" (dirs are new names, binary/client ids stay kura*)
-APPS="account:kuraaccount:3206 notes:kuranotes:3200 assistant:kurachat:3201 calendar:kuracalendar:3203 spend:kuraspend:3204 people:kurapeople:3205 home:kurahome:3207"
-CLIENTS="notes:kuranotes:3200 assistant:kurachat:3201 calendar:kuracalendar:3203 spend:kuraspend:3204 people:kurapeople:3205 home:kurahome:3207"
+APPS="account:kuraaccount:3206 notes:kuranotes:3200 assistant:kurachat:3201 calendar:kuracalendar:3203 spend:kuraspend:3204 people:kurapeople:3205"
+CLIENTS="notes:kuranotes:3200 assistant:kurachat:3201 calendar:kuracalendar:3203 spend:kuraspend:3204 people:kurapeople:3205"
 
 build_all() {
   mkdir -p "$WORK"
@@ -103,9 +103,9 @@ run_test() {
     fi
   done
   curl -s -b $WORK/jarA $ACCT/ -o $WORK/hub.html -w "hub: %{http_code}\n"
-  LIT=$(grep -o 'class="tail lit"' $WORK/hub.html | wc -l)
-  echo "lit tails: $LIT (want 6)"
-  [ "$LIT" = "6" ] || FAIL=1
+  LIT=$(grep -o 'class="drawer lit"' $WORK/hub.html | wc -l)
+  echo "lit drawers: $LIT (want 5)"
+  [ "$LIT" = "5" ] || FAIL=1
   # Standalone regression, live: password signup on notes with a local user.
   rm -f $WORK/jar-local
   curl -s -c $WORK/jar-local http://127.0.0.1:3200/signup -o /dev/null
@@ -118,7 +118,7 @@ run_test() {
   BTN=$(curl -s http://127.0.0.1:3200/login | grep -c "login/kura" || true)
   echo "standalone signup: $S home: $H kura-button-present: $BTN"
   [ "$S" = "303" ] && [ "$H" = "200" ] && [ "$BTN" -ge 1 ] || FAIL=1
-  if [ "$FAIL" = "0" ]; then echo "E2E-6: ALL GREEN"; else echo "E2E-6: FAILURES"; fi
+  if [ "$FAIL" = "0" ]; then echo "E2E-5: ALL GREEN"; else echo "E2E-5: FAILURES"; fi
   return $FAIL
 }
 

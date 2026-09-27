@@ -26,7 +26,7 @@ TansuSpend goes the other direction.
 - **Honest about privacy.** Spend sits as plaintext in SQLite on *your* machine. There is no end-to-end encryption theater — the trust boundary is the server you run.
 - **Small enough to understand.** Go, SQLite, a service worker. If something breaks at 2 a.m., you can actually read the code.
 
-It is part of the **Tansu** family: the same calm shell as [Tansu Assistant](../assistant) — cookie auth, idle lock (per device), PWA offline reads, and Compose-on-localhost — plus [TansuHome](../home), [TansuCalendar](../calendar), and [TansuNotes](../notes). Each app keeps its own database and volume on purpose.
+It is part of the **Tansu** family: the same calm shell as [Tansu Assistant](../assistant) — cookie auth, idle lock (per device), PWA offline reads, and Compose-on-localhost — plus [TansuCalendar](../calendar), [TansuNotes](../notes), and [TansuPeople](../people). Each app keeps its own database and volume on purpose.
 
 ---
 
@@ -214,7 +214,6 @@ go vet ./...
 | App | Role |
 | --- | --- |
 | [Tansu Assistant](../assistant) | Private chat with your model |
-| [TansuHome](../home) | Quiet start-page / homepage |
 | [TansuCalendar](../calendar) | Personal calendar & birthdays |
 | [TansuNotes](../notes) | Simple private notes |
 

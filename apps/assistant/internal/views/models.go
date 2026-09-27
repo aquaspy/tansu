@@ -36,6 +36,24 @@ type MessageView struct {
 	CanRetry   bool   // failed && conversation not inflight
 	Shared     bool   // shared page: no retry, no status polling
 	ShareToken string
+	Actions    []ActionCard
+}
+
+// AppRow is one sibling on the Apps page.
+type AppRow struct {
+	Name   string
+	Label  string
+	State  string // linked, off, broken, unconfigured, nokey
+	Email  string
+	Prefix string
+}
+
+// ActionCard is one sibling action under an assistant message.
+type ActionCard struct {
+	CallID  string
+	Label   string
+	Href    string
+	Confirm bool
 }
 
 // ConversationDetail is the open chat in the editor column.

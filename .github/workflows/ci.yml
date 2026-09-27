@@ -30,9 +30,6 @@ jobs:
           - app: people
             cmd: ./cmd/kurapeople
             bin: kurapeople
-          - app: home
-            cmd: ./cmd/kurahome
-            bin: kurahome
 
     defaults:
       run:

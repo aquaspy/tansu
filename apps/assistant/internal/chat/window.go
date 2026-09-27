@@ -97,12 +97,9 @@ func (s *Service) visionNotice(locale i18n.Locale, dropped int) any {
 // cached prefix survives web-search toggles; conditional notes ride at
 // the end instead (turnNote, visionNotice).
 func (s *Service) prefixMessages(conv *store.Conversation, locale i18n.Locale) []any {
-	loc, err := time.LoadLocation("America/Sao_Paulo")
-	if err != nil {
-		loc = time.UTC
-	}
+	loc := s.zone()
 	now := time.Now().In(loc)
-	date := "Current date: " + now.Format("2006-01-02 Monday") + " (America/Sao_Paulo)."
+	date := "Current date: " + now.Format("2006-01-02 Monday") + " (" + loc.String() + ")."
 	out := []any{
 		map[string]any{"role": "system", "content": i18n.T(locale, "chat.system_prompt")},
 		map[string]any{"role": "system", "content": date},

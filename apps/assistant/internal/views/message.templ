@@ -24,9 +24,11 @@ templ ArticleInner(p Page, m *MessageView, convID int64) {
 	if m.Msg.Role == store.RoleUser {
 		@UserContent(p, m, convID)
 	} else if m.Msg.Inflight() {
+		@ActionCards(p, m, convID)
 		@MsgBody(m.Msg.ID, m.BodyHTML, true)
 		<p class="msg-status" id={ MsgStatusID(m.Msg.ID) } sse-swap={ StatusEvent(m.Msg.ID) }>{ p.T("chat.thinking") }</p>
 	} else if m.Msg.Failed() {
+		@ActionCards(p, m, convID)
 		<p class="msg-error">{ p.T("chat.failed") }</p>
 		if m.CanRetry && !m.Shared {
 			<form
@@ -41,9 +43,34 @@ templ ArticleInner(p Page, m *MessageView, convID int64) {
 			</form>
 		}
 	} else {
+		@ActionCards(p, m, convID)
 		@MsgBody(m.Msg.ID, m.BodyHTML, false)
 		@MsgMeta(p, m)
 		@MsgTools(p, m)
+	}
+}
+
+templ ActionCards(p Page, m *MessageView, convID int64) {
+	if len(m.Actions) > 0 && !m.Shared {
+		<ul class="action-cards">
+			for _, a := range m.Actions {
+				<li class="action-card">
+					if a.Href != "" {
+						<a href={ templ.SafeURL(a.Href) }>{ a.Label }</a>
+					} else {
+						<span>{ a.Label }</span>
+					}
+					if a.Confirm {
+						<form action={ templ.SafeURL(fmt.Sprintf("/conversations/%d/messages/%d/tool", convID, m.Msg.ID)) } method="post">
+							<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+							<input type="hidden" name="call_id" value={ a.CallID }/>
+							<button type="submit" name="decision" value="approve" class="btn-dialog danger">{ p.T("chat.confirm_delete") }</button>
+							<button type="submit" name="decision" value="cancel" class="btn-dialog">{ p.T("app.cancel") }</button>
+						</form>
+					}
+				</li>
+			}
+		</ul>
 	}
 }
 

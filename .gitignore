@@ -1,4 +1,4 @@
-# Tansu monorepo ignores (all seven apps).
+# Tansu monorepo ignores (all six apps).
 #
 # Per-app rules live here, not in apps/* — one place to look.
 
@@ -18,7 +18,6 @@ apps/assistant/kurachat
 apps/calendar/kuracalendar
 apps/spend/kuraspend
 apps/people/kurapeople
-apps/home/kurahome
 
 # Built CSS (generated from input.css by the Tailwind CLI).
 apps/*/web/static/css/app.css

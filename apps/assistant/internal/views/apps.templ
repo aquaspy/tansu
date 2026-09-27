@@ -1,0 +1,42 @@
+package views
+
+templ AppsPage(p Page, rows []AppRow) {
+	<section class="auth-card">
+		if p.Notice != "" {
+			<p class="flash flash-notice" role="status">{ p.Notice }</p>
+		}
+		if p.Alert != "" {
+			<p class="flash flash-alert" role="alert">{ p.Alert }</p>
+		}
+		@Wordmark()
+		<h1>{ p.T("apps.title") }</h1>
+		<p class="lede">{ p.T("apps.lede") }</p>
+		<ul class="app-rows">
+			for _, row := range rows {
+				<li class="app-row">
+					<strong>{ row.Label }</strong>
+					if row.State == "linked" {
+						<span>{ p.T("apps.linked", "email", row.Email) }</span>
+						if row.Prefix != "" {
+							<span class="app-prefix">{ row.Prefix }</span>
+						}
+						<form action={ "/apps/" + row.Name + "/disconnect" } method="post">
+							<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+							<button type="submit" class="btn-dialog">{ p.T("apps.disconnect") }</button>
+						</form>
+					} else if row.State == "off" || row.State == "broken" {
+						if row.State == "broken" {
+							<span>{ p.T("apps.broken") }</span>
+						}
+						<a class="btn-primary" href={ "/apps/" + row.Name + "/connect" }>{ p.T("apps.connect") }</a>
+					} else if row.State == "nokey" {
+						<span>{ p.T("apps.nokey") }</span>
+					} else {
+						<span>{ p.T("apps.unconfigured") }</span>
+					}
+				</li>
+			}
+		</ul>
+		<p><a href="/">{ p.T("apps.back") }</a></p>
+	</section>
+}

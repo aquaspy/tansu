@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS messages (
   citations TEXT,
   raw TEXT,
   token_usage TEXT,
+  tool_trace TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -65,6 +66,24 @@ CREATE INDEX IF NOT EXISTS index_messages_on_conversation_id ON messages(convers
 CREATE INDEX IF NOT EXISTS index_messages_on_conversation_id_and_id ON messages(conversation_id, id);
 CREATE UNIQUE INDEX IF NOT EXISTS index_messages_one_inflight_per_conversation
   ON messages(conversation_id) WHERE role = 'assistant' AND status IN ('pending', 'streaming');
+CREATE TABLE IF NOT EXISTS app_links (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  app TEXT NOT NULL,
+  token TEXT NOT NULL,
+  token_prefix TEXT NOT NULL DEFAULT '',
+  email TEXT NOT NULL DEFAULT '',
+  account_sub TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, app)
+);
+CREATE TABLE IF NOT EXISTS app_connects (
+  state TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  app TEXT NOT NULL,
+  verifier TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -145,6 +164,7 @@ func migrate(db *sql.DB) error {
 		},
 		"messages": {
 			{"deep", `ALTER TABLE messages ADD COLUMN deep INTEGER NOT NULL DEFAULT 0`},
+			{"tool_trace", `ALTER TABLE messages ADD COLUMN tool_trace TEXT`},
 		},
 		"users": {
 			{"account_sub", `ALTER TABLE users ADD COLUMN account_sub TEXT NOT NULL DEFAULT ''`},

@@ -26,7 +26,7 @@ TansuPeople is the second kind.
 - **No sync cosplay.** If you need CardDAV and phone sync, use something built for that. This app is for *you*, on a VPS you trust.
 - **Same Tansu shell.** Auth, idle lock (per device), PWA offline card views, Compose on localhost.
 
-Sister apps: [TansuNotes](../notes), [Tansu Assistant](../assistant), [TansuHome](../home), [TansuSpend](../spend), [TansuCalendar](../calendar). Each keeps its own volume — your people should not share a database with chat history.
+Sister apps: [TansuNotes](../notes), [Tansu Assistant](../assistant), [TansuSpend](../spend), [TansuCalendar](../calendar). Each keeps its own volume — your people should not share a database with chat history.
 
 ---
 
@@ -62,7 +62,7 @@ Edit `.env`. At minimum:
 KURA_HOST=people.gettansu.com
 SIGNUP_ENABLED=true       # first account, then flip to false
 FORCE_SSL=false           # true once HTTPS terminates in front
-BIND=127.0.0.1:3005       # 3005 if Assistant/Notes/Home/Calendar/Spend took the rest
+BIND=127.0.0.1:3005       # 3005 if the other apps already took the lower ports
 ```
 
 Then:
@@ -197,7 +197,6 @@ go vet ./...
 | --- | --- |
 | [TansuNotes](../notes) | Private notes |
 | [Tansu Assistant](../assistant) | Private chat with your model |
-| [TansuHome](../home) | Quiet start-page / homepage |
 | [TansuSpend](../spend) | Subscriptions & daily spend |
 | [TansuCalendar](../calendar) | Personal calendar & birthdays |
 

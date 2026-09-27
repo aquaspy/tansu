@@ -170,6 +170,7 @@ var strings_ = map[Locale]map[string]string{
 		"titles.password": "Change password · TansuCalendar",
 		"titles.lock":     "Unlock · TansuCalendar",
 		"titles.tokens":   "API tokens · TansuCalendar",
+		"titles.agent":    "Link Assistant · TansuCalendar",
 
 		"api.invalid_date": "Dates must use YYYY-MM-DD.",
 
@@ -188,6 +189,12 @@ var strings_ = map[Locale]map[string]string{
 		"tokens.revoked":          "Token revoked.",
 		"tokens.name_blank":       "Name can't be blank.",
 		"tokens.too_many":         "Ten tokens is enough. Revoke one first.",
+
+		"agent.title":       "Link Tansu Assistant",
+		"agent.lede":        "Tansu Assistant will read and change everything in this account, including deleting it. It can do that even while this app is locked. Text it reads is sent to the model, the same way a chat message is.",
+		"agent.session":     "This session: %{email}",
+		"agent.confirm":     "Allow",
+		"agent.bad_request": "This link is not valid.",
 
 		"auth.sign_in":              "Sign in",
 		"auth.sign_in_lede":         "Your calendar lives on this server. Sign in to open it.",
@@ -375,6 +382,7 @@ var strings_ = map[Locale]map[string]string{
 		"titles.password": "Mudar senha · TansuCalendar",
 		"titles.lock":     "Desbloquear · TansuCalendar",
 		"titles.tokens":   "Tokens de API · TansuCalendar",
+		"titles.agent":    "Ligar o Assistant · TansuCalendar",
 
 		"api.invalid_date": "As datas devem usar AAAA-MM-DD.",
 
@@ -393,6 +401,12 @@ var strings_ = map[Locale]map[string]string{
 		"tokens.revoked":          "Token revogado.",
 		"tokens.name_blank":       "Nome não pode ficar em branco.",
 		"tokens.too_many":         "Dez tokens bastam. Revogue um antes.",
+
+		"agent.title":       "Ligar o Tansu Assistant",
+		"agent.lede":        "O Tansu Assistant vai ler e alterar tudo nesta conta, inclusive apagar. Ele faz isso mesmo com este app trancado. O texto que ele ler segue para o modelo, como uma mensagem de chat.",
+		"agent.session":     "Esta sessão: %{email}",
+		"agent.confirm":     "Permitir",
+		"agent.bad_request": "Este link não é válido.",
 
 		"auth.sign_in":              "Entrar",
 		"auth.sign_in_lede":         "Seu calendário fica neste servidor. Entre para abri-lo.",
