@@ -1582,7 +1582,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
   line-height: 1.55;
   color: var(--muted);
 }
-.mode-hero .app-status { margin-top: 0.7rem; }
+.mode-hero .app-status { margin-top: 0.7rem; max-width: 100%; }
+.mode-hero .app-status-text { white-space: normal; overflow: visible; text-overflow: unset; }
 .mode-hero-note {
   width: 100%;
   margin: 0.7rem 0 0;
