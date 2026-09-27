@@ -421,6 +421,12 @@ func (s *Server) Routes() *chi.Mux {
 		r.Post("/{app}/disconnect", s.handleAppDisconnect)
 	})
 
+	r.Route("/anonymous", func(r chi.Router) {
+		r.Use(s.requireAuth, s.requireUnlock)
+		r.Get("/", s.handleAnonymousShow)
+		r.Post("/complete", s.handleAnonymousComplete)
+	})
+
 	r.Route("/conversations", func(r chi.Router) {
 		r.Use(s.requireAuth, s.requireUnlock)
 		r.Get("/", s.handleConversationsIndex)

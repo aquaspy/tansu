@@ -23,19 +23,45 @@ type Conversation struct {
 	Effort              string // sticky reasoning effort, "" = server default
 	VoiceReadAloud      bool   // sticky: speak every reply
 	VoiceAutoSend       bool   // sticky: mic sends right away (false = stage)
+	Mode                string // assistant (default) or chat; anonymous is never stored
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
+}
+
+const (
+	// ModeAssistant is the default persisted chat: sibling-app tools on.
+	ModeAssistant = "assistant"
+	// ModeChat is a persisted chat with no sibling-app tools.
+	ModeChat = "chat"
+	// ModeAnonymous is client-only. It must never be written to this table.
+	ModeAnonymous = "anonymous"
+)
+
+// NormalizeStoredMode keeps assistant or chat. Anything else, including
+// anonymous, becomes assistant so a crafted form cannot hide a thread
+// from the account or smuggle it into the anonymous path.
+func NormalizeStoredMode(mode string) string {
+	if strings.TrimSpace(mode) == ModeChat {
+		return ModeChat
+	}
+	return ModeAssistant
+}
+
+// AllowsTools reports whether this thread may call sibling apps.
+// Empty mode is the pre-migration default: Assistente.
+func (c *Conversation) AllowsTools() bool {
+	return c != nil && c.Mode != ModeChat && c.Mode != ModeAnonymous
 }
 
 func scanConversation(row interface {
 	Scan(...any) error
 }) (*Conversation, error) {
 	c := &Conversation{}
-	var summary, token, archived, model, effort, created, updated sql.NullString
+	var summary, token, archived, model, effort, mode, created, updated sql.NullString
 	var through sql.NullInt64
 	var web, deep, readAloud, autoSend int
 	err := row.Scan(&c.ID, &c.UserID, &c.Title, &summary, &through, &token, &archived,
-		&model, &web, &deep, &effort, &readAloud, &autoSend, &created, &updated)
+		&model, &web, &deep, &effort, &readAloud, &autoSend, &mode, &created, &updated)
 	if err != nil {
 		return nil, err
 	}
@@ -48,6 +74,10 @@ func scanConversation(row interface {
 	c.Effort = effort.String
 	c.VoiceReadAloud = readAloud != 0
 	c.VoiceAutoSend = autoSend != 0
+	c.Mode = mode.String
+	if c.Mode == "" {
+		c.Mode = ModeAssistant
+	}
 	if through.Valid {
 		c.SummarizedThroughID = through.Int64
 	}
@@ -58,7 +88,7 @@ func scanConversation(row interface {
 
 const conversationCols = `id, user_id, title, summary, summarized_through_id,
 	share_token, archived_at, model, web_search, deep_search, effort,
-	voice_read_aloud, voice_auto_send, created_at, updated_at`
+	voice_read_aloud, voice_auto_send, mode, created_at, updated_at`
 
 func (s *Store) CreateConversation(userID int64) (*Conversation, error) {
 	ts := now()
@@ -77,7 +107,13 @@ func (s *Store) FindConversation(userID, id int64) (*Conversation, error) {
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
-	return c, err
+	if err != nil {
+		return nil, err
+	}
+	if c.Mode == ModeAnonymous {
+		return nil, ErrNotFound
+	}
+	return c, nil
 }
 
 // GetConversation loads by id without a user scope (completer, events).
@@ -105,9 +141,9 @@ func (s *Store) FindConversationByShareToken(token string) (*Conversation, error
 // ListConversations returns the sidebar scope: newest first, optional
 // case-insensitive title filter with LIKE metacharacters escaped.
 func (s *Store) ListConversations(userID int64, query string) ([]*Conversation, error) {
-	q := `SELECT ` + conversationCols + ` FROM conversations WHERE user_id = ?`
+	q := `SELECT ` + conversationCols + ` FROM conversations WHERE user_id = ? AND mode != ?`
 	var args []any
-	args = append(args, userID)
+	args = append(args, userID, ModeAnonymous)
 	if strings.TrimSpace(query) != "" {
 		q += ` AND title LIKE ? ESCAPE '\'`
 		args = append(args, "%"+escapeLike(query)+"%")
@@ -134,11 +170,18 @@ func escapeLike(s string) string {
 	return r.Replace(s)
 }
 
-// OpenDraftFor returns the newest blank draft (no title, no share, no
-// messages), creating one when missing, and deletes the other blanks.
+// OpenDraftFor returns the newest blank Assistente draft.
+func (s *Store) OpenDraftFor(userID int64) (*Conversation, error) {
+	return s.OpenDraftForMode(userID, ModeAssistant)
+}
+
+// OpenDraftForMode returns the newest blank draft of mode (assistant or
+// chat), creating one when missing, and deletes the other blanks.
 // New drafts inherit the voice toggles and effort of the user's most
 // recent chat, so flipping them once sticks for future chats.
-func (s *Store) OpenDraftFor(userID int64) (*Conversation, error) {
+// Anonymous is not a stored mode; it is coerced to assistant.
+func (s *Store) OpenDraftForMode(userID int64, mode string) (*Conversation, error) {
+	mode = NormalizeStoredMode(mode)
 	tx, err := s.db.Begin()
 	if err != nil {
 		return nil, err
@@ -146,9 +189,9 @@ func (s *Store) OpenDraftFor(userID int64) (*Conversation, error) {
 	defer tx.Rollback()
 	var id int64
 	err = tx.QueryRow(`SELECT c.id FROM conversations c
-		WHERE c.user_id = ? AND c.title = '' AND c.share_token IS NULL
+		WHERE c.user_id = ? AND c.mode = ? AND c.title = '' AND c.share_token IS NULL
 		AND NOT EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id)
-		ORDER BY c.updated_at DESC, c.id DESC LIMIT 1`, userID).Scan(&id)
+		ORDER BY c.updated_at DESC, c.id DESC LIMIT 1`, userID, mode).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		ts := now()
 		readAloud, autoSend, effort := 0, 1, ""
@@ -157,8 +200,8 @@ func (s *Store) OpenDraftFor(userID int64) (*Conversation, error) {
 			ORDER BY updated_at DESC, id DESC LIMIT 1`, userID).
 			Scan(&readAloud, &autoSend, &effort)
 		res, err := tx.Exec(`INSERT INTO conversations
-			(user_id, title, voice_read_aloud, voice_auto_send, effort, created_at, updated_at)
-			VALUES (?, '', ?, ?, ?, ?, ?)`, userID, readAloud, autoSend, effort, ts, ts)
+			(user_id, title, mode, voice_read_aloud, voice_auto_send, effort, created_at, updated_at)
+			VALUES (?, '', ?, ?, ?, ?, ?, ?)`, userID, mode, readAloud, autoSend, effort, ts, ts)
 		if err != nil {
 			return nil, err
 		}

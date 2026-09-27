@@ -81,6 +81,7 @@ func newFlow(t *testing.T, mutate func(*config.Config)) *flow {
 			Model: cfg.OpenRouterModel, Models: cfg.OpenRouterModels,
 			Effort:       cfg.OpenRouterReasoningEffort,
 			WindowTokens: cfg.ChatWindowTokens, KeepRecentTokens: cfg.ChatKeepRecentTokens,
+			ShowModelControls: cfg.ShowModelControls,
 			Search: chat.SearchConfig{
 				Enabled: cfg.SearchEnabled, Engine: cfg.SearchEngine,
 				Mode: cfg.SearchMode, MaxResults: cfg.SearchMaxResults,
@@ -577,12 +578,15 @@ func TestWebParamIgnoredWhenDisabled(t *testing.T) {
 	body := mustGet(t, f, "/conversations/1")
 	mustNotContain(t, body, "search-picker")
 	mustNotContain(t, body, "model-picker")
-	mustContain(t, body, "effort-picker")
+	mustNotContain(t, body, "effort-picker")
+	mustContain(t, body, "mode-switch")
+	mustContain(t, body, "Assistente")
 }
 
 func TestModelPicker(t *testing.T) {
 	f := newFlow(t, func(c *config.Config) {
 		c.OpenRouterModels = []string{"openai/gpt-6-luna", "x-ai/grok-4.7"}
+		c.ShowModelControls = true
 	})
 	u := f.seedUser("you@x.com", "secret-ok")
 	conv, _ := f.store.CreateConversation(u.ID)
@@ -922,4 +926,74 @@ func TestCompletionEndToEnd(t *testing.T) {
 	if conv.Title != "Stub title" {
 		t.Fatalf("title = %q", conv.Title)
 	}
+}
+
+func TestModeSwitchStartsANewThread(t *testing.T) {
+	f := newFlow(t, nil)
+	u := f.seedUser("you@x.com", "secret-ok")
+	f.login("you@x.com", "secret-ok")
+	code, _, h := f.post("/conversations/", url.Values{"mode": {"chat"}}, nil)
+	if code != 303 {
+		t.Fatalf("create = %d", code)
+	}
+	chatURL := h.Get("Location")
+	body := mustGet(t, f, chatURL)
+	mustContain(t, body, "Conversa")
+	mustNotContain(t, body, "R$ 42.50")
+	mustNotContain(t, body, "example-chip")
+	conv, err := f.store.FindConversation(u.ID, 1)
+	if err != nil || conv.Mode != store.ModeChat {
+		t.Fatalf("mode = %+v err %v", conv, err)
+	}
+	hx := map[string]string{"HX-Request": "true"}
+	if code, _, _ := f.post(chatURL+"/messages", url.Values{"content": {"Oi"}}, hx); code != 200 {
+		t.Fatalf("message = %d", code)
+	}
+	code, _, h = f.post("/conversations/", url.Values{"mode": {"assistant"}}, nil)
+	if code != 303 || h.Get("Location") == chatURL {
+		t.Fatalf("switch = %d %q", code, h.Get("Location"))
+	}
+	body = mustGet(t, f, h.Get("Location"))
+	mustContain(t, body, "Assistente")
+	mustContain(t, body, "Log lunch for R$ 42.50 today under food")
+	mustContain(t, body, "example-chip")
+	list := mustGet(t, f, "/conversations/")
+	mustNotContain(t, list, "anonymous")
+}
+
+func TestAnonymousIsNotAccountHistory(t *testing.T) {
+	f := newFlow(t, nil)
+	u := f.seedUser("you@x.com", "secret-ok")
+	f.login("you@x.com", "secret-ok")
+	before, _ := f.store.CountConversations(u.ID)
+	page := mustGet(t, f, "/anonymous")
+	mustContain(t, page, "Not saved to your account")
+	mustContain(t, page, "Anônimo")
+	mustNotContain(t, page, "example-chip")
+	req, _ := http.NewRequest(http.MethodPost, f.server.URL+"/anonymous/complete", strings.NewReader(`{"content":"segredo anônimo"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("X-CSRF-Token", f.csrf())
+	resp, err := f.client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 || !strings.Contains(string(raw), "Stubbed.") {
+		t.Fatalf("anon = %d %s", resp.StatusCode, raw)
+	}
+	after, _ := f.store.CountConversations(u.ID)
+	if after != before {
+		t.Fatalf("conversations %d -> %d", before, after)
+	}
+	var messages int
+	if err := f.store.DB().QueryRow(`SELECT COUNT(*) FROM messages`).Scan(&messages); err != nil {
+		t.Fatal(err)
+	}
+	if messages != 0 {
+		t.Fatalf("anonymous turn stored %d messages", messages)
+	}
+	mustNotContain(t, mustGet(t, f, "/conversations/"), "segredo")
+	mustNotContain(t, mustGet(t, f, "/conversations/"), "Stubbed.")
 }

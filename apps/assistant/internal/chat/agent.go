@@ -88,13 +88,32 @@ func (s *Service) readyLinks(userID int64) (map[string]suite.Client, []string) {
 }
 
 // runAgent is Run when this user has at least one sibling linked.
-func (s *Service) runAgent(ctx context.Context, conv *store.Conversation, assistant *store.Message, locale i18n.Locale, client LLMClient, input []any, maxOut *int, effort string, searchOpts *openrouter.SearchOptions, fileOpts *openrouter.FileOptions, search, deep bool, mode string, maxResults int) {
+func (s *Service) runAgent(ctx context.Context, conv *store.Conversation, assistant *store.Message, locale i18n.Locale, client LLMClient, input []any, maxOut *int, effort string, searchOpts *openrouter.SearchOptions, fileOpts *openrouter.FileOptions, search, deep bool, mode string, maxResults int, allow []string) {
+	if !conv.AllowsTools() {
+		s.fail(conv.ID, assistant, errors.New("tools_disabled"), locale)
+		return
+	}
 	tc, ok := client.(toolStreamer)
 	if !ok {
 		s.fail(conv.ID, assistant, errors.New("tools_unsupported"), locale)
 		return
 	}
-	links, names := s.readyLinks(conv.UserID)
+	links, _ := s.readyLinks(conv.UserID)
+	allowed := map[string]bool{}
+	for _, name := range allow {
+		allowed[name] = true
+	}
+	filtered := map[string]suite.Client{}
+	var names []string
+	for _, name := range allow {
+		cl, ok := links[name]
+		if !ok || !allowed[name] {
+			continue
+		}
+		filtered[name] = cl
+		names = append(names, name)
+	}
+	links = filtered
 	tools := suite.ToolsFor(names)
 	calls := parseTrace(assistant.ToolTrace)
 	for i := range calls {

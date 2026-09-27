@@ -33,7 +33,13 @@ func (s *Service) windowedMessages(conv *store.Conversation, assistant *store.Me
 		vision = s.supportsImage(s.resolveModel(conv))
 	}
 	prefix := s.prefixMessages(conv, locale)
-	suffix := []any{s.turnNote(locale, search)}
+	var suffix []any
+	if conv.AllowsTools() {
+		// Status rides ahead of the search note so that note stays last
+		// and a search toggle still rewrites only the tail.
+		suffix = append(suffix, s.connectionNote(conv.UserID, locale))
+	}
+	suffix = append(suffix, s.turnNote(locale, search))
 	prefixJSON, _ := json.Marshal(prefix)
 	suffixJSON, _ := json.Marshal(suffix)
 	est := tokenEstimate(string(prefixJSON)) + tokenEstimate(string(suffixJSON))
@@ -100,8 +106,15 @@ func (s *Service) prefixMessages(conv *store.Conversation, locale i18n.Locale) [
 	loc := s.zone()
 	now := time.Now().In(loc)
 	date := "Current date: " + now.Format("2006-01-02 Monday") + " (" + loc.String() + ")."
+	promptKey := "chat.system_prompt"
+	switch conv.Mode {
+	case store.ModeChat:
+		promptKey = "chat.system_prompt_chat"
+	case store.ModeAnonymous:
+		promptKey = "chat.system_prompt_anon"
+	}
 	out := []any{
-		map[string]any{"role": "system", "content": i18n.T(locale, "chat.system_prompt")},
+		map[string]any{"role": "system", "content": i18n.T(locale, promptKey)},
 		map[string]any{"role": "system", "content": date},
 	}
 	if strings.TrimSpace(conv.Summary) != "" {

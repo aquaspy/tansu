@@ -75,6 +75,37 @@ type ConversationDetail struct {
 	SearchOn      bool              // sticky web-search toggle (false when disabled)
 	DeepOn        bool              // sticky deep-search toggle (false when disabled)
 	SearchAvail   bool              // SEARCH_ENABLED: toggles hidden when false
+	ShowControls  bool              // model and effort pickers
+	Badges        []AppBadge        // Assistente connection chips
+}
+
+// AppBadge is one sibling in the Assistente status row.
+type AppBadge struct {
+	Label string
+	State string // ok or down
+	Title string
+}
+
+// AnonMessage is one browser-held anonymous turn rendered on a no-JS post.
+type AnonMessage struct {
+	Role    string
+	Content string
+	HTML    string
+}
+
+// AnonPage is the anonymous editor. Messages are not stored on the account.
+type AnonPage struct {
+	Messages      []AnonMessage
+	ShowControls  bool
+	Models        []string
+	CurrentModel  string
+	ModelTiers    map[string]string
+	ModelPrices   map[string]string
+	Efforts       []string
+	CurrentEffort string
+	SearchAvail   bool
+	SearchOn      bool
+	DeepOn        bool
 }
 
 // ShellData drives the app shell (index + show share it).
@@ -84,6 +115,8 @@ type ShellData struct {
 	HasConversations bool
 	Current          *ConversationDetail // nil on bare index
 	AutoLock         bool
+	Anonymous        bool
+	Anon             *AnonPage
 }
 
 // DisplayTitle mirrors Conversation#display_title.

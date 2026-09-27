@@ -68,6 +68,9 @@ func (s *Server) handleConversationsShow(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	detail.ModelTiers, detail.ModelPrices = s.modelTierMaps(r.Context())
+	if conv.AllowsTools() && s.Chat != nil {
+		detail.Badges = s.appBadges(r.Context(), l, conv.UserID)
+	}
 	if conv.ShareToken != "" {
 		detail.ShareURL = shareURL(r, conv.ShareToken)
 	}
@@ -97,6 +100,7 @@ func (s *Server) buildDetail(l i18n.Locale, conv *store.Conversation) (*views.Co
 		CurrentModel:  currentModel(s.Config, conv),
 		Efforts:       openrouter.Efforts,
 		CurrentEffort: currentEffort(s.Config, conv),
+		ShowControls:  s.Config.ShowModelControls,
 		SearchOn:      s.Config.SearchEnabled && conv.WebSearch,
 		DeepOn:        s.Config.SearchEnabled && conv.DeepSearch,
 		SearchAvail:   s.Config.SearchEnabled,
@@ -144,7 +148,7 @@ func sanitizeModel(models []string, want string) string {
 
 // currentModel resolves the sticky model for display.
 func currentModel(cfg config.Config, conv *store.Conversation) string {
-	if sanitizeModel(cfg.OpenRouterModels, conv.Model) != "" {
+	if cfg.ShowModelControls && sanitizeModel(cfg.OpenRouterModels, conv.Model) != "" {
 		return conv.Model
 	}
 	return cfg.OpenRouterModel
@@ -161,7 +165,7 @@ func sanitizeEffort(want string) string {
 
 // currentEffort resolves the sticky effort for display.
 func currentEffort(cfg config.Config, conv *store.Conversation) string {
-	if conv.Effort != "" && openrouter.ValidEffort(conv.Effort) {
+	if cfg.ShowModelControls && conv.Effort != "" && openrouter.ValidEffort(conv.Effort) {
 		return conv.Effort
 	}
 	return cfg.OpenRouterReasoningEffort
@@ -190,7 +194,7 @@ func (s *Server) handleConversationsSettings(w http.ResponseWriter, r *http.Requ
 		Model: conv.Model, Web: conv.WebSearch, Deep: conv.DeepSearch, Effort: conv.Effort,
 		VoiceReadAloud: conv.VoiceReadAloud, VoiceAutoSend: conv.VoiceAutoSend,
 	}
-	if r.Form.Has("model") {
+	if s.Config.ShowModelControls && r.Form.Has("model") {
 		st.Model = sanitizeModel(s.Config.OpenRouterModels, r.FormValue("model"))
 	}
 	if r.Form.Has("web_search") {
@@ -199,7 +203,7 @@ func (s *Server) handleConversationsSettings(w http.ResponseWriter, r *http.Requ
 	if r.Form.Has("deep_search") {
 		st.Deep = s.Config.SearchEnabled && r.FormValue("deep_search") == "1"
 	}
-	if r.Form.Has("effort") {
+	if s.Config.ShowModelControls && r.Form.Has("effort") {
 		st.Effort = sanitizeEffort(r.FormValue("effort"))
 	}
 	// Voice checkboxes always submit (a hidden 0 follows each box, and
@@ -231,7 +235,8 @@ func shareURL(r *http.Request, token string) string {
 }
 
 func (s *Server) handleConversationsCreate(w http.ResponseWriter, r *http.Request) {
-	draft, err := s.Store.OpenDraftFor(UserOf(r).ID)
+	_ = r.ParseForm()
+	draft, err := s.Store.OpenDraftForMode(UserOf(r).ID, r.FormValue("mode"))
 	if err != nil {
 		http.Error(w, "chat", http.StatusInternalServerError)
 		return

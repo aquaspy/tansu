@@ -168,6 +168,11 @@ func TestVisibleContentHidesActionsWhenShared(t *testing.T) {
 func TestAgentRetriesTransientBeforeAnyCall(t *testing.T) {
 	var posts int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"folders":[]}`))
+			return
+		}
 		posts++
 		w.WriteHeader(http.StatusCreated)
 		_ = json.NewEncoder(w).Encode(map[string]any{"note": map[string]any{"id": 1, "title": "T", "body": "T"}})
@@ -224,6 +229,11 @@ func TestAgentPeopleCreateSucceedsOnce(t *testing.T) {
 	var posts int
 	var rawBody, auth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"people":[]}`))
+			return
+		}
 		posts++
 		auth = r.Header.Get("Authorization")
 		buf, _ := io.ReadAll(r.Body)
@@ -286,6 +296,11 @@ func TestAgentPeopleCreateSucceedsOnce(t *testing.T) {
 func TestAgentPeopleCreateFailureDoesNotRetry(t *testing.T) {
 	var posts int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"people":[]}`))
+			return
+		}
 		posts++
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		_, _ = w.Write([]byte(`{"errors":["Birthday isn't a real day in that month"]}`))

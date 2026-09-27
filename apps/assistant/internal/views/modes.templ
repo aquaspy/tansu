@@ -1,0 +1,259 @@
+package views
+
+// ModeSwitcher is Assistente · Conversa · Anônimo. Switching starts a new thread.
+templ ModeSwitcher(p Page, mode string) {
+	<div class="mode-switch" role="radiogroup" aria-label={ p.T("mode.label") }>
+		@modeChoice(p, "assistant", mode)
+		@modeChoice(p, "chat", mode)
+		if mode == "anonymous" {
+			<button type="button" class="mode-option is-on" aria-pressed="true" title={ p.T("mode.anonymous_tip") }>{ p.T("mode.anonymous") }</button>
+		} else {
+			<a class="mode-option" href="/anonymous?new=1" title={ p.T("mode.anonymous_tip") }>{ p.T("mode.anonymous") }</a>
+		}
+	</div>
+}
+
+templ modeChoice(p Page, mode, current string) {
+	if mode == current {
+		<button type="button" class="mode-option is-on" aria-pressed="true" title={ modeTip(p, mode) }>{ p.T("mode." + mode) }</button>
+	} else {
+		<form action="/conversations/" method="post" class="mode-form">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<input type="hidden" name="mode" value={ mode }/>
+			<button type="submit" class="mode-option" aria-pressed="false" title={ modeTip(p, mode) }>{ p.T("mode." + mode) }</button>
+		</form>
+	}
+}
+
+func modeTip(p Page, mode string) string {
+	return p.T("mode." + mode + "_tip")
+}
+
+templ AppBadges(badges []AppBadge) {
+	if len(badges) > 0 {
+		<ul class="app-badges">
+			for _, b := range badges {
+				<li class={ "app-badge is-" + b.State } title={ b.Title }>{ b.Label }</li>
+			}
+		</ul>
+	}
+}
+
+templ ExampleBoard(p Page) {
+	<div class="examples" data-controller="examples">
+		<p class="examples-hint">{ p.T("chat.examples_hint") }</p>
+		for _, g := range ExampleGroups(p.L) {
+			<section class="example-group">
+				<h2>{ g.Label }</h2>
+				<div class="example-chips">
+					for _, item := range g.Items {
+						<button type="button" class="example-chip" data-action="examples#fill" data-examples-text-param={ item }>{ item }</button>
+					}
+				</div>
+			</section>
+		}
+	</div>
+}
+
+templ ExampleDrawer(p Page) {
+	<details class="can-do">
+		<summary>{ p.T("chat.what_can_i_do") }</summary>
+		@ExampleBoard(p)
+	</details>
+}
+
+templ ModelField(p Page, id string, models []string, current string, tiers map[string]string, prices map[string]string) {
+	if len(models) >= 2 {
+		<div class="setting">
+			<span id={ "model-label-" + id }>{ p.T("chat.model") }</span>
+			<div class="model-picker" data-controller="modelmenu">
+				<input type="hidden" name="model" value={ current } data-modelmenu-target="value"/>
+				<button
+					type="button"
+					class="model-menu-btn"
+					data-action="click->modelmenu#toggle keydown->modelmenu#key"
+					data-modelmenu-target="button"
+					aria-haspopup="listbox"
+					aria-expanded="false"
+					aria-labelledby={ "model-label-" + id }
+					title={ tierTitle(p, tiers, prices, current) }
+				>
+					if tier, ok := tiers[current]; ok {
+						<span class={ "tier-dot tier-" + tier } data-modelmenu-target="tier" aria-hidden="true"></span>
+					} else {
+						<span class="tier-dot" data-modelmenu-target="tier" aria-hidden="true" hidden></span>
+					}
+					<span class="model-menu-label" data-modelmenu-target="label">{ ModelShort(current) }</span>
+					<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 6.5 8 10l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+				</button>
+				<div class="model-menu" role="listbox" aria-labelledby={ "model-label-" + id } data-modelmenu-target="menu" hidden>
+					for _, m := range models {
+						<button
+							type="button"
+							role="option"
+							aria-selected={ AriaBool(m == current) }
+							class="model-option"
+							data-action="click->modelmenu#choose"
+							data-modelmenu-value-param={ m }
+							data-modelmenu-short-param={ ModelShort(m) }
+							data-modelmenu-tier-param={ tiers[m] }
+							data-modelmenu-title-param={ tierTitle(p, tiers, prices, m) }
+							title={ tierTitle(p, tiers, prices, m) }
+						>
+							if tier, ok := tiers[m]; ok {
+								<span class={ "tier-dot tier-" + tier } aria-hidden="true"></span>
+							}
+							<span class="model-option-name">{ m }</span>
+							<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+						</button>
+					}
+				</div>
+			</div>
+		</div>
+	}
+}
+
+templ EffortField(p Page, id string, efforts []string, current string) {
+	<div class="setting">
+		<span id={ "effort-label-" + id }>{ p.T("chat.effort") }</span>
+		<div class="effort-picker" role="radiogroup" data-controller="effort" aria-labelledby={ "effort-label-" + id }>
+			for _, e := range efforts {
+				<label class="effort-option" title={ e }>
+					<input type="radio" name="effort" value={ e } checked?={ e == current }/>
+					<span>{ e }</span>
+				</label>
+			}
+		</div>
+	</div>
+}
+
+func tierTitle(p Page, tiers, prices map[string]string, slug string) string {
+	return ModelTitle(p, &ConversationDetail{ModelTiers: tiers, ModelPrices: prices}, slug)
+}
+
+// AnonThread is the browser-held chat. The server does not list it.
+templ AnonThread(p Page, d ShellData) {
+	<div
+		class="anon"
+		data-controller="anon"
+		data-anon-failed-value={ p.T("js.anon_failed") }
+		data-anon-untitled-value={ p.T("chat.untitled") }
+	>
+		<div class="editor-bar">
+			<a href="/conversations/" class="icon-btn back" aria-label={ p.T("app.cancel") }>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.2 3.2 5.4 8l4.8 4.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+			</a>
+			<input
+				type="text"
+				class="folder-input"
+				placeholder={ p.T("chat.untitled") }
+				autocomplete="off"
+				aria-label={ p.T("chat.rename") }
+				data-anon-target="title"
+				data-action="input->anon#title"
+			/>
+			<span class="bar-spacer"></span>
+			<button type="button" class="icon-btn danger" data-action="anon#clear" title={ p.T("mode.clear") } aria-label={ p.T("mode.clear") }>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 5h9M6.2 5V3.8A1.2 1.2 0 0 1 7.4 2.6h1.2A1.2 1.2 0 0 1 9.8 3.8V5m-5.1 0 .5 7.2A1.3 1.3 0 0 0 6.5 13.4h3a1.3 1.3 0 0 0 1.3-1.2L11.3 5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+			</button>
+		</div>
+		<div class="anon-local-wrap">
+			<p class="anon-local-label">{ p.T("mode.local") }</p>
+			<div class="anon-local" data-anon-target="local"></div>
+		</div>
+		<div class="transcript" id="anon-transcript" data-anon-target="transcript">
+			if d.Anon != nil {
+				for _, m := range d.Anon.Messages {
+					@AnonArticle(m)
+				}
+			}
+		</div>
+		<div class="composer-dock">
+			@ModeSwitcher(p, "anonymous")
+			<div class="anon-banner">
+				<span class="anon-pill">{ p.T("mode.not_saved") }</span>
+				<p>{ p.T("mode.not_saved_detail") }</p>
+				<label class="anon-close" title={ p.T("mode.clear_on_close_tip") }>
+					<input type="checkbox" data-anon-target="close" data-action="change->anon#close"/>
+					<span>{ p.T("mode.clear_on_close") }</span>
+				</label>
+			</div>
+			if d.Anon != nil {
+				@AnonComposer(p, d.Anon)
+			}
+		</div>
+		if d.Anon != nil && len(d.Anon.Messages) > 0 {
+			<script type="application/json" id="anon-seed">
+				@templ.Raw(AnonSeed(d.Anon.Messages))
+			</script>
+		}
+	</div>
+}
+
+templ AnonArticle(m AnonMessage) {
+	<article class={ "msg msg-" + m.Role + " is-done" }>
+		if m.Role == "user" {
+			<div class="msg-body">
+				@templ.Raw(simpleFormat(m.Content))
+			</div>
+		} else {
+			<div class="msg-body">
+				@templ.Raw(m.HTML)
+			</div>
+		}
+	</article>
+}
+
+templ AnonComposer(p Page, a *AnonPage) {
+	<form
+		action="/anonymous/complete"
+		method="post"
+		class="composer"
+		data-controller="composer"
+		data-action="submit->anon#send keydown->composer#key"
+		data-composer-streaming-value="false"
+		data-composer-max-images-value="0"
+		data-composer-remove-label-value={ p.T("app.cancel") }
+	>
+		<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+		if a.ShowControls {
+			<div class="chat-settings anon-controls">
+				@ModelField(p, "anon", a.Models, a.CurrentModel, a.ModelTiers, a.ModelPrices)
+				@EffortField(p, "anon", a.Efforts, a.CurrentEffort)
+			</div>
+		}
+		<div class="composer-main">
+			<textarea
+				name="content"
+				rows="1"
+				maxlength="16384"
+				placeholder={ p.T("chat.placeholder") }
+				autofocus?={ len(a.Messages) == 0 }
+				enterkeyhint="send"
+				data-composer-target="input"
+				data-anon-target="input"
+				data-action="input->composer#resize input->composer#sync"
+			></textarea>
+		</div>
+		if a.SearchAvail {
+			<div class="search-picker" role="group" aria-label={ p.T("chat.web_search") + ", " + p.T("chat.deep_search") }>
+				<label class="search-option" title={ p.T("chat.web_search") }>
+					<input type="checkbox" name="web" value="1" data-anon-target="web" checked?={ a.SearchOn }/>
+					<span class="search-pill">
+						<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.4" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M2.6 8h10.8M8 2.6c-3.6 3.5-3.6 7.3 0 10.8M8 2.6c3.6 3.5 3.6 7.3 0 10.8" fill="none" stroke="currentColor" stroke-width="1.3"></path></svg>
+						<span>{ p.T("chat.web") }</span>
+					</span>
+				</label>
+				<label class="search-option" title={ p.T("chat.deep_search") }>
+					<input type="checkbox" name="deep" value="1" data-anon-target="deep" checked?={ a.DeepOn }/>
+					<span class="search-pill">
+						<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.4 13.6 5.4 8 8.4 2.4 5.4Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path><path d="M2.4 8.4 8 11.4l5.6-3M2.4 10.9 8 13.9l5.6-3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+						<span>{ p.T("chat.deep") }</span>
+					</span>
+				</label>
+			</div>
+		}
+		<button type="submit" class="btn-primary" data-composer-target="submit" data-anon-target="submit">{ p.T("chat.send") }</button>
+	</form>
+}
+
