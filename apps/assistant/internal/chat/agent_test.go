@@ -3,6 +3,8 @@ package chat
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -195,6 +197,149 @@ func TestAgentRetriesTransientBeforeAnyCall(t *testing.T) {
 	done, _ := st.GetMessage(asst.ID)
 	if done.Status != store.StatusComplete || posts != 1 {
 		t.Fatalf("status %s posts %d err %s", done.Status, posts, done.Error)
+	}
+}
+
+func toolObject(id, name string, args map[string]any) map[string]any {
+	return map[string]any{"choices": []any{map[string]any{"delta": map[string]any{
+		"tool_calls": []any{map[string]any{
+			"index": float64(0), "id": id,
+			"function": map[string]any{"name": name, "arguments": args},
+		}},
+	}}}}
+}
+
+func linkSuiteApp(t *testing.T, st *store.Store, userID int64, app, token string, key []byte) {
+	t.Helper()
+	blob, err := suite.Encrypt(key, []byte(token))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.UpsertAppLink(store.AppLink{UserID: userID, App: app, Token: blob, TokenPrefix: "live", Email: "ada@example.com"}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAgentPeopleCreateSucceedsOnce(t *testing.T) {
+	var posts int
+	var rawBody, auth string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		posts++
+		auth = r.Header.Get("Authorization")
+		buf, _ := io.ReadAll(r.Body)
+		rawBody = string(buf)
+		var doc map[string]any
+		_ = json.Unmarshal([]byte(rawBody), &doc)
+		person, _ := doc["person"].(map[string]any)
+		if person["name"] != "Ada Lovelace" {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			_, _ = w.Write([]byte(`{"errors":["Name can't be blank"]}`))
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(map[string]any{"person": map[string]any{"id": 7, "name": "Ada Lovelace"}})
+	}))
+	defer srv.Close()
+	st := openStore(t)
+	u := seedUser(t, st)
+	key := make([]byte, 32)
+	linkSuiteApp(t, st, u.ID, "people", "kura_live", key)
+	conv, err := st.CreateConversation(u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, asst, err := st.CreateTurn(conv.ID, "add Ada Lovelace, born August 11, 1990", false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	args := map[string]any{
+		"person": map[string]any{
+			"name":     "Ada Lovelace",
+			"birthday": map[string]any{"month": "8", "day": json.Number("11"), "year": float64(1990)},
+		},
+	}
+	fx := &toolLLM{rounds: [][]map[string]any{
+		{toolObject("c1", suite.PeopleCreate, args)},
+		{chunk("Added Ada.")},
+		{toolObject("c2", suite.PeopleCreate, args)},
+	}}
+	svc := testService(t, st, &fx.fakeLLM)
+	svc.NewClient = func(string) (LLMClient, error) { return fx, nil }
+	svc.SuiteKey = key
+	svc.SuiteApps = []suite.App{{Name: "people", Base: srv.URL}}
+	svc.Run(asst.ID, i18n.EN)
+	done, _ := st.GetMessage(asst.ID)
+	if done.Status != store.StatusComplete || posts != 1 || auth != "Bearer kura_live" {
+		t.Fatalf("status %s posts %d auth %q err %s", done.Status, posts, auth, done.Error)
+	}
+	if !strings.Contains(done.Content, "people_create #7") || !strings.Contains(done.Content, "Added Ada.") {
+		t.Fatalf("content %q", done.Content)
+	}
+	if !strings.Contains(rawBody, `"month":8`) || !strings.Contains(rawBody, `"name":"Ada Lovelace"`) {
+		t.Fatalf("payload %s", rawBody)
+	}
+	if fx.n != 2 {
+		t.Fatalf("model rounds %d, want the create plus one explanation", fx.n)
+	}
+}
+
+func TestAgentPeopleCreateFailureDoesNotRetry(t *testing.T) {
+	var posts int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		posts++
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, _ = w.Write([]byte(`{"errors":["Birthday isn't a real day in that month"]}`))
+	}))
+	defer srv.Close()
+	st := openStore(t)
+	u := seedUser(t, st)
+	key := make([]byte, 32)
+	linkSuiteApp(t, st, u.ID, "people", "kura_live", key)
+	conv, _ := st.CreateConversation(u.ID)
+	_, asst, _ := st.CreateTurn(conv.ID, "add this person", false, false)
+	rounds := make([][]map[string]any, 6)
+	for i := range rounds {
+		rounds[i] = []map[string]any{toolDelta(
+			fmt.Sprintf("c%d", i),
+			suite.PeopleCreate,
+			fmt.Sprintf(`{"name":"Bad","birthday_month":"4","birthday_day":"%d"}`, 31+i),
+		)}
+	}
+	fx := &toolLLM{rounds: rounds}
+	svc := testService(t, st, &fx.fakeLLM)
+	svc.NewClient = func(string) (LLMClient, error) { return fx, nil }
+	svc.SuiteKey = key
+	svc.SuiteApps = []suite.App{{Name: "people", Base: srv.URL}}
+	svc.Run(asst.ID, i18n.EN)
+	done, _ := st.GetMessage(asst.ID)
+	if posts != 1 {
+		t.Fatalf("people create was called %d times", posts)
+	}
+	if done.Status != store.StatusComplete {
+		t.Fatalf("status %s err %s", done.Status, done.Error)
+	}
+	if strings.Contains(done.Content, "people_create #") {
+		t.Fatalf("failed create was recorded as a save: %q", done.Content)
+	}
+	if !strings.Contains(done.Content, "Birthday isn't a real day") {
+		t.Fatalf("content %q", done.Content)
+	}
+	if !strings.Contains(done.ToolTrace, `"status":"error"`) || strings.Count(done.ToolTrace, `"status"`) != 1 {
+		t.Fatalf("trace %s", done.ToolTrace)
+	}
+}
+
+func TestAbsorbToolDeltaObjectArguments(t *testing.T) {
+	built := absorbToolDelta(nil, toolObject("c1", suite.PeopleCreate, map[string]any{
+		"name": "Ada", "birthday_month": float64(8),
+	}))
+	if built[0].args["name"] != "Ada" || built[0].args["birthday_month"] != float64(8) {
+		t.Fatalf("%+v", built[0].args)
+	}
+	built = absorbToolDelta(nil, toolDelta("c2", suite.PeopleCreate, `{"name":`))
+	built = absorbToolDelta(built, toolDelta("c2", suite.PeopleCreate, `"Ada","birthday_month":8}`))
+	if built[0].args["name"] != "Ada" {
+		t.Fatalf("chunked %+v raw %s", built[0].args, built[0].raw)
 	}
 }
 
