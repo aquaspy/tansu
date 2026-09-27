@@ -55,7 +55,12 @@ func ToolsFor(apps []string) []openrouter.Tool {
 }
 
 func obj(props map[string]any, req []string) map[string]any {
-	return map[string]any{"type": "object", "properties": props, "required": req, "additionalProperties": false}
+	schema := map[string]any{"type": "object", "properties": props, "additionalProperties": false}
+	// A null required is invalid JSON Schema and gets the whole tool list rejected.
+	if len(req) > 0 {
+		schema["required"] = req
+	}
+	return schema
 }
 
 func strProp(desc string) map[string]any {
@@ -84,10 +89,10 @@ func toolset(app string) []openrouter.Tool {
 		}
 	case "people":
 		return []openrouter.Tool{
-			{Name: PeopleSearch, Description: "Search people. Returns id, name, nickname, relationship, a short notes clip.", Parameters: obj(map[string]any{"q": strProp("")}, nil)},
-			{Name: PeopleRead, Description: "Read one person by id.", Parameters: obj(map[string]any{"id": intProp("")}, []string{"id"})},
-			{Name: PeopleCreate, Description: "Create a person. Birthday is month, day, and optional year. Birthdays sync to Calendar from People.", Parameters: obj(map[string]any{"name": strProp(""), "nickname": strProp(""), "relationship": strProp(""), "birthday_month": intProp("1-12"), "birthday_day": intProp("1-31"), "birthday_year": intProp(""), "phone": strProp(""), "email": strProp(""), "notes": strProp("")}, []string{"name"})},
-			{Name: PeopleUpdate, Description: "Update a person by id. Send only fields that change. Birthday is month, day, and optional year.", Parameters: obj(map[string]any{"id": intProp(""), "name": strProp(""), "nickname": strProp(""), "relationship": strProp(""), "birthday_month": intProp("1-12"), "birthday_day": intProp("1-31"), "birthday_year": intProp(""), "phone": strProp(""), "email": strProp(""), "notes": strProp("")}, []string{"id"})},
+			{Name: PeopleSearch, Description: "Search people. Returns id, name, nickname, relationship, a short notes clip.", Parameters: obj(map[string]any{"q": strProp("text")}, nil)},
+			{Name: PeopleRead, Description: "Read one person by id.", Parameters: obj(map[string]any{"id": intProp("person id")}, []string{"id"})},
+			{Name: PeopleCreate, Description: "Create a person. Only name is required. Birthday is YYYY-MM-DD (or MM-DD if the year is unknown), or birthday_month, birthday_day, and optional birthday_year. Do not wrap fields in a person object. Birthdays sync to Calendar from People.", Parameters: obj(map[string]any{"name": strProp("required"), "nickname": strProp(""), "relationship": strProp(""), "birthday": strProp("YYYY-MM-DD or MM-DD"), "birthday_month": intProp("1-12"), "birthday_day": intProp("1-31"), "birthday_year": intProp("optional year"), "phone": strProp(""), "email": strProp(""), "notes": strProp("")}, []string{"name"})},
+			{Name: PeopleUpdate, Description: "Update a person by id. Send only fields that change. Birthday is YYYY-MM-DD (or MM-DD), or birthday_month, birthday_day, and optional birthday_year.", Parameters: obj(map[string]any{"id": intProp("person id"), "name": strProp(""), "nickname": strProp(""), "relationship": strProp(""), "birthday": strProp("YYYY-MM-DD or MM-DD"), "birthday_month": intProp("1-12"), "birthday_day": intProp("1-31"), "birthday_year": intProp("optional year"), "phone": strProp(""), "email": strProp(""), "notes": strProp("")}, []string{"id"})},
 			{Name: PeopleDelete, Description: "Ask to delete one person. It does not run until the person confirms.", Parameters: obj(map[string]any{"id": intProp("")}, []string{"id"})},
 		}
 	case "spend":
@@ -132,13 +137,13 @@ func Execute(ctx context.Context, c *Client, name string, args map[string]any, a
 		return out
 	}
 	if err != nil {
-		out.Body = `{"error":"unavailable"}`
+		out.Body = `{"ok":false,"error":"unavailable"}`
 		return out
 	}
 	if status == http.StatusUnauthorized {
 		out.Reconnect = true
 		out.App = app
-		out.Body = fmt.Sprintf(`{"error":"unauthorized","reconnect":true,"app":%q,"settings_path":"/apps"}`, app)
+		out.Body = fmt.Sprintf(`{"ok":false,"error":"unauthorized","reconnect":true,"app":%q,"settings_path":"/apps"}`, app)
 		return out
 	}
 	if IsDelete(name) && status == http.StatusNotFound {
@@ -147,9 +152,9 @@ func Execute(ctx context.Context, c *Client, name string, args map[string]any, a
 		return out
 	}
 	if status < 200 || status >= 300 {
-		out.Body = string(raw)
-		if out.Body == "" {
-			out.Body = fmt.Sprintf(`{"error":"http_%d"}`, status)
+		out.Body = stampOK(string(raw), false)
+		if strings.TrimSpace(out.Body) == "" {
+			out.Body = fmt.Sprintf(`{"ok":false,"error":"http_%d"}`, status)
 		}
 		return out
 	}
@@ -167,7 +172,7 @@ func Execute(ctx context.Context, c *Client, name string, args map[string]any, a
 		shaped = raw
 	}
 	out.OK = true
-	out.Body = string(shaped)
+	out.Body = stampOK(string(shaped), true)
 	out.Title = titleFrom(out.Body, oneKind(name))
 	if out.ID == 0 {
 		out.ID = idFrom(out.Body, oneKind(name))
@@ -344,20 +349,243 @@ func pick(args map[string]any, keys ...string) map[string]any {
 	return out
 }
 
+// stampOK records whether the tool result is a saved record. The model is
+// told not to claim a save unless the result says ok, and not to retry when
+// it says false.
+func stampOK(payload string, ok bool) string {
+	payload = strings.TrimSpace(payload)
+	if payload == "" {
+		return ""
+	}
+	var doc map[string]any
+	if json.Unmarshal([]byte(payload), &doc) != nil || doc == nil {
+		return payload
+	}
+	doc["ok"] = ok
+	b, err := json.Marshal(doc)
+	if err != nil {
+		return payload
+	}
+	return string(b)
+}
+
+// personBody maps tool arguments onto the People {"person": ...} body.
+// A missing name or a year without a month and day is a 422 and inserts
+// nothing, so birthday parts are accepted as numbers, numeric strings,
+// a nested birthday object, or a date string — including when the model
+// wraps the fields in "person".
 func personBody(args map[string]any) map[string]any {
+	args = flattenPerson(args)
 	out := pick(args, "name", "nickname", "relationship", "phone", "email", "notes", "emoji")
-	bday := map[string]any{}
-	if n, ok := args["birthday_month"].(float64); ok {
-		bday["month"] = int(n)
-	}
-	if n, ok := args["birthday_day"].(float64); ok {
-		bday["day"] = int(n)
-	}
-	if n, ok := args["birthday_year"].(float64); ok {
-		bday["year"] = int(n)
-	}
-	if len(bday) > 0 {
-		out["birthday"] = bday
+	if month, day, year, present := birthdayParts(args); present {
+		bday := map[string]any{}
+		if month != 0 {
+			bday["month"] = month
+		}
+		if day != 0 {
+			bday["day"] = day
+		}
+		if year != 0 {
+			bday["year"] = year
+		}
+		if len(bday) > 0 {
+			out["birthday"] = bday
+		}
 	}
 	return out
+}
+
+func flattenPerson(args map[string]any) map[string]any {
+	inner, ok := args["person"].(map[string]any)
+	if !ok {
+		return args
+	}
+	out := make(map[string]any, len(inner)+len(args))
+	for k, v := range inner {
+		out[k] = v
+	}
+	for k, v := range args {
+		if k == "person" || v == nil || v == "" {
+			continue
+		}
+		out[k] = v
+	}
+	return out
+}
+
+func birthdayParts(args map[string]any) (month, day, year int, present bool) {
+	fm, fd, fy := intField(args, "birthday_month"), intField(args, "birthday_day"), intField(args, "birthday_year")
+	if fm != 0 && fd != 0 {
+		return fm, fd, fy, true
+	}
+	if s, ok := args["birthday"].(string); ok {
+		if m, d, y, ok := parseBirthdayString(s); ok {
+			if y == 0 {
+				y = fy
+			}
+			return m, d, y, true
+		}
+	}
+	if obj, ok := args["birthday"].(map[string]any); ok {
+		m, d, y := intField(obj, "month"), intField(obj, "day"), intField(obj, "year")
+		if m != 0 || d != 0 || y != 0 {
+			if m == 0 {
+				m = fm
+			}
+			if d == 0 {
+				d = fd
+			}
+			if y == 0 {
+				y = fy
+			}
+			return m, d, y, true
+		}
+	}
+	if fm != 0 || fd != 0 || fy != 0 {
+		return fm, fd, fy, true
+	}
+	return 0, 0, 0, false
+}
+
+func intField(args map[string]any, key string) int {
+	v, ok := args[key]
+	if !ok || v == nil {
+		return 0
+	}
+	switch n := v.(type) {
+	case float64:
+		return int(n)
+	case int:
+		return n
+	case int64:
+		return int(n)
+	case json.Number:
+		if i, err := n.Int64(); err == nil {
+			return int(i)
+		}
+		f, err := n.Float64()
+		if err != nil {
+			return 0
+		}
+		return int(f)
+	case string:
+		if i, ok := leadingInt(n); ok {
+			return i
+		}
+		return monthIndex(n)
+	default:
+		return 0
+	}
+}
+
+func leadingInt(s string) (int, bool) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, false
+	}
+	i := 0
+	for i < len(s) && s[i] >= '0' && s[i] <= '9' {
+		i++
+	}
+	if i == 0 {
+		return 0, false
+	}
+	n, err := strconv.Atoi(s[:i])
+	if err != nil {
+		return 0, false
+	}
+	return n, true
+}
+
+func parseBirthdayString(s string) (month, day, year int, ok bool) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, 0, 0, false
+	}
+	norm := strings.ReplaceAll(s, "/", "-")
+	parts := strings.Split(norm, "-")
+	if len(parts) == 2 || len(parts) == 3 {
+		if m, d, y, ok := numericDate(parts); ok {
+			return m, d, y, true
+		}
+	}
+	return proseDate(s)
+}
+
+func numericDate(parts []string) (month, day, year int, ok bool) {
+	nums := make([]int, 0, len(parts))
+	for _, p := range parts {
+		n, err := strconv.Atoi(strings.TrimSpace(p))
+		if err != nil {
+			return 0, 0, 0, false
+		}
+		nums = append(nums, n)
+	}
+	switch len(nums) {
+	case 3:
+		if nums[0] >= 1900 && nums[0] <= 2100 {
+			return nums[1], nums[2], nums[0], true
+		}
+	case 2:
+		return nums[0], nums[1], 0, true
+	}
+	return 0, 0, 0, false
+}
+
+func proseDate(s string) (month, day, year int, ok bool) {
+	chunks := strings.FieldsFunc(s, func(r rune) bool {
+		return r == ' ' || r == ',' || r == '.'
+	})
+	for _, c := range chunks {
+		if m := monthIndex(c); m != 0 && month == 0 {
+			month = m
+			continue
+		}
+		n, good := leadingInt(c)
+		if !good {
+			continue
+		}
+		if n >= 1900 && n <= 2100 && year == 0 {
+			year = n
+			continue
+		}
+		if n >= 1 && n <= 31 && day == 0 {
+			day = n
+		}
+	}
+	if month == 0 || day == 0 {
+		return 0, 0, 0, false
+	}
+	return month, day, year, true
+}
+
+func monthIndex(s string) int {
+	switch strings.ToLower(strings.Trim(strings.TrimSpace(s), ".")) {
+	case "january", "jan", "janeiro":
+		return 1
+	case "february", "feb", "fevereiro":
+		return 2
+	case "march", "mar", "março", "marco":
+		return 3
+	case "april", "apr", "abril":
+		return 4
+	case "may", "maio":
+		return 5
+	case "june", "jun", "junho":
+		return 6
+	case "july", "jul", "julho":
+		return 7
+	case "august", "aug", "agosto":
+		return 8
+	case "september", "sep", "sept", "setembro":
+		return 9
+	case "october", "oct", "outubro":
+		return 10
+	case "november", "nov", "novembro":
+		return 11
+	case "december", "dec", "dezembro":
+		return 12
+	default:
+		return 0
+	}
 }
