@@ -419,6 +419,19 @@ func TestToolRulesMentionStructuredPeopleFields(t *testing.T) {
 	}
 }
 
+func TestToolRulesMentionSuiteFields(t *testing.T) {
+	got := toolRules(i18n.EN, time.UTC)
+	for _, s := range []string{
+		"amount_cents", "Subscriptions", "Payment days", "due_day",
+		"all_day", "repeat_until", "no location",
+		"no tags", "first line", "notes_folders",
+	} {
+		if !strings.Contains(got, s) {
+			t.Fatalf("missing %q in %s", s, got)
+		}
+	}
+}
+
 func TestCancelWritesVisibleLine(t *testing.T) {
 	st := openStore(t)
 	u := seedUser(t, st)
