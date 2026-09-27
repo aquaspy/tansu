@@ -380,8 +380,11 @@
   controllers.composer = {
     openPerson({ event, scope }) {
       event?.preventDefault();
-      target(scope, "composer", "personBox")?.showModal();
-      scope.querySelector("[data-composer-target~='personBox'] input[name='name']")?.focus();
+      const box = target(scope, "composer", "personBox");
+      // One person dialog per page. A second + is a no-op.
+      if (!box || box.open) return;
+      box.showModal();
+      box.querySelector("input[name='name']")?.focus();
     },
     closePerson({ scope }) {
       target(scope, "composer", "personBox")?.close();
