@@ -33,6 +33,7 @@ Notes:
 - Sizes accept a nested object
   (`{"sizes": {"ring": "16", "shoe": "37"}}`) or flat keys
   (`ring_size`, `shoe_size`, `shirt_size`, `pants_size`).
+  Inside `sizes`, only keys that are present are written.
 - `PATCH` merges onto the record; `attrs` is replaced only when the key is
   present.
 - Success: `200 OK` (`201 Created` on create, `204 No content` on delete).
@@ -115,7 +116,7 @@ You manage my TansuPeople at https://people.gettansu.com via its JSON API.
 Authenticate every request with: Authorization: Bearer <token>
 - Read people: GET /api/v1/people?q=&relationship=&birthday_month=&limit=
 - Create: POST /api/v1/people with {"person":{"name","nickname","relationship","birthday":{"month","day","year"},"emoji","phone","email","address","height","sizes":{"ring","shoe","shirt","pants"},"favorites","notes","attrs":[{"label","value"}]}}
-- Update: PATCH /api/v1/people/:id (merges; attrs replaced only when present) — Delete: DELETE /api/v1/people/:id
+- Update: PATCH /api/v1/people/:id (merges; a sizes object writes only the keys it contains; attrs replaced only when present) — Delete: DELETE /api/v1/people/:id
 Only "name" is required. Use "countdown" for upcoming birthdays. On 422, read the "errors" array and fix the input.
 ```
 

@@ -70,6 +70,62 @@ func intProp(desc string) map[string]any {
 	return map[string]any{"type": "integer", "description": desc}
 }
 
+func sizesSchema() map[string]any {
+	return map[string]any{
+		"type":        "object",
+		"description": "Ring, shoe, shirt, and pants. Only keys you include are written. Omit sizes to leave them unchanged.",
+		"properties": map[string]any{
+			"ring":  strProp("ring size"),
+			"shoe":  strProp("shoe size"),
+			"shirt": strProp("shirt size"),
+			"pants": strProp("pants size"),
+		},
+		"additionalProperties": false,
+	}
+}
+
+func attrsSchema() map[string]any {
+	return map[string]any{
+		"type":        "array",
+		"description": "Free rows such as CPF, Pix, or an extra email. On update, sending attrs replaces the whole list. Omit attrs to leave existing rows unchanged.",
+		"items": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"label": strProp("short label, e.g. CPF"),
+				"value": strProp("value"),
+			},
+			"required":             []string{"label"},
+			"additionalProperties": false,
+		},
+	}
+}
+
+// peopleFields are the writable person properties shared by create and update.
+func peopleFields() map[string]any {
+	return map[string]any{
+		"name":           strProp("required on create"),
+		"nickname":       strProp(""),
+		"relationship":   strProp(""),
+		"emoji":          strProp("single emoji"),
+		"phone":          strProp(""),
+		"email":          strProp("primary email; extra emails go in attrs"),
+		"address":        strProp("street address"),
+		"height":         strProp("height, e.g. 1.65m"),
+		"birthday":       strProp("YYYY-MM-DD or MM-DD"),
+		"birthday_month": intProp("1-12"),
+		"birthday_day":   intProp("1-31"),
+		"birthday_year":  intProp("optional year"),
+		"sizes":          sizesSchema(),
+		"ring_size":      strProp("changes only the ring size"),
+		"shoe_size":      strProp("changes only the shoe size"),
+		"shirt_size":     strProp("changes only the shirt size"),
+		"pants_size":     strProp("changes only the pants size"),
+		"favorites":      strProp(""),
+		"notes":          strProp("free text that does not fit a field above"),
+		"attrs":          attrsSchema(),
+	}
+}
+
 func toolset(app string) []openrouter.Tool {
 	switch app {
 	case "notes":
@@ -88,11 +144,13 @@ func toolset(app string) []openrouter.Tool {
 			{Name: CalDelete, Description: "Ask to delete one event. It does not run until the person confirms.", Parameters: obj(map[string]any{"id": intProp("")}, []string{"id"})},
 		}
 	case "people":
+		updateFields := peopleFields()
+		updateFields["id"] = intProp("person id")
 		return []openrouter.Tool{
 			{Name: PeopleSearch, Description: "Search people. Returns id, name, nickname, relationship, a short notes clip.", Parameters: obj(map[string]any{"q": strProp("text")}, nil)},
-			{Name: PeopleRead, Description: "Read one person by id.", Parameters: obj(map[string]any{"id": intProp("person id")}, []string{"id"})},
-			{Name: PeopleCreate, Description: "Create a person. Only name is required. Birthday is YYYY-MM-DD (or MM-DD if the year is unknown), or birthday_month, birthday_day, and optional birthday_year. Do not wrap fields in a person object. Birthdays sync to Calendar from People.", Parameters: obj(map[string]any{"name": strProp("required"), "nickname": strProp(""), "relationship": strProp(""), "birthday": strProp("YYYY-MM-DD or MM-DD"), "birthday_month": intProp("1-12"), "birthday_day": intProp("1-31"), "birthday_year": intProp("optional year"), "phone": strProp(""), "email": strProp(""), "notes": strProp("")}, []string{"name"})},
-			{Name: PeopleUpdate, Description: "Update a person by id. Send only fields that change. Birthday is YYYY-MM-DD (or MM-DD), or birthday_month, birthday_day, and optional birthday_year.", Parameters: obj(map[string]any{"id": intProp("person id"), "name": strProp(""), "nickname": strProp(""), "relationship": strProp(""), "birthday": strProp("YYYY-MM-DD or MM-DD"), "birthday_month": intProp("1-12"), "birthday_day": intProp("1-31"), "birthday_year": intProp("optional year"), "phone": strProp(""), "email": strProp(""), "notes": strProp("")}, []string{"id"})},
+			{Name: PeopleRead, Description: "Read one person by id, including address, height, sizes, favorites, notes, and attrs.", Parameters: obj(map[string]any{"id": intProp("person id")}, []string{"id"})},
+			{Name: PeopleCreate, Description: "Create a person. Only name is required. Store address, height, sizes, favorites, and attrs (label/value rows such as CPF, Pix, or an extra email) in those fields, not only in notes. Birthday is YYYY-MM-DD (or MM-DD if the year is unknown), or birthday_month, birthday_day, and optional birthday_year. Sizes are {ring, shoe, shirt, pants} or flat ring_size, shoe_size, shirt_size, pants_size. Do not wrap fields in a person object. Birthdays sync to Calendar from People.", Parameters: obj(peopleFields(), []string{"name"})},
+			{Name: PeopleUpdate, Description: "Update a person by id. Partial merge: send only fields that change and omit the rest. Birthday is YYYY-MM-DD (or MM-DD), or birthday_month, birthday_day, and optional birthday_year. Sizes are {ring, shoe, shirt, pants} or flat ring_size, shoe_size, shirt_size, pants_size; only sizes you include are written. attrs replaces the whole list when the key is present — omit attrs to keep existing rows, and do not send attrs unless those rows should change. Use address, sizes, and attrs instead of parking those facts only in notes.", Parameters: obj(updateFields, []string{"id"})},
 			{Name: PeopleDelete, Description: "Ask to delete one person. It does not run until the person confirms.", Parameters: obj(map[string]any{"id": intProp("")}, []string{"id"})},
 		}
 	case "spend":
@@ -173,6 +231,11 @@ func Execute(ctx context.Context, c *Client, name string, args map[string]any, a
 	}
 	out.OK = true
 	out.Body = stampOK(string(shaped), true)
+	// Deletes answer 204 with an empty body. The model is told not to claim
+	// a delete unless the tool result says ok true.
+	if IsDelete(name) && strings.TrimSpace(out.Body) == "" {
+		out.Body = `{"ok":true}`
+	}
 	out.Title = titleFrom(out.Body, oneKind(name))
 	if out.ID == 0 {
 		out.ID = idFrom(out.Body, oneKind(name))
@@ -373,10 +436,13 @@ func stampOK(payload string, ok bool) string {
 // A missing name or a year without a month and day is a 422 and inserts
 // nothing, so birthday parts are accepted as numbers, numeric strings,
 // a nested birthday object, or a date string — including when the model
-// wraps the fields in "person".
+// wraps the fields in "person". Address, height, favorites, sizes, and
+// attrs are forwarded the same way. attrs is included only when the
+// caller sent an array, because the API replaces attrs when the key is
+// present.
 func personBody(args map[string]any) map[string]any {
 	args = flattenPerson(args)
-	out := pick(args, "name", "nickname", "relationship", "phone", "email", "notes", "emoji")
+	out := pick(args, "name", "nickname", "relationship", "emoji", "phone", "email", "address", "height", "favorites", "notes")
 	if month, day, year, present := birthdayParts(args); present {
 		bday := map[string]any{}
 		if month != 0 {
@@ -392,7 +458,91 @@ func personBody(args map[string]any) map[string]any {
 			out["birthday"] = bday
 		}
 	}
+	if sizes := sizesBody(args); len(sizes) > 0 {
+		out["sizes"] = sizes
+	}
+	if attrs, ok := attrsBody(args["attrs"]); ok {
+		out["attrs"] = attrs
+	}
 	return out
+}
+
+// sizesBody accepts a nested sizes object or flat ring_size/shoe_size keys.
+// Only sizes that were sent are included. The People API writes just those
+// keys, so a shoe-only update does not clear ring, shirt, or pants.
+func sizesBody(args map[string]any) map[string]any {
+	out := map[string]any{}
+	if obj, ok := args["sizes"].(map[string]any); ok {
+		for _, key := range []string{"ring", "shoe", "shirt", "pants"} {
+			if v, ok := obj[key]; ok {
+				if s := scalarString(v); s != "" {
+					out[key] = s
+				}
+			}
+		}
+	}
+	for _, pair := range []struct{ flat, key string }{
+		{"ring_size", "ring"},
+		{"shoe_size", "shoe"},
+		{"shirt_size", "shirt"},
+		{"pants_size", "pants"},
+	} {
+		if v, ok := args[pair.flat]; ok {
+			if s := scalarString(v); s != "" {
+				out[pair.key] = s
+			}
+		}
+	}
+	return out
+}
+
+// attrsBody reports whether the attrs key was an array. present is false
+// when the key is absent, not an array, or every row lacked a label, so an
+// update does not wipe rows the model did not mean to replace. An empty
+// array is kept and clears attrs.
+func attrsBody(v any) (rows []any, present bool) {
+	list, ok := v.([]any)
+	if !ok {
+		return nil, false
+	}
+	rows = make([]any, 0, len(list))
+	for _, item := range list {
+		obj, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		label := scalarString(obj["label"])
+		if label == "" {
+			continue
+		}
+		rows = append(rows, map[string]any{"label": label, "value": scalarString(obj["value"])})
+	}
+	if len(list) > 0 && len(rows) == 0 {
+		return nil, false
+	}
+	return rows, true
+}
+
+func scalarString(v any) string {
+	switch t := v.(type) {
+	case nil:
+		return ""
+	case string:
+		return strings.TrimSpace(t)
+	case float64:
+		if t == float64(int64(t)) && t < 1e15 && t > -1e15 {
+			return strconv.FormatInt(int64(t), 10)
+		}
+		return strconv.FormatFloat(t, 'f', -1, 64)
+	case int:
+		return strconv.Itoa(t)
+	case int64:
+		return strconv.FormatInt(t, 10)
+	case json.Number:
+		return strings.TrimSpace(t.String())
+	default:
+		return ""
+	}
 }
 
 func flattenPerson(args map[string]any) map[string]any {

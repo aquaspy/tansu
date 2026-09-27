@@ -285,11 +285,21 @@ func personInputFromPayload(p map[string]any, base store.PersonInput) store.Pers
 		}
 	}
 	// Sizes accept a nested object or flat ring_size/shoe_size/... keys.
+	// A nested object writes only the keys it contains, matching PATCH
+	// merge and the flat keys. An empty string clears that one size.
 	if obj, ok := p["sizes"].(map[string]any); ok {
-		in.RingSize = apiString(obj["ring"])
-		in.ShoeSize = apiString(obj["shoe"])
-		in.ShirtSize = apiString(obj["shirt"])
-		in.PantsSize = apiString(obj["pants"])
+		if v, ok := obj["ring"]; ok {
+			in.RingSize = apiString(v)
+		}
+		if v, ok := obj["shoe"]; ok {
+			in.ShoeSize = apiString(v)
+		}
+		if v, ok := obj["shirt"]; ok {
+			in.ShirtSize = apiString(v)
+		}
+		if v, ok := obj["pants"]; ok {
+			in.PantsSize = apiString(v)
+		}
 	} else {
 		if v, ok := p["ring_size"]; ok {
 			in.RingSize = apiString(v)

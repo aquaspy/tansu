@@ -296,6 +296,7 @@ func toolRules(locale i18n.Locale, loc *time.Location) string {
 	base += "Never say you saved, changed, or deleted something unless the tool result in this turn says ok true.\n"
 	base += "A tool result with ok false was not saved. Explain that error in one sentence and stop. Do not call the tool again.\n"
 	base += "Birthdays belong on a person in People, which already syncs them to Calendar.\n"
+	base += "People also stores emoji, phone, email, address, height, sizes (ring, shoe, shirt, pants), favorites, and attrs (label and value, for CPF, Pix, or an extra email). Use those fields; do not leave them only in notes. people_update is a partial merge: omit attrs unless you mean to replace the whole list.\n"
 	base += "On a tool result with error unauthorized and reconnect true, tell the person to open Connect apps and link that app again.\n"
 	base += "On unknown_outcome, search before creating another record.\n"
 	if locale == i18n.PT {
