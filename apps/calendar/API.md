@@ -100,17 +100,15 @@ Single-event endpoints wrap the same object as `{"event": {...}}`.
 
 ## Birthdays
 
-A birthday: `name` (required), `month` (1–12), `day` (1–31, must exist in
-that month), optional `year` (shown as age), optional `body` notes and
-optional `emoji` (≤12 runes).
+Birthdays are created in Tansu People and synced here. `POST /api/v1/birthdays`
+returns `422` with `{"error":"birthdays_retired"}`. Existing rows (including
+ones People syncs) can still be listed, updated, and deleted. A birthday:
+`name` (required), `month` (1–12), `day` (1–31, must exist in that month),
+optional `year` (shown as age), optional `body` notes and optional `emoji`
+(≤12 runes).
 
 ```bash
 curl -H "Authorization: Bearer $KURA_TOKEN" "$KURA_URL/api/v1/birthdays"
-
-curl -X POST -H "Authorization: Bearer $KURA_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"birthday":{"name":"Eben","month":8,"day":11,"year":1990}}' \
-  "$KURA_URL/api/v1/birthdays"
 
 curl -X PATCH -H "Authorization: Bearer $KURA_TOKEN" \
   -H "Content-Type: application/json" \
@@ -131,7 +129,7 @@ Authenticate every request with: Authorization: Bearer <token>
 - Read events: GET /api/v1/events?from=YYYY-MM-DD&to=YYYY-MM-DD
 - Create: POST /api/v1/events with {"event":{"title","starts_on","ends_on","all_day","starts_at","ends_at","body","emoji","repeat","repeat_until"}}
 - Update: PATCH /api/v1/events/:id — Delete: DELETE /api/v1/events/:id
-- Birthdays: same shape under /api/v1/birthdays with {"birthday":{"name","month","day","year","body","emoji"}}
+- Birthdays belong in Tansu People. POST /api/v1/birthdays is retired. GET/PATCH/DELETE still work for rows already on the calendar.
 Dates are YYYY-MM-DD, times HH:MM. Timed events need all_day=false plus
 starts_at/ends_at. On 422, read the "errors" array and fix the input.
 ```

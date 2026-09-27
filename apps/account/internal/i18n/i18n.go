@@ -187,6 +187,9 @@ var strings_ = map[Locale]map[string]string{
 		"hub.not_linked":  "Not connected yet",
 		"hub.empty_title": "No apps yet",
 		"hub.empty_lede":  "When the apps are connected, they show up here.",
+		"hub.link_title":  "Link apps to Assistant",
+		"hub.link_lede":   "Tansu Assistant can read and change Notes, Calendar, Spend, and People once you link them. You confirm each app.",
+		"hub.link_action": "Connect apps",
 
 		"js.invalid_credentials": "Invalid email or password.",
 		"js.wrong_password":      "Wrong password.",
@@ -262,6 +265,9 @@ var strings_ = map[Locale]map[string]string{
 		"hub.not_linked":  "Ainda não conectado",
 		"hub.empty_title": "Nenhum app ainda",
 		"hub.empty_lede":  "Quando os apps estiverem ligados, eles aparecem aqui.",
+		"hub.link_title":  "Ligue apps ao Assistant",
+		"hub.link_lede":   "O Tansu Assistant pode ler e alterar Notas, Calendário, Gastos e Pessoas depois que você liga cada um. Você confirma cada app.",
+		"hub.link_action": "Conectar apps",
 
 		"js.invalid_credentials": "Email ou senha inválidos.",
 		"js.wrong_password":      "Senha incorreta.",

@@ -197,12 +197,34 @@ func TestHubShowsAppsAndDrawers(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, body, _ = f.get("/", nil)
-	for _, want := range []string{"1/1", "Connected", "Open", "http://127.0.0.1:3005/"} {
+	for _, want := range []string{"1/1", "Connected", "Open", "http://127.0.0.1:3005/login/kura"} {
 		mustContain(t, body, want)
 	}
-	if strings.Contains(body, "/login/kura") {
-		t.Fatal("a connected app should open its home, not start SSO again")
+}
+
+func TestHubLinksAssistantConnect(t *testing.T) {
+	f := newFlow(t, nil)
+	if err := f.store.SeedClients([]store.SeedClient{
+		{
+			ID: testClientID, Secret: testClientSecret,
+			Name: "TansuPeople", Home: "http://127.0.0.1:3005/", Icon: "🧑",
+			RedirectURIs: []string{testRedirect},
+		},
+		{
+			ID: "kurachat", Secret: testClientSecret,
+			Name: "Tansu Assistant", Home: "http://127.0.0.1:3001/", Icon: "✨",
+			RedirectURIs: []string{"http://127.0.0.1:3001/login/kura/callback"},
+		},
+	}); err != nil {
+		t.Fatal(err)
 	}
+	u := f.seedUser("ada@example.com", "secret-password")
+	f.login(u.Email, "secret-password")
+	_, body, _ := f.get("/", nil)
+	mustContain(t, body, "http://127.0.0.1:3005/login/kura")
+	mustContain(t, body, "http://127.0.0.1:3001/login/kura?next=%2Fapps")
+	mustContain(t, body, "Connect apps")
+	mustContain(t, body, "Link apps to Assistant")
 }
 
 func TestOAuthHappyPath(t *testing.T) {

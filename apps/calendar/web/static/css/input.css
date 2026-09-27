@@ -704,7 +704,8 @@ input:focus, select:focus, textarea:focus {
   font: inherit;
   cursor: pointer;
 }
-.day-item.is-holiday { cursor: default; }
+.day-item.is-holiday, .day-item.is-birthday { cursor: default; }
+.day-item.is-birthday .item-main { cursor: default; }
 .item-time {
   font-size: 0.75rem;
   color: var(--accent-2);

@@ -725,8 +725,45 @@ input:focus, select:focus, textarea:focus {
 .size-grid dt { font-size: 0.75rem; color: var(--muted); }
 .size-grid dd { margin: 0; font-weight: 600; }
 
-/* Person dialog form */
-.person-dialog { width: min(34rem, calc(100vw - 2rem)); }
+/* Person dialog form. The field list scrolls; Save stays in view. */
+.confirm-dialog.person-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(34rem, calc(100vw - 1rem - env(safe-area-inset-left) - env(safe-area-inset-right)));
+  height: auto;
+  max-height: calc(100dvh - max(0.75rem, env(safe-area-inset-top)) - max(0.75rem, env(safe-area-inset-bottom)));
+  margin: auto;
+  overflow: hidden;
+  padding-bottom: max(0.7rem, env(safe-area-inset-bottom));
+}
+.person-dialog .dialog-heading { flex: none; }
+.person-dialog .person-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin: 0;
+}
+.person-fields {
+  overflow: auto;
+  min-height: 0;
+  max-height: calc(100dvh - 12.5rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  display: grid;
+  gap: 0.85rem;
+  padding-bottom: 0.15rem;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.person-actions {
+  flex: none;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  margin-top: 0.15rem;
+  background: var(--surface);
+  border-top: 1px solid var(--line-soft);
+}
+.person-dialog .dialog-delete { flex: none; }
 .date-fieldset {
   border: 1px solid var(--line-soft);
   border-radius: 0.7rem;
@@ -806,6 +843,11 @@ input:focus, select:focus, textarea:focus {
   }
   .fab svg { width: 1.45rem; height: 1.45rem; display: block; }
   .confirm-dialog { margin-top: 12dvh; margin-bottom: auto; }
+  .confirm-dialog.person-dialog {
+    margin-top: max(0.5rem, env(safe-area-inset-top));
+    margin-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+  .person-actions .btn-dialog { min-height: 2.75rem; padding: 0.55rem 1rem; }
   .theme-switch { width: min(14.5rem, 100%); padding: 0.28rem; }
   .theme-choice { height: 2.75rem; }
 }

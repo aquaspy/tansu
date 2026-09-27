@@ -93,10 +93,16 @@ func TestAPIBirthdayEmoji(t *testing.T) {
 	_, raw, _ := f.store.CreateToken(u.ID, "hermes")
 	code, out := f.apiCall(http.MethodPost, "/api/v1/birthdays", raw,
 		`{"birthday":{"name":"Ada","month":12,"day":10,"emoji":"🎂"}}`)
-	if code != http.StatusCreated || out["birthday"].(map[string]any)["emoji"] != "🎂" {
+	if code != http.StatusUnprocessableEntity || out["error"] != "birthdays_retired" {
 		t.Fatalf("create: %d %+v", code, out)
 	}
-	id := strconv.FormatFloat(out["birthday"].(map[string]any)["id"].(float64), 'f', 0, 64)
+	b, errs, err := f.store.CreateBirthday(u.ID, store.BirthdayInput{
+		Name: "Ada", Month: "12", Day: "10", Emoji: "🎂",
+	})
+	if err != nil || len(errs) > 0 {
+		t.Fatalf("seed: %v %+v", err, errs)
+	}
+	id := strconv.FormatInt(b.ID, 10)
 	code, out = f.apiCall(http.MethodPatch, "/api/v1/birthdays/"+id, raw, `{"birthday":{"name":"Ada L."}}`)
 	if code != http.StatusOK || out["birthday"].(map[string]any)["emoji"] != "🎂" {
 		t.Fatalf("emoji kept on patch: %d %+v", code, out)
@@ -178,10 +184,16 @@ func TestAPIBirthdaysCRUD(t *testing.T) {
 
 	code, out := f.apiCall(http.MethodPost, "/api/v1/birthdays", raw,
 		`{"birthday":{"name":"Eben","month":8,"day":11,"year":1990}}`)
-	if code != http.StatusCreated {
+	if code != http.StatusUnprocessableEntity || out["error"] != "birthdays_retired" {
 		t.Fatalf("create: %d %+v", code, out)
 	}
-	id := strconv.FormatFloat(out["birthday"].(map[string]any)["id"].(float64), 'f', 0, 64)
+	b, errs, err := f.store.UpsertSyncedBirthday(u.ID, "people:7", store.BirthdayInput{
+		Name: "Eben", Month: "8", Day: "11", Year: "1990",
+	})
+	if err != nil || len(errs) > 0 {
+		t.Fatalf("seed: %v %+v", err, errs)
+	}
+	id := strconv.FormatInt(b.ID, 10)
 
 	code, out = f.apiCall(http.MethodGet, "/api/v1/birthdays", raw, "")
 	if code != http.StatusOK || out["birthdays"].([]any)[0].(map[string]any)["name"] != "Eben" {

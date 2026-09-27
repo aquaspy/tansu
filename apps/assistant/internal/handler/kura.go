@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
+	"path"
 	"strings"
 	"time"
 
@@ -67,6 +69,17 @@ func (s *Server) handleKuraStart(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
+	next := safeSSONext(r.URL.Query().Get("next"))
+	// Already inside the app: the hub can point here every time without
+	// minting another code. A safe next still lands on that page.
+	if UserOf(r) != nil && sessionUsable(r) {
+		dest := "/"
+		if next != "" {
+			dest = next
+		}
+		http.Redirect(w, r, dest, http.StatusSeeOther)
+		return
+	}
 	state, err := randomHex(32)
 	if err != nil {
 		http.Error(w, "try again", http.StatusInternalServerError)
@@ -80,6 +93,9 @@ func (s *Server) handleKuraStart(w http.ResponseWriter, r *http.Request) {
 	if err := s.Store.CreateKuraLogin(state, verifier); err != nil {
 		http.Error(w, "try again", http.StatusInternalServerError)
 		return
+	}
+	if next != "" {
+		s.setSSONextCookie(w, r, next)
 	}
 	s.setKuraStateCookie(w, r, state)
 	sum := sha256.Sum256([]byte(verifier))
@@ -177,11 +193,10 @@ func (s *Server) handleKuraCallback(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if user == nil {
-		if !s.Config.SignupEnabled {
-			fail(http.StatusUnprocessableEntity, "auth.kura_signup_closed")
-			return
-		}
-		// Provision: the digest is unusable, password login stays closed.
+		// A completed Account SSO callback provisions the local user even
+		// when SIGNUP_ENABLED is false. Public /signup and password
+		// registration stay gated. The digest is unusable, so password
+		// login stays closed for this user.
 		digest, err := randomHex(32)
 		if err != nil {
 			fail(http.StatusUnprocessableEntity, "auth.kura_failed")
@@ -204,7 +219,53 @@ func (s *Server) handleKuraCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.setSessionCookie(w, r, sess.ID)
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, s.takeSSONext(w, r), http.StatusSeeOther)
+}
+
+// kuraNextCookie carries an optional same-app landing path for one SSO
+// attempt. Only /apps is accepted, so the hub can open Connect apps
+// without an open redirect.
+const kuraNextCookie = "kura_sso_next"
+
+func safeSSONext(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || strings.ContainsAny(raw, "\\\r\n") || strings.Contains(raw, "://") {
+		return ""
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.IsAbs() || u.Host != "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+		return ""
+	}
+	p := path.Clean(u.Path)
+	if p != "/apps" && !strings.HasPrefix(p, "/apps/") {
+		return ""
+	}
+	return p
+}
+
+func (s *Server) setSSONextCookie(w http.ResponseWriter, r *http.Request, next string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     kuraNextCookie,
+		Value:    next,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   s.secureCookies(r),
+		MaxAge:   int(store.KuraLoginTTL.Seconds()),
+		Expires:  time.Now().Add(store.KuraLoginTTL),
+	})
+}
+
+func (s *Server) takeSSONext(w http.ResponseWriter, r *http.Request) string {
+	c, err := r.Cookie(kuraNextCookie)
+	clearCookie(w, r, s.Config, kuraNextCookie)
+	if err != nil {
+		return "/"
+	}
+	if next := safeSSONext(c.Value); next != "" {
+		return next
+	}
+	return "/"
 }
 
 // kuraStateCookie is the browser binding for one SSO attempt.

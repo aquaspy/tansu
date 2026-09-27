@@ -331,14 +331,33 @@ func TestBirthdayEmojiFlow(t *testing.T) {
 	f := newFlow(t, nil)
 	u := f.seedUser("ada@example.com", "secret-password")
 	f.login(u.Email, "secret-password")
-	if code, _, _ := f.post("/birthdays", url.Values{
-		"name": {"Ada"}, "month": {"9"}, "day": {"14"}, "emoji": {"🎂"},
-	}, nil); code != http.StatusSeeOther {
-		t.Fatalf("birthday: %d", code)
+	if _, errs, err := f.store.UpsertSyncedBirthday(u.ID, "people:1", store.BirthdayInput{
+		Name: "Ada", Month: "9", Day: "14", Emoji: "🎂",
+	}); err != nil || len(errs) > 0 {
+		t.Fatalf("sync: %v %+v", err, errs)
 	}
 	_, body, _ := f.get("/2026/9/14", nil)
 	mustContain(t, body, "🎂 Ada")
-	_ = u
+	if strings.Contains(body, "composer#newBirthday") || strings.Contains(body, `action="/birthdays"`) {
+		t.Fatal("birthday is not a creation choice")
+	}
+}
+
+func TestBirthdayCreateRetired(t *testing.T) {
+	f := newFlow(t, nil)
+	u := f.seedUser("ada@example.com", "secret-password")
+	f.login(u.Email, "secret-password")
+	code, _, h := f.post("/birthdays", url.Values{
+		"name": {"Ada"}, "month": {"9"}, "day": {"14"},
+	}, nil)
+	if code != http.StatusSeeOther {
+		t.Fatalf("create: %d", code)
+	}
+	if n := f.store.CountBirthdays(u.ID); n != 0 {
+		t.Fatalf("birthdays = %d", n)
+	}
+	_, body, _ := f.get(h.Get("Location"), nil)
+	mustContain(t, body, "Tansu People")
 }
 
 func TestTimedEventAndBirthday(t *testing.T) {
@@ -351,10 +370,10 @@ func TestTimedEventAndBirthday(t *testing.T) {
 	}, nil); code != http.StatusSeeOther {
 		t.Fatalf("timed event: %d", code)
 	}
-	if code, _, h := f.post("/birthdays", url.Values{
-		"name": {"Eben"}, "month": {"8"}, "day": {"11"}, "year": {"1990"}, "return_year": {"2026"},
-	}, nil); code != http.StatusSeeOther || h.Get("Location") != "/2026/8/11" {
-		t.Fatalf("birthday: %d %q", code, h.Get("Location"))
+	if _, errs, err := f.store.UpsertSyncedBirthday(u.ID, "people:11", store.BirthdayInput{
+		Name: "Eben", Month: "8", Day: "11", Year: "1990",
+	}); err != nil || len(errs) > 0 {
+		t.Fatalf("birthday: %v %+v", err, errs)
 	}
 	_, body, _ := f.get("/2026/8/26", nil)
 	mustContain(t, body, "Call")
@@ -475,14 +494,18 @@ func TestExportImportRoundTrip(t *testing.T) {
 	if code != http.StatusSeeOther || h.Get("Location") != "/" {
 		t.Fatalf("import: %d %q", code, h.Get("Location"))
 	}
-	if n := f.store.CountEvents(other.ID); n != 1 {
+	if n := f.store.CountEvents(other.ID); n != 2 {
 		t.Fatalf("events = %d", n)
 	}
 	events, _ := f.store.EventsInRange(other.ID, "2026-01-01", "2026-12-31")
-	if events[0].Title != "Park" {
-		t.Fatalf("title = %q", events[0].Title)
+	if len(events) != 1 || events[0].Title != "Park" {
+		t.Fatalf("one-shots = %+v", events)
 	}
-	if n := f.store.CountBirthdays(other.ID); n != 1 {
+	series, err := f.store.ListRepeatingEvents(other.ID)
+	if err != nil || len(series) != 1 || series[0].Title != "Ada" || series[0].Repeat != "yearly" {
+		t.Fatalf("imported birthday = %+v %v", series, err)
+	}
+	if n := f.store.CountBirthdays(other.ID); n != 0 {
 		t.Fatalf("birthdays = %d", n)
 	}
 	// And the flash confirms the count.

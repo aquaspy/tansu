@@ -203,7 +203,7 @@ go vet ./...
 
 | Variable | What it does |
 | --- | --- |
-| `SIGNUP_ENABLED` | Public signup form. Turn off after the first account |
+| `SIGNUP_ENABLED` | Public password signup. Off still lets a completed Account SSO create the local user |
 | `FORCE_SSL` | `true` when Caddy/nginx terminates HTTPS |
 | `KURA_HOST` | Public hostname (comma-separated if several) |
 | `BIND` | Default `127.0.0.1:3000` |

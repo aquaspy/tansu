@@ -415,18 +415,8 @@ func (s *Server) handleAPIBirthdaysCreate(w http.ResponseWriter, r *http.Request
 	if !s.apiWriteLimited(w, r) {
 		return
 	}
-	l := LocaleOf(r)
-	in := birthdayInputFromPayload(decodeAPIPayload(r, "birthday"), store.BirthdayInput{})
-	b, errs, err := s.Store.CreateBirthday(apiUserOf(r).ID, in)
-	if err != nil {
-		writeAPIError(w, http.StatusInternalServerError, "unavailable")
-		return
-	}
-	if len(errs) > 0 {
-		writeAPIErrors(w, http.StatusUnprocessableEntity, errorMessages(l, errs))
-		return
-	}
-	writeAPIJSON(w, http.StatusCreated, map[string]any{"birthday": apiBirthday(b)})
+	// Birthdays are created in People (synced here) or as a normal event.
+	writeAPIError(w, http.StatusUnprocessableEntity, "birthdays_retired")
 }
 
 func (s *Server) handleAPIBirthdaysUpdate(w http.ResponseWriter, r *http.Request) {

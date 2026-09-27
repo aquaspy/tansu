@@ -250,7 +250,7 @@ func toolRules(locale i18n.Locale, loc *time.Location) string {
 	base += "Search before you update or delete. If a search returns more than one match, ask which one. Never invent an id.\n"
 	base += "Never say you saved, changed, or deleted something unless the tool result in this turn says ok.\n"
 	base += "Birthdays belong on a person in People, which already syncs them to Calendar.\n"
-	base += "On a tool result with error unauthorized and reconnect true, tell the person to open Apps and link that app again.\n"
+	base += "On a tool result with error unauthorized and reconnect true, tell the person to open Connect apps and link that app again.\n"
 	base += "On unknown_outcome, search before creating another record.\n"
 	if locale == i18n.PT {
 		return base + "Responda no idioma da pessoa.\n"

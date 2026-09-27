@@ -209,16 +209,54 @@ func TestKuraCallbackRejectsMissingStateCookie(t *testing.T) {
 	}
 }
 
-func TestKuraCallbackRespectsClosedSignup(t *testing.T) {
+func TestKuraCallbackProvisionsWhenSignupClosed(t *testing.T) {
 	f, done := withAccount(t, `{"sub":"acct-5","email":"new@example.com"}`,
 		func(cfg *config.Config) { cfg.SignupEnabled = false })
 	defer done()
-	code, body, _ := kuraCallback(t, f, "state-closed")
-	if code != http.StatusUnprocessableEntity {
-		t.Fatalf("status = %d, want 422", code)
+	code, _, hdr := kuraCallback(t, f, "state-closed")
+	if code != http.StatusSeeOther || hdr.Get("Location") != "/" {
+		t.Fatalf("callback status = %d loc %q, want 303 to /", code, hdr.Get("Location"))
 	}
-	if !strings.Contains(body, "turned off") && !strings.Contains(body, "desligados") {
-		t.Fatalf("expected signup-closed message, got: %.160s", body)
+	user, err := f.store.FindUserByEmail("new@example.com")
+	if err != nil {
+		t.Fatalf("provisioned user missing: %v", err)
+	}
+	if user.AccountSub != "acct-5" {
+		t.Fatalf("AccountSub = %q, want acct-5", user.AccountSub)
+	}
+	if bcrypt.CompareHashAndPassword([]byte(user.PasswordDigest), []byte("password123")) == nil {
+		t.Fatal("SSO provision must keep password login closed")
+	}
+	if code, _, _ := f.get("/", nil); code != http.StatusOK {
+		t.Fatalf("GET / after SSO = %d, want 200 (session cookie)", code)
+	}
+	code, _, hdr = f.post("/signup", url.Values{
+		"email": {"stranger@example.com"}, "password": {"password1"}, "password_confirmation": {"password1"},
+	}, nil)
+	if code != http.StatusSeeOther || hdr.Get("Location") != "/login" {
+		t.Fatalf("closed signup: %d -> %q", code, hdr.Get("Location"))
+	}
+	if _, err := f.store.FindUserByEmail("stranger@example.com"); err == nil {
+		t.Fatal("closed signup created a user")
+	}
+}
+
+func TestKuraStartUsesExistingSession(t *testing.T) {
+	f, done := withAccount(t, `{}`, nil)
+	defer done()
+	digest, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
+	if _, err := f.store.CreateUser("ada@example.com", string(digest)); err != nil {
+		t.Fatal(err)
+	}
+	code, _, _ := f.methodCall(http.MethodPost, "/login", url.Values{
+		"email": {"ada@example.com"}, "password": {"password123"},
+	}, nil)
+	if code != http.StatusSeeOther {
+		t.Fatalf("login: %d", code)
+	}
+	code, _, hdr := f.get("/login/kura", nil)
+	if code != http.StatusSeeOther || hdr.Get("Location") != "/" {
+		t.Fatalf("start with session = %d loc %q, want 303 /", code, hdr.Get("Location"))
 	}
 }
 

@@ -75,6 +75,27 @@ Rules the Account enforces (all fail closed):
 Error shape (token/userinfo): `{"error":"invalid_grant", ...}` with OAuth2
 codes (`invalid_client`, `invalid_grant`, `invalid_token`, `rate_limited`).
 
+## Hub launch
+
+The Account hub links every registered app to `{home}/login/kura`, including
+apps that are already connected. A click starts that app's existing PKCE
+flow. When the Account session is already unlocked, `/authorize` issues the
+code with no consent screen and no second "Entrar com Tansu" click. The
+callback links or creates the local user the same way the login button does
+(`account_sub`, then email only while `account_sub` is empty, then provision).
+A completed SSO callback provisions even when `SIGNUP_ENABLED` is false.
+Public `/signup` and password registration stay closed. If the app already
+has a usable local session,
+`/login/kura` returns home and does not mint another code.
+
+The client secret stays on the app server. The hub URL carries no code,
+token, or secret. Standalone apps (empty `KURA_ACCOUNT_URL`) still send
+`/login/kura` to the local login page and hide the Tansu button.
+
+Linking sibling apps so Assistant can read them is a separate confirm step.
+The hub surfaces it as a link to Assistant's `/login/kura?next=/apps`.
+`next` must be a same-app path under `/apps`; anything else is ignored.
+
 ## Client checklist (per app, ~120 lines with x/oauth2)
 
 1. Env: `KURA_ACCOUNT_URL`, `KURA_CLIENT_ID`, `KURA_CLIENT_SECRET`.
@@ -108,7 +129,8 @@ Interop details the checklist glosses over, all verified live:
   `account_sub` is empty. A row already linked to a different subject
   fails closed, so deleting and recreating the Account user (same email,
   new id) does not take over the app. Unknown email provisions a row
-  with an unusable password digest when signups are open.
+  with an unusable password digest even when `SIGNUP_ENABLED` is false.
+  That flag still closes public `/signup` and password registration.
   Known hardening gap: that first link-by-email is automatic. With
   `RESEND_API_KEY` and `RESEND_FROM` set, Account creates the user only
   after the inbox is confirmed, so a new hosted account's email was

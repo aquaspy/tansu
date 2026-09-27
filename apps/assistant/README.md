@@ -259,7 +259,7 @@ They sit on the same commit until the next change is under test.
 | `CHAT_REPLY_MAX_TOKENS` | Optional hard cap on reply length (reasoning shares the budget). Unset = no cap |
 | `CHAT_WINDOW_TOKENS` | Max estimated tokens sent as the model’s prompt. Default `150000` (under the 272k price step) |
 | `CHAT_KEEP_RECENT_TOKENS` | After compaction, how much recent raw text to keep. Default `32000` |
-| `SIGNUP_ENABLED` | Public signup. Turn off after the first account |
+| `SIGNUP_ENABLED` | Public password signup. Off still lets a completed Account SSO create the local user |
 | `FORCE_SSL` | `true` when Caddy/nginx terminates HTTPS |
 | `KURA_HOST` | Public hostname allowlist. Share links use the request host |
 | `BIND` | Default `127.0.0.1:3000` |
