@@ -138,8 +138,8 @@ func peopleFields() map[string]any {
 		"shoe_size":      strProp("changes only the shoe size"),
 		"shirt_size":     strProp("changes only the shirt size"),
 		"pants_size":     strProp("changes only the pants size"),
-		"favorites":      strProp(""),
-		"notes":          strProp("free text that does not fit a field above"),
+		"favorites":      strProp("On update, an empty string clears favorites. Omit the key to leave them unchanged."),
+		"notes":          strProp("Free text that does not fit a field above. On update, an empty string clears notes, including a lone dash. Omit the key to leave notes unchanged. A dash is text, not a blank."),
 		"attrs":          attrsSchema(),
 	}
 }
@@ -234,7 +234,7 @@ func toolset(app string) []openrouter.Tool {
 			{Name: PeopleSearch, Description: "Search people. Returns id, name, nickname, relationship, a short notes clip.", Parameters: obj(map[string]any{"q": strProp("text")}, nil)},
 			{Name: PeopleRead, Description: "Read one person by id, including address, height, sizes, favorites, notes, and attrs.", Parameters: obj(map[string]any{"id": intProp("person id")}, []string{"id"})},
 			{Name: PeopleCreate, Description: "Create a person. Only name is required. Store address, height, sizes, favorites, and attrs (label/value rows such as CPF, Pix, or an extra email) in those fields, not only in notes. Birthday is YYYY-MM-DD (or MM-DD if the year is unknown), or birthday_month, birthday_day, and optional birthday_year. Sizes are {ring, shoe, shirt, pants} or flat ring_size, shoe_size, shirt_size, pants_size. Do not wrap fields in a person object. Birthdays sync to Calendar from People.", Parameters: obj(peopleFields(), []string{"name"})},
-			{Name: PeopleUpdate, Description: "Update a person by id. Partial merge: send only fields that change and omit the rest. Birthday is YYYY-MM-DD (or MM-DD), or birthday_month, birthday_day, and optional birthday_year. Sizes are {ring, shoe, shirt, pants} or flat ring_size, shoe_size, shirt_size, pants_size; only sizes you include are written. attrs replaces the whole list when the key is present — omit attrs to keep existing rows, and do not send attrs unless those rows should change. Use address, sizes, and attrs instead of parking those facts only in notes.", Parameters: obj(updateFields, []string{"id"})},
+			{Name: PeopleUpdate, Description: "Update a person by id. Partial merge: send only fields that change and omit the rest. Birthday is YYYY-MM-DD (or MM-DD), or birthday_month, birthday_day, and optional birthday_year. Sizes are {ring, shoe, shirt, pants} or flat ring_size, shoe_size, shirt_size, pants_size; only sizes you include are written. An empty string clears that size, and clears notes, favorites, address, phone, email, nickname, relationship, emoji, or height. A dash in notes is text; send an empty string to remove it. attrs replaces the whole list when the key is present — omit attrs to keep existing rows, and do not send attrs unless those rows should change. Use address, sizes, and attrs instead of parking those facts only in notes.", Parameters: obj(updateFields, []string{"id"})},
 			{Name: PeopleDelete, Description: "Ask to delete one person. It does not run until the person confirms.", Parameters: obj(map[string]any{"id": intProp("")}, []string{"id"})},
 		}
 	case "spend":
@@ -586,14 +586,20 @@ func strArg(args map[string]any, k string) string {
 	return s
 }
 
-func pick(args map[string]any, keys ...string) map[string]any {
-	out := map[string]any{}
-	for _, k := range keys {
-		if v, ok := args[k]; ok && v != nil && v != "" {
-			out[k] = v
-		}
+// putClearable copies a field the caller sent. Absent and null stay
+// omitted so a partial update does not change it. A blank or
+// whitespace-only string is sent as "" and clears the field. "-" is text.
+// Other types, such as a numeric height, are forwarded as given.
+func putClearable(args, out map[string]any, key string) {
+	v, ok := args[key]
+	if !ok || v == nil {
+		return
 	}
-	return out
+	if s, isStr := v.(string); isStr {
+		out[key] = strings.TrimSpace(s)
+		return
+	}
+	out[key] = v
 }
 
 // stampOK records whether the tool result is a saved record. The model is
@@ -626,7 +632,14 @@ func stampOK(payload string, ok bool) string {
 // present.
 func personBody(args map[string]any) map[string]any {
 	args = flattenPerson(args)
-	out := pick(args, "name", "nickname", "relationship", "emoji", "phone", "email", "address", "height", "favorites", "notes")
+	out := map[string]any{}
+	// A blank name is a 422 and would reject the whole update, so omit it.
+	if s, ok := nonemptyString(args, "name"); ok {
+		out["name"] = s
+	}
+	for _, key := range []string{"nickname", "relationship", "emoji", "phone", "email", "address", "height", "favorites", "notes"} {
+		putClearable(args, out, key)
+	}
 	if month, day, year, present := birthdayParts(args); present {
 		bday := map[string]any{}
 		if month != 0 {
@@ -654,14 +667,13 @@ func personBody(args map[string]any) map[string]any {
 // sizesBody accepts a nested sizes object or flat ring_size/shoe_size keys.
 // Only sizes that were sent are included. The People API writes just those
 // keys, so a shoe-only update does not clear ring, shirt, or pants.
+// An empty string is sent and clears that one size.
 func sizesBody(args map[string]any) map[string]any {
 	out := map[string]any{}
 	if obj, ok := args["sizes"].(map[string]any); ok {
 		for _, key := range []string{"ring", "shoe", "shirt", "pants"} {
-			if v, ok := obj[key]; ok {
-				if s := scalarString(v); s != "" {
-					out[key] = s
-				}
+			if v, ok := obj[key]; ok && v != nil {
+				out[key] = scalarString(v)
 			}
 		}
 	}
@@ -671,10 +683,8 @@ func sizesBody(args map[string]any) map[string]any {
 		{"shirt_size", "shirt"},
 		{"pants_size", "pants"},
 	} {
-		if v, ok := args[pair.flat]; ok {
-			if s := scalarString(v); s != "" {
-				out[pair.key] = s
-			}
+		if v, ok := args[pair.flat]; ok && v != nil {
+			out[pair.key] = scalarString(v)
 		}
 	}
 	return out

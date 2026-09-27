@@ -203,6 +203,67 @@ func TestPeopleWriteNestedAndPartialFields(t *testing.T) {
 	}
 }
 
+func TestPeopleUpdateClearsBlankNotes(t *testing.T) {
+	srv, method, path, raw, hits := peopleWriteServer(t)
+	defer srv.Close()
+	c := &Client{App: App{Name: "people", Base: srv.URL}, Token: "kura_people"}
+
+	// A lone dash is stored text. Clearing it means sending an empty notes
+	// string, which must appear on the PATCH so the API overwrites "-".
+	out := Execute(context.Background(), c, PeopleUpdate, map[string]any{
+		"id": float64(7), "notes": "",
+	}, false)
+	if !out.OK || *hits != 1 || *method != http.MethodPatch || *path != "/api/v1/people/7" {
+		t.Fatalf("clear %+v %s %s body %s", out, *method, *path, *raw)
+	}
+	person := personPayload(t, *raw)
+	notes, ok := person["notes"].(string)
+	if !ok || notes != "" {
+		t.Fatalf("empty notes dropped: %#v body %s", person["notes"], *raw)
+	}
+	for _, key := range []string{"name", "favorites", "address", "attrs", "sizes", "birthday"} {
+		if _, present := person[key]; present {
+			t.Fatalf("clear notes also sent %s: %s", key, *raw)
+		}
+	}
+
+	out = Execute(context.Background(), c, PeopleUpdate, map[string]any{
+		"id": float64(7), "notes": "  \n\t", "favorites": "",
+	}, false)
+	person = personPayload(t, *raw)
+	if person["notes"] != "" || person["favorites"] != "" {
+		t.Fatalf("whitespace should clear: %#v", person)
+	}
+
+	out = Execute(context.Background(), c, PeopleUpdate, map[string]any{
+		"person": map[string]any{"notes": ""}, "id": float64(7),
+	}, false)
+	person = personPayload(t, *raw)
+	if person["notes"] != "" {
+		t.Fatalf("nested empty notes dropped: %#v", person)
+	}
+
+	out = Execute(context.Background(), c, PeopleUpdate, map[string]any{
+		"id": float64(7), "notes": "-",
+	}, false)
+	person = personPayload(t, *raw)
+	if person["notes"] != "-" {
+		t.Fatalf("a dash is text, got %#v", person["notes"])
+	}
+
+	out = Execute(context.Background(), c, PeopleUpdate, map[string]any{
+		"id": float64(7), "shoe_size": "", "nickname": "  ",
+	}, false)
+	person = personPayload(t, *raw)
+	sizes, _ := person["sizes"].(map[string]any)
+	if person["nickname"] != "" || sizes["shoe"] != "" || len(sizes) != 1 {
+		t.Fatalf("blank size/nickname %#v", person)
+	}
+	if !out.OK {
+		t.Fatalf("last clear %+v", out)
+	}
+}
+
 func TestPeopleDeleteRequiresConfirm(t *testing.T) {
 	srv, method, path, _, hits := peopleWriteServer(t)
 	defer srv.Close()
@@ -259,7 +320,7 @@ func TestPeopleToolSchemaCoversWritableFields(t *testing.T) {
 		t.Fatal("update missing id")
 	}
 	desc := strings.ToLower(update.desc)
-	if !strings.Contains(desc, "only fields that change") || !strings.Contains(desc, "attrs") || !strings.Contains(desc, "omit attrs") {
+	if !strings.Contains(desc, "only fields that change") || !strings.Contains(desc, "attrs") || !strings.Contains(desc, "omit attrs") || !strings.Contains(desc, "empty string") {
 		t.Fatalf("update description: %s", update.desc)
 	}
 	if !strings.Contains(strings.ToLower(create.desc), "attrs") || !strings.Contains(strings.ToLower(create.desc), "notes") {
