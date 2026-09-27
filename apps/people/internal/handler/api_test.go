@@ -62,12 +62,24 @@ func TestAPIPeopleCRUD(t *testing.T) {
 	if updated["nickname"] != "A." || updated["name"] != "Ada Lovelace" {
 		t.Fatalf("merge: %+v", updated)
 	}
-	if updated["sizes"].(map[string]any)["shoe"] != "38" {
+	if updated["sizes"].(map[string]any)["shoe"] != "38" || updated["sizes"].(map[string]any)["ring"] != "16" {
 		t.Fatalf("sizes merge: %+v", updated)
 	}
 	// Attrs untouched when the key is absent.
 	if len(updated["attrs"].([]any)) != 1 {
 		t.Fatalf("attrs dropped: %+v", updated)
+	}
+
+	// A nested sizes object writes only the keys it contains.
+	code, out = f.apiCall(http.MethodPatch, "/api/v1/people/"+id, raw,
+		`{"sizes": {"ring": "17"}}`)
+	if code != http.StatusOK {
+		t.Fatalf("sizes patch: %d %+v", code, out)
+	}
+	patched := out["person"].(map[string]any)
+	gotSizes := patched["sizes"].(map[string]any)
+	if gotSizes["ring"] != "17" || gotSizes["shoe"] != "38" {
+		t.Fatalf("partial sizes: %+v", gotSizes)
 	}
 
 	code, out = f.apiCall(http.MethodGet, "/api/v1/people/"+id, raw, "")

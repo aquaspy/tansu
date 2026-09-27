@@ -343,6 +343,82 @@ func TestAbsorbToolDeltaObjectArguments(t *testing.T) {
 	}
 }
 
+func TestAgentPeopleDeleteConfirm(t *testing.T) {
+	var deletes int
+	var method, path string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		method = r.Method
+		path = r.URL.Path
+		if r.Method == http.MethodDelete {
+			deletes++
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"people":[]}`))
+	}))
+	defer srv.Close()
+	st := openStore(t)
+	u := seedUser(t, st)
+	key := make([]byte, 32)
+	linkSuiteApp(t, st, u.ID, "people", "kura_live", key)
+	conv, err := st.CreateConversation(u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, asst, err := st.CreateTurn(conv.ID, "apaga a Ada", false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fx := &toolLLM{rounds: [][]map[string]any{
+		{toolDelta("c1", suite.PeopleDelete, `{"id":7}`)},
+	}}
+	svc := testService(t, st, &fx.fakeLLM)
+	svc.NewClient = func(string) (LLMClient, error) { return fx, nil }
+	svc.SuiteKey = key
+	svc.SuiteApps = []suite.App{{Name: "people", Base: srv.URL}}
+	svc.Run(asst.ID, i18n.EN)
+	pend, _ := st.GetMessage(asst.ID)
+	if pend.Status != store.StatusConfirming || deletes != 0 {
+		t.Fatalf("confirm status %s deletes %d", pend.Status, deletes)
+	}
+	var doc struct {
+		Calls []map[string]any `json:"calls"`
+	}
+	if err := json.Unmarshal([]byte(pend.ToolTrace), &doc); err != nil || len(doc.Calls) != 1 {
+		t.Fatalf("trace %s", pend.ToolTrace)
+	}
+	if doc.Calls[0]["status"] != "needs_confirm" || doc.Calls[0]["name"] != suite.PeopleDelete {
+		t.Fatalf("call %#v", doc.Calls[0])
+	}
+	doc.Calls[0]["status"] = "approved"
+	b, _ := json.Marshal(doc)
+	_ = st.SetToolTrace(pend.ID, string(b))
+	ok, err := st.ClaimConfirm(pend.ID)
+	if err != nil || !ok {
+		t.Fatal(err)
+	}
+	fx.rounds = [][]map[string]any{{chunk("Apaguei."), usageChunk("m", map[string]any{"cost": 0.001})}}
+	fx.n = 0
+	svc.Run(pend.ID, i18n.EN)
+	if deletes != 1 || method != http.MethodDelete || path != "/api/v1/people/7" {
+		t.Fatalf("deletes %d %s %s", deletes, method, path)
+	}
+	final, _ := st.GetMessage(pend.ID)
+	if !strings.Contains(final.Content, "people_delete") {
+		t.Fatalf("final %q", final.Content)
+	}
+}
+
+func TestToolRulesMentionStructuredPeopleFields(t *testing.T) {
+	got := toolRules(i18n.EN, time.UTC)
+	for _, s := range []string{"address", "attrs", "sizes", "notes", "omit attrs"} {
+		if !strings.Contains(got, s) {
+			t.Fatalf("missing %q in %s", s, got)
+		}
+	}
+}
+
 func TestCancelWritesVisibleLine(t *testing.T) {
 	st := openStore(t)
 	u := seedUser(t, st)
