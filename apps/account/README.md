@@ -69,15 +69,26 @@ SIGNUP_ENABLED=true       # first account, then flip to false
 FORCE_SSL=false           # true once HTTPS terminates in front
 BIND=127.0.0.1:3006
 KURA_CLIENTS_JSON=[...]   # one entry per suite app (see .env.example)
-# RESEND_API_KEY=         # optional; with RESEND_FROM, signup waits for email
-# RESEND_FROM=
+# RESEND_API_KEY=         # optional; with RESEND_FROM, signup confirms by email
+# RESEND_FROM=            # and the login page offers password reset
 ```
 
 Leave `RESEND_API_KEY` empty and signup creates the account immediately.
+The login page hides "Forgot password?". Reset a password from the shell
+(below). There is no other mail path.
+
 Set the key and a verified `RESEND_FROM` when this Account is the public
-signup for the hosted suite: the account is created only after the person
-opens the link and types the password again. The link uses the first
-`KURA_HOST`. Five wrong passwords on that link burn it.
+signup for the hosted suite:
+
+- Signup creates the account only after the person opens the link and
+  types the password again. The link uses the first `KURA_HOST`. Five
+  wrong passwords on that link burn it.
+- The login page offers "Forgot password?". A matching account gets one
+  email with a single-use link that lasts 1 hour. Asking again replaces
+  that link. The page says the same thing whether or not the email is
+  registered. Opening the link sets a new password (8 characters, same
+  rule as signup) and signs that account out of Tansu Account on every
+  device. Suite apps keep their own sessions.
 
 Then:
 
@@ -120,7 +131,8 @@ account.gettansu.com {
 
 ### Users on the server
 
-There is no email recovery. Reset passwords from the box:
+With Resend configured, people reset their own password from the login
+page. Without it, or when you need to reset from the box:
 
 ```bash
 docker compose exec web ./kuraaccount users
@@ -170,7 +182,7 @@ go vet ./...
 | Variable | What it does |
 | --- | --- |
 | `SIGNUP_ENABLED` | Public signup form. Turn off after the first account |
-| `RESEND_API_KEY` | When set, signup waits for an email confirmation. Empty keeps immediate signup |
+| `RESEND_API_KEY` | When set with `RESEND_FROM`, signup waits for email confirmation and login offers password reset. Empty keeps immediate signup and hides the forgot-password link |
 | `RESEND_FROM` | Verified sender. Required when `RESEND_API_KEY` is set |
 | `FORCE_SSL` | `true` when Caddy/nginx terminates HTTPS |
 | `KURA_HOST` | Public hostname (comma-separated if several) |

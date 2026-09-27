@@ -66,6 +66,17 @@ func tokenDigest(raw string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// newOpaqueToken returns a URL-safe secret and the SHA-256 digest to store.
+// Callers keep the raw value only long enough to put it in an email link.
+func newOpaqueToken() (raw, digest string, err error) {
+	buf := make([]byte, 32)
+	if _, err = rand.Read(buf); err != nil {
+		return "", "", err
+	}
+	raw = base64.RawURLEncoding.EncodeToString(buf)
+	return raw, tokenDigest(raw), nil
+}
+
 func normalizePendingLocale(locale string) string {
 	switch strings.ToLower(strings.TrimSpace(locale)) {
 	case "pt", "pt-br":
@@ -86,12 +97,10 @@ func pendingLive(expires time.Time) bool {
 // without touching a newer request.
 func (s *Store) SavePendingSignup(email, passwordDigest, next, locale string) (string, PendingRollback, error) {
 	email = NormalizeEmail(email)
-	buf := make([]byte, 32)
-	if _, err := rand.Read(buf); err != nil {
+	raw, digest, err := newOpaqueToken()
+	if err != nil {
 		return "", PendingRollback{}, err
 	}
-	raw := base64.RawURLEncoding.EncodeToString(buf)
-	digest := tokenDigest(raw)
 	tx, err := s.db.Begin()
 	if err != nil {
 		return "", PendingRollback{}, err

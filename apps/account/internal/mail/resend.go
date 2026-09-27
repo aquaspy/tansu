@@ -1,5 +1,7 @@
-// Package mail sends the signup confirmation. A nil sender means the
-// Account is running without Resend and creates users immediately.
+// Package mail sends transactional Account mail through one Resend
+// client: signup confirmation and password reset. A nil sender means
+// the Account is running without Resend. Signup then creates users
+// immediately, and the forgot-password flow stays hidden.
 package mail
 
 import (
@@ -24,7 +26,8 @@ func NewResend(apiKey, from string) *Resend {
 	return &Resend{client: resend.NewClient(apiKey), from: from}
 }
 
-// Send delivers one confirmation message.
+// Send delivers one transactional message. Subject and body are chosen
+// by the caller so confirmation and password reset share this client.
 func (r *Resend) Send(ctx context.Context, to, subject, html, text string) error {
 	_, err := r.client.Emails.SendWithContext(ctx, &resend.SendEmailRequest{
 		From:    r.from,
