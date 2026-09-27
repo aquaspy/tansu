@@ -87,6 +87,8 @@ func testService(t *testing.T, st *store.Store, fx *fakeLLM) *Service {
 		Config: CompleterConfig{
 			Model: "openai/gpt-6-luna", Effort: "high",
 			WindowTokens: 150000, KeepRecentTokens: 32000,
+			// Unit tests cover the sticky picker. The hosted default hides it.
+			ShowModelControls: true,
 		},
 		APIKey: "x",
 		NewClient: func(model string) (LLMClient, error) {
@@ -450,7 +452,7 @@ func TestToolRowsOmittedFromWindow(t *testing.T) {
 	asst, _ := st.CreateAssistantMessage(conv.ID)
 	fx := &fakeLLM{events: textEvents("Yo"), title: "T"}
 	testService(t, st, fx).Run(asst.ID, i18n.EN)
-	if fx.streams[0].nInput != 3 { // persona + date + trailing turn note only
+	if fx.streams[0].nInput != 4 { // persona + date + connection status + trailing turn note
 		t.Fatalf("input rows = %d", fx.streams[0].nInput)
 	}
 }

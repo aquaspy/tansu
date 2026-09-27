@@ -32,8 +32,11 @@ type Config struct {
 	TierExpensiveMin          float64           // blended $/1M at/above: expensive (default 10)
 	TierPins                  map[string]string // model id -> cheap|medium|expensive override
 	OpenRouterReasoningEffort string
-	OpenRouterPDFEngine       string // file-parser engine: mistral-ocr (default), cloudflare-ai, native
-	LibreOfficeBin            string // soffice lookup for docx/pptx conversion (default "soffice")
+	// ShowModelControls reveals the per-chat model and effort pickers.
+	// When false (hosted default), every turn uses the env model and effort.
+	ShowModelControls   bool
+	OpenRouterPDFEngine string // file-parser engine: mistral-ocr (default), cloudflare-ai, native
+	LibreOfficeBin      string // soffice lookup for docx/pptx conversion (default "soffice")
 
 	VoiceSTTModel   string // transcriptions model (default whisper turbo)
 	VoiceTTSModel   string // speech model (default Azure mai-voice-2)
@@ -82,6 +85,7 @@ func Load() Config {
 		TierExpensiveMin:          floatEnv("OPENROUTER_TIER_EXPENSIVE_MIN", 10),
 		TierPins:                  tierPins(),
 		OpenRouterReasoningEffort: envOr("OPENROUTER_REASONING_EFFORT", "xhigh"),
+		ShowModelControls:         flag("ASSISTANT_SHOW_MODEL_CONTROLS", false),
 		OpenRouterPDFEngine:       envOr("OPENROUTER_PDF_ENGINE", "mistral-ocr"),
 		LibreOfficeBin:            envOr("LIBREOFFICE_BIN", "soffice"),
 

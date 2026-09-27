@@ -45,13 +45,14 @@ func runServe(cfg config.Config) error {
 		Hub:     chat.NewHub(),
 		DataDir: cfg.DataDir,
 		Config: chat.CompleterConfig{
-			Model:            cfg.OpenRouterModel,
-			Models:           cfg.OpenRouterModels,
-			Effort:           cfg.OpenRouterReasoningEffort,
-			WindowTokens:     cfg.ChatWindowTokens,
-			KeepRecentTokens: cfg.ChatKeepRecentTokens,
-			ReplyMaxTokens:   cfg.ChatReplyMaxTokens,
-			PDFEngine:        cfg.OpenRouterPDFEngine,
+			Model:             cfg.OpenRouterModel,
+			Models:            cfg.OpenRouterModels,
+			Effort:            cfg.OpenRouterReasoningEffort,
+			WindowTokens:      cfg.ChatWindowTokens,
+			KeepRecentTokens:  cfg.ChatKeepRecentTokens,
+			ReplyMaxTokens:    cfg.ChatReplyMaxTokens,
+			ShowModelControls: cfg.ShowModelControls,
+			PDFEngine:         cfg.OpenRouterPDFEngine,
 			Search: chat.SearchConfig{
 				Enabled:        cfg.SearchEnabled,
 				Engine:         cfg.SearchEngine,
@@ -82,7 +83,7 @@ func runServe(cfg config.Config) error {
 			svc.SweepStale()
 			_ = st.DeleteStaleSessions(store.SessionMaxAge)
 			_ = st.DeleteStaleKuraLogins(store.KuraLoginTTL)
-	_ = st.DeleteStaleAppConnects(store.AppConnectTTL)
+			_ = st.DeleteStaleAppConnects(store.AppConnectTTL)
 		}
 	}()
 

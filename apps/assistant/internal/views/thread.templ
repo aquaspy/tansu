@@ -55,11 +55,21 @@ templ Thread(p Page, d ShellData) {
 			</dialog>
 		</div>
 		<div class="transcript" id="transcript" data-controller="transcript">
+			if d.Current.Conv.AllowsTools() && len(d.Current.Messages) == 0 {
+				@ExampleBoard(p)
+			}
 			for _, m := range d.Current.Messages {
 				@MessageArticle(p, m, d.Current.Conv.ID, d.Current.Inflight)
 			}
 		</div>
 		<div class="composer-dock">
+			@ModeSwitcher(p, threadMode(d))
+			if d.Current.Conv.AllowsTools() {
+				@AppBadges(d.Current.Badges)
+				if len(d.Current.Messages) > 0 {
+					@ExampleDrawer(p)
+				}
+			}
 			<div class="chat-settings">
 				<form
 					action={ templ.SafeURL(fmt.Sprintf("/conversations/%d/settings", d.Current.Conv.ID)) }
@@ -70,86 +80,10 @@ templ Thread(p Page, d ShellData) {
 					hx-swap="none"
 				>
 					<input type="hidden" name="csrf_token" value={ p.CSRF }/>
-					if len(d.Current.Models) >= 2 {
-						<div class="setting">
-							<span id={ fmt.Sprintf("model-label-%d", d.Current.Conv.ID) }>{ p.T("chat.model") }</span>
-							<div class="model-picker" data-controller="modelmenu">
-								<input
-									type="hidden"
-									name="model"
-									value={ d.Current.CurrentModel }
-									data-modelmenu-target="value"
-								/>
-								<button
-									type="button"
-									class="model-menu-btn"
-									data-action="click->modelmenu#toggle keydown->modelmenu#key"
-									data-modelmenu-target="button"
-									aria-haspopup="listbox"
-									aria-expanded="false"
-									aria-labelledby={ fmt.Sprintf("model-label-%d", d.Current.Conv.ID) }
-									title={ ModelTitle(p, d.Current, d.Current.CurrentModel) }
-								>
-									if tier, ok := d.Current.ModelTiers[d.Current.CurrentModel]; ok {
-										<span class={ "tier-dot tier-" + tier } data-modelmenu-target="tier" aria-hidden="true"></span>
-									} else {
-										<span class="tier-dot" data-modelmenu-target="tier" aria-hidden="true" hidden></span>
-									}
-									<span class="model-menu-label" data-modelmenu-target="label">{ ModelShort(d.Current.CurrentModel) }</span>
-									<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 6.5 8 10l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-								</button>
-								<div
-									class="model-menu"
-									role="listbox"
-									aria-labelledby={ fmt.Sprintf("model-label-%d", d.Current.Conv.ID) }
-									data-modelmenu-target="menu"
-									hidden
-								>
-									for _, m := range d.Current.Models {
-										<button
-											type="button"
-											role="option"
-											aria-selected={ AriaBool(m == d.Current.CurrentModel) }
-											class="model-option"
-											data-action="click->modelmenu#choose"
-											data-modelmenu-value-param={ m }
-											data-modelmenu-short-param={ ModelShort(m) }
-											data-modelmenu-tier-param={ d.Current.ModelTiers[m] }
-											data-modelmenu-title-param={ ModelTitle(p, d.Current, m) }
-											title={ ModelTitle(p, d.Current, m) }
-										>
-											if tier, ok := d.Current.ModelTiers[m]; ok {
-												<span class={ "tier-dot tier-" + tier } aria-hidden="true"></span>
-											}
-											<span class="model-option-name">{ m }</span>
-											<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-										</button>
-									}
-								</div>
-							</div>
-						</div>
+					if d.Current.ShowControls {
+						@ModelField(p, fmt.Sprint(d.Current.Conv.ID), d.Current.Models, d.Current.CurrentModel, d.Current.ModelTiers, d.Current.ModelPrices)
+						@EffortField(p, fmt.Sprint(d.Current.Conv.ID), d.Current.Efforts, d.Current.CurrentEffort)
 					}
-					<div class="setting">
-						<span id={ fmt.Sprintf("effort-label-%d", d.Current.Conv.ID) }>{ p.T("chat.effort") }</span>
-						<div
-							class="effort-picker"
-							role="radiogroup"
-							data-controller="effort"
-							aria-labelledby={ fmt.Sprintf("effort-label-%d", d.Current.Conv.ID) }
-						>
-							for _, e := range d.Current.Efforts {
-								<label class="effort-option" title={ e }>
-									<input
-										type="radio"
-										name="effort"
-										value={ e }
-										checked?={ e == d.Current.CurrentEffort }
-									/>
-									<span>{ e }</span>
-								</label>
-							}
-						</div>
-					</div>
 					<div class="setting">
 						<span id={ fmt.Sprintf("voice-label-%d", d.Current.Conv.ID) }>{ p.T("chat.voice") }</span>
 						<div

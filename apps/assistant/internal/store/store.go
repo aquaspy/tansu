@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS conversations (
   effort TEXT NOT NULL DEFAULT '',
   voice_read_aloud INTEGER NOT NULL DEFAULT 0,
   voice_auto_send INTEGER NOT NULL DEFAULT 1,
+  mode TEXT NOT NULL DEFAULT 'assistant',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -161,6 +162,7 @@ func migrate(db *sql.DB) error {
 			{"effort", `ALTER TABLE conversations ADD COLUMN effort TEXT NOT NULL DEFAULT ''`},
 			{"voice_read_aloud", `ALTER TABLE conversations ADD COLUMN voice_read_aloud INTEGER NOT NULL DEFAULT 0`},
 			{"voice_auto_send", `ALTER TABLE conversations ADD COLUMN voice_auto_send INTEGER NOT NULL DEFAULT 1`},
+			{"mode", `ALTER TABLE conversations ADD COLUMN mode TEXT NOT NULL DEFAULT 'assistant'`},
 		},
 		"messages": {
 			{"deep", `ALTER TABLE messages ADD COLUMN deep INTEGER NOT NULL DEFAULT 0`},

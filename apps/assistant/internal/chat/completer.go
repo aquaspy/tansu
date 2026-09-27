@@ -45,14 +45,15 @@ type SearchConfig struct {
 
 // CompleterConfig mirrors the CHAT_*/OPENROUTER_*/SEARCH_* environment.
 type CompleterConfig struct {
-	Model            string // default model (Models[0])
-	Models           []string
-	Effort           string
-	WindowTokens     int
-	KeepRecentTokens int
-	ReplyMaxTokens   int // 0 = no cap
-	Search           SearchConfig
-	PDFEngine        string // file-parser engine for PDFs
+	Model             string // default model (Models[0])
+	Models            []string
+	Effort            string
+	WindowTokens      int
+	KeepRecentTokens  int
+	ReplyMaxTokens    int // 0 = no cap
+	ShowModelControls bool
+	Search            SearchConfig
+	PDFEngine         string // file-parser engine for PDFs
 }
 
 // LLMClient is the provider surface the completer needs (stubbed in tests).
@@ -86,6 +87,8 @@ type Service struct {
 	// retryDelays overrides the backoff between automatic retries in
 	// tests (nil = defaultRetryDelays).
 	retryDelays []time.Duration
+
+	health healthCache
 }
 
 func (s *Service) client(model string) (LLMClient, error) {
@@ -98,9 +101,11 @@ func (s *Service) client(model string) (LLMClient, error) {
 // resolveModel pins the turn to the conversation's model when it is still
 // configured, else the default.
 func (s *Service) resolveModel(conv *store.Conversation) string {
-	for _, m := range s.Config.Models {
-		if m != "" && m == conv.Model {
-			return m
+	if s.Config.ShowModelControls {
+		for _, m := range s.Config.Models {
+			if m != "" && m == conv.Model {
+				return m
+			}
 		}
 	}
 	return s.Config.Model
@@ -122,7 +127,7 @@ func (s *Service) resolveSearch(conv *store.Conversation, assistant *store.Messa
 // resolveEffort pins the turn to the conversation's effort when valid,
 // else the server default.
 func (s *Service) resolveEffort(conv *store.Conversation) string {
-	if conv.Effort != "" && openrouter.ValidEffort(conv.Effort) {
+	if s.Config.ShowModelControls && conv.Effort != "" && openrouter.ValidEffort(conv.Effort) {
 		return conv.Effort
 	}
 	return s.Config.Effort
@@ -195,7 +200,11 @@ func (s *Service) Run(assistantID int64, locale i18n.Locale) {
 		s.fail(conv.ID, assistant, err, locale)
 		return
 	}
-	if links, _ := s.readyLinks(conv.UserID); len(links) > 0 {
+	healthy := []string(nil)
+	if conv.AllowsTools() {
+		healthy = HealthyApps(s.AppHealth(ctx, conv.UserID))
+	}
+	if len(healthy) > 0 {
 		if s.ToolModel != "" {
 			for _, m := range s.Config.Models {
 				if m == s.ToolModel {
@@ -225,7 +234,7 @@ func (s *Service) Run(assistantID int64, locale i18n.Locale) {
 		if hasPDF {
 			fileOpts = &openrouter.FileOptions{Engine: s.Config.PDFEngine}
 		}
-		s.runAgent(ctx, conv, assistant, locale, client, input, maxOut, effort, searchOpts, fileOpts, search, deep, mode, maxResults)
+		s.runAgent(ctx, conv, assistant, locale, client, input, maxOut, effort, searchOpts, fileOpts, search, deep, mode, maxResults, healthy)
 		s.autoTitle(conv, locale)
 		s.maybeCompact(conv, assistant, locale)
 		return

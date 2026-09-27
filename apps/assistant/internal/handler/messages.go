@@ -94,7 +94,7 @@ func (s *Server) handleMessagesCreate(w http.ResponseWriter, r *http.Request) {
 	// itself, so a send only overrides it when given explicitly. The web
 	// checkbox is in-form: absent means off.
 	model := conv.Model
-	if r.Form.Has("model") {
+	if s.Config.ShowModelControls && r.Form.Has("model") {
 		model = sanitizeModel(s.Config.OpenRouterModels, r.FormValue("model"))
 	}
 	web := s.Config.SearchEnabled && r.FormValue("web") == "1"

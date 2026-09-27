@@ -265,6 +265,10 @@ func (s *Server) handleToolDecision(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
+	if !conv.AllowsTools() {
+		http.Redirect(w, r, "/conversations/"+itoa64(conv.ID), http.StatusSeeOther)
+		return
+	}
 	mid, err := strconv.ParseInt(chi.URLParam(r, "mid"), 10, 64)
 	if err != nil {
 		s.notFound(w, r)

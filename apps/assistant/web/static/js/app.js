@@ -1194,6 +1194,306 @@
     },
   };
 
+  // ---- prompt examples ----------------------------------------------------
+  controllers.examples = {
+    fill({ params }) {
+      const input = document.querySelector('.composer textarea[name="content"]');
+      if (!input || !params?.text) return;
+      input.value = params.text;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.focus();
+    },
+  };
+
+  // ---- anonymous (browser-only) threads -----------------------------------
+  const ANON_PREF = "kura.anon.pref";
+  const ANON_DATA = "kura.anon.v1";
+
+  function anonPref() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(ANON_PREF) || "");
+      return { clearOnClose: !!parsed.clearOnClose };
+    } catch {
+      return { clearOnClose: false };
+    }
+  }
+
+  function anonSetPref(clearOnClose) {
+    localStorage.setItem(ANON_PREF, JSON.stringify({ clearOnClose: !!clearOnClose }));
+  }
+
+  function anonBucket(clearOnClose) {
+    return clearOnClose ? sessionStorage : localStorage;
+  }
+
+  function anonLoad(clearOnClose) {
+    try {
+      const raw = anonBucket(clearOnClose).getItem(ANON_DATA);
+      const data = raw ? JSON.parse(raw) : null;
+      if (data && Array.isArray(data.threads)) return data;
+    } catch {
+      /* fresh store */
+    }
+    return { active: "", threads: [] };
+  }
+
+  function anonSave(clearOnClose, data) {
+    anonBucket(clearOnClose).setItem(ANON_DATA, JSON.stringify(data));
+    (clearOnClose ? localStorage : sessionStorage).removeItem(ANON_DATA);
+  }
+
+  function anonId() {
+    if (crypto.randomUUID) return crypto.randomUUID();
+    return `${Date.now().toString(36)}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  function anonBlank() {
+    return { id: anonId(), title: "", messages: [] };
+  }
+
+  function anonClip(text) {
+    const line = (text || "").trim().split("\n")[0] || "";
+    return line.length > 48 ? `${line.slice(0, 48)}…` : line;
+  }
+
+  function anonEscape(text) {
+    return String(text)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function anonFormat(text) {
+    return anonEscape(text)
+      .split(/\n{2,}/)
+      .map((para) => para.trim())
+      .filter(Boolean)
+      .map((para) => `<p>${para.replace(/\n/g, "<br>")}</p>`)
+      .join("");
+  }
+
+  function anonArticle(message) {
+    const article = document.createElement("article");
+    article.className = `msg msg-${message.role === "assistant" ? "assistant" : "user"} is-done`;
+    const body = document.createElement("div");
+    body.className = "msg-body";
+    if (message.role === "assistant" && message.html) body.innerHTML = message.html;
+    else body.innerHTML = anonFormat(message.content || "");
+    article.appendChild(body);
+    return article;
+  }
+
+  function anonActive(data) {
+    return data.threads.find((thread) => thread.id === data.active) || null;
+  }
+
+  function anonRenderLocal(root, data) {
+    const box = target(root, "anon", "local");
+    if (!box) return;
+    box.replaceChildren();
+    data.threads.forEach((thread) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `anon-thread${thread.id === data.active ? " is-on" : ""}`;
+      button.textContent = thread.title || root.dataset.anonUntitledValue || "";
+      button.dataset.action = "anon#open";
+      button.dataset.anonIdParam = thread.id;
+      box.appendChild(button);
+    });
+  }
+
+  function anonRender(root, data) {
+    const thread = anonActive(data);
+    const box = target(root, "anon", "transcript");
+    const title = target(root, "anon", "title");
+    if (box && thread) {
+      box.replaceChildren(...thread.messages.map(anonArticle));
+    }
+    if (title && thread && document.activeElement !== title) title.value = thread.title || "";
+    anonRenderLocal(root, data);
+  }
+
+  controllers.anon = {
+    connect(root) {
+      const pref = anonPref();
+      const close = target(root, "anon", "close");
+      if (close) close.checked = pref.clearOnClose;
+      const params = new URLSearchParams(location.search);
+      let data = anonLoad(pref.clearOnClose);
+      if (params.get("new") === "1") {
+        const thread = anonBlank();
+        data.threads.unshift(thread);
+        data.active = thread.id;
+        anonSave(pref.clearOnClose, data);
+        history.replaceState({}, "", "/anonymous");
+        anonRender(root, data);
+        return;
+      }
+      const seedEl = document.getElementById("anon-seed");
+      if (seedEl) {
+        let seed = [];
+        try {
+          seed = JSON.parse(seedEl.textContent);
+        } catch {
+          seed = [];
+        }
+        const thread = anonBlank();
+        thread.messages = (Array.isArray(seed) ? seed : []).map((row) => ({
+          role: row.role,
+          content: row.content || "",
+          html: row.html || "",
+        }));
+        const first = thread.messages.find((row) => row.role === "user");
+        thread.title = anonClip(first?.content || "");
+        data.threads.unshift(thread);
+        data.active = thread.id;
+        anonSave(pref.clearOnClose, data);
+        if (target(root, "anon", "title")) target(root, "anon", "title").value = thread.title;
+        anonRenderLocal(root, data);
+        seedEl.remove();
+        return;
+      }
+      if (!anonActive(data)) {
+        const thread = anonBlank();
+        data.threads.unshift(thread);
+        data.active = thread.id;
+        anonSave(pref.clearOnClose, data);
+      }
+      anonRender(root, data);
+    },
+    open({ scope, params }) {
+      if (!params?.id) return;
+      const pref = anonPref();
+      const data = anonLoad(pref.clearOnClose);
+      if (!data.threads.some((thread) => thread.id === params.id)) return;
+      data.active = params.id;
+      anonSave(pref.clearOnClose, data);
+      anonRender(scope, data);
+    },
+    title({ scope }) {
+      const pref = anonPref();
+      const data = anonLoad(pref.clearOnClose);
+      const thread = anonActive(data);
+      const input = target(scope, "anon", "title");
+      if (!thread || !input) return;
+      thread.title = input.value;
+      anonSave(pref.clearOnClose, data);
+      anonRenderLocal(scope, data);
+    },
+    close({ scope }) {
+      const box = target(scope, "anon", "close");
+      const next = !!box?.checked;
+      const prev = anonPref().clearOnClose;
+      const data = anonLoad(prev);
+      anonSetPref(next);
+      anonSave(next, data);
+    },
+    clear({ scope }) {
+      const pref = anonPref();
+      const thread = anonBlank();
+      const data = { active: thread.id, threads: [thread] };
+      anonSave(pref.clearOnClose, data);
+      const input = target(scope, "anon", "input");
+      if (input) input.value = "";
+      anonRender(scope, data);
+    },
+    async send({ event, scope }) {
+      event.preventDefault();
+      const form = scope.querySelector("form.composer");
+      const input = target(scope, "anon", "input") || form?.querySelector("textarea");
+      const text = (input?.value || "").trim();
+      if (!text || !form) return;
+      const submit = target(scope, "anon", "submit");
+      if (submit) submit.disabled = true;
+      const pref = anonPref();
+      const data = anonLoad(pref.clearOnClose);
+      let thread = anonActive(data);
+      if (!thread) {
+        thread = anonBlank();
+        data.threads.unshift(thread);
+        data.active = thread.id;
+      }
+      thread.messages.push({ role: "user", content: text });
+      if (!thread.title) thread.title = anonClip(text);
+      anonSave(pref.clearOnClose, data);
+      if (input) input.value = "";
+      anonRender(scope, data);
+      const pending = document.createElement("article");
+      pending.className = "msg msg-assistant is-streaming";
+      pending.innerHTML = `<div class="msg-body"></div><p class="msg-status">${scope.dataset.anonUntitledValue ? "" : ""}</p>`;
+      const body = pending.querySelector(".msg-body");
+      const status = pending.querySelector(".msg-status");
+      if (status) status.textContent = "…";
+      target(scope, "anon", "transcript")?.appendChild(pending);
+      const token = document.querySelector('meta[name="csrf-token"]')?.content || "";
+      const payload = {
+        messages: thread.messages.slice(0, -1),
+        content: text,
+        web: !!form.querySelector('[name="web"]')?.checked,
+        deep: !!form.querySelector('[name="deep"]')?.checked,
+      };
+      const model = form.querySelector('[name="model"]');
+      const effort = form.querySelector('[name="effort"]:checked');
+      if (model?.value) payload.model = model.value;
+      if (effort?.value) payload.effort = effort.value;
+      let acc = "";
+      let html = "";
+      let failed = false;
+      try {
+        const resp = await fetch("/anonymous/complete", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "text/event-stream",
+            "X-CSRF-Token": token,
+          },
+          body: JSON.stringify(payload),
+        });
+        if (!resp.ok || !resp.body) throw new Error("anon");
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        for (;;) {
+          const step = await reader.read();
+          if (step.done) break;
+          buf += decoder.decode(step.value, { stream: true });
+          const chunks = buf.split("\n\n");
+          buf = chunks.pop() || "";
+          for (const chunk of chunks) {
+            const line = chunk.split("\n").find((row) => row.startsWith("data: "));
+            if (!line) continue;
+            const msg = JSON.parse(line.slice(6));
+            if (msg.error) throw new Error(msg.error);
+            if (msg.delta) {
+              acc += msg.delta;
+              if (body) body.textContent = acc;
+            }
+            if (msg.done) {
+              acc = msg.content || acc;
+              html = msg.html || "";
+            }
+          }
+        }
+      } catch {
+        failed = !acc;
+      }
+      if (failed) {
+        pending.className = "msg msg-assistant is-failed";
+        if (body) body.textContent = "";
+        if (status) status.textContent = scope.dataset.anonFailedValue || "";
+      } else {
+        pending.className = "msg msg-assistant is-done";
+        if (status) status.remove();
+        if (html && body) body.innerHTML = html;
+        else if (body) body.textContent = acc;
+        thread.messages.push({ role: "assistant", content: acc, html });
+        anonSave(pref.clearOnClose, data);
+      }
+      if (submit) submit.disabled = false;
+      target(scope, "anon", "transcript")?.lastElementChild?.scrollIntoView({ block: "nearest" });
+    },
+  };
+
   // ---- confirm ------------------------------------------------------------
   controllers.confirm = {
     open({ element, scope }) {

@@ -93,7 +93,11 @@ templ Shell(p Page, d ShellData) {
 				@SignOut(p)
 			</div>
 		</aside>
-		if d.Current == nil {
+		if d.Anonymous {
+			<section class="col-editor">
+				@AnonThread(p, d)
+			</section>
+		} else if d.Current == nil {
 			<section class="col-editor">
 				@Thread(p, d)
 			</section>
@@ -120,7 +124,7 @@ templ Shell(p Page, d ShellData) {
 }
 
 func shellClass(d ShellData) string {
-	if d.Current != nil {
+	if d.Current != nil || d.Anonymous {
 		return "app-shell is-editing"
 	}
 	return "app-shell"
