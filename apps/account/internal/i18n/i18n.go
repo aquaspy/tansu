@@ -179,7 +179,7 @@ var strings_ = map[Locale]map[string]string{
 		"app.offline":       "You're offline. The hub needs a connection to open your apps.",
 
 		"hub.title":       "The tansu holds the suite",
-		"hub.drawers":     "%{count} of %{max} drawers",
+		"hub.drawers":     "%{count}/%{max}",
 		"hub.apps":        "Apps",
 		"hub.open":        "Open",
 		"hub.connect":     "Connect",
@@ -254,7 +254,7 @@ var strings_ = map[Locale]map[string]string{
 		"app.offline":       "Você está offline. O hub precisa de conexão para abrir seus apps.",
 
 		"hub.title":       "O tansu guarda a suíte",
-		"hub.drawers":     "%{count} de %{max} gavetas",
+		"hub.drawers":     "%{count}/%{max}",
 		"hub.apps":        "Apps",
 		"hub.open":        "Abrir",
 		"hub.connect":     "Conectar",

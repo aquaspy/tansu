@@ -23,11 +23,10 @@ func (s *Server) handleHubIndex(w http.ResponseWriter, r *http.Request) {
 		linked[id] = true
 	}
 	d := views.HubData{
-		Email:      user.Email,
-		Clients:    clients,
-		Linked:     linked,
-		AutoLock:   AutoLockEnabled(r),
-		MaxDrawers: views.MaxDrawers,
+		Email:    user.Email,
+		Clients:  clients,
+		Linked:   linked,
+		AutoLock: AutoLockEnabled(r),
 	}
 	p := s.page(w, r, pTitle(r, "titles.app"), "")
 	render(w, r, http.StatusOK, views.Layout(p, views.NoHead(), views.HubPage(p, d)))

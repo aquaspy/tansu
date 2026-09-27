@@ -3,6 +3,7 @@ package views
 import (
 	"encoding/json"
 	"net/url"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -61,30 +62,31 @@ func (p Page) I18nScript() templ.Component {
 	return templ.Raw(`<script type="application/json" id="i18n">` + p.I18nJSON() + `</script>`)
 }
 
-// MaxDrawers is the chest: nine drawers for nine apps.
-const MaxDrawers = 9
-
 // HubData drives the account launcher.
 type HubData struct {
-	Email      string
-	Clients    []*store.Client
-	Linked     map[string]bool
-	AutoLock   bool
-	MaxDrawers int
+	Email    string
+	Clients  []*store.Client
+	Linked   map[string]bool
+	AutoLock bool
 }
 
-// LinkedCount reports the lit drawers, capped at MaxDrawers.
+// AppCount is how many suite apps this Account knows about.
+func AppCount(d HubData) int { return len(d.Clients) }
+
+// LinkedCount is how many of those apps this person has connected.
 func LinkedCount(d HubData) int {
 	n := 0
 	for _, c := range d.Clients {
-		if d.Linked[c.ID] {
+		if c != nil && d.Linked[c.ID] {
 			n++
 		}
 	}
-	if n > d.MaxDrawers {
-		n = d.MaxDrawers
-	}
 	return n
+}
+
+// Box is one rectangle in the chest mark.
+type Box struct {
+	X, Y, W, H int
 }
 
 // Drawer is one face of the tansu. The bottom drawer is the lock.
@@ -106,32 +108,126 @@ func (d Drawer) PullX() int { return d.CX() - 5 }
 // PullY is the top edge of that pull.
 func (d Drawer) PullY() int { return d.CY() - 1 }
 
-// Drawers is a nine-drawer tansu: two small, one wide, three small,
-// two small, and a locking drawer across the bottom. Connected apps
-// light it from the lock upward.
-func Drawers(d HubData) []Drawer {
+// Cabinet is the chest sized to the apps this Account has.
+type Cabinet struct {
+	ViewBox string
+	Lip     Box
+	Case    Box
+	FootL   Box
+	FootR   Box
+	Drawers []Drawer
+}
+
+// Chest builds one drawer per registered app. Connected apps light
+// the faces from the lock upward.
+func Chest(d HubData) Cabinet {
+	const (
+		rowH          = 15
+		gap           = 3
+		padTop        = 8
+		padBot        = 12
+		lipH          = 8
+		caseX         = 18
+		caseW         = 84
+		innerX        = 24
+		innerW        = 72
+		footW         = 14
+		footH         = 4
+		emptyInterior = rowH
+	)
+	n := AppCount(d)
+	counts := rowCounts(n)
+	contentH := emptyInterior
+	if len(counts) > 0 {
+		contentH = len(counts)*rowH + (len(counts)-1)*gap
+	}
+	lipY := 8
+	caseY := lipY + lipH - 2
+	caseH := padTop + contentH + padBot
+	footY := caseY + caseH
+	c := Cabinet{
+		ViewBox: "0 0 120 " + strconv.Itoa(footY+footH+4),
+		Lip:     Box{X: 14, Y: lipY, W: 92, H: lipH},
+		Case:    Box{X: caseX, Y: caseY, W: caseW, H: caseH},
+		FootL:   Box{X: 26, Y: footY, W: footW, H: footH},
+		FootR:   Box{X: 80, Y: footY, W: footW, H: footH},
+	}
+	y := caseY + padTop
+	for r, count := range counts {
+		widths := splitWidths(innerW, count, gap)
+		x := innerX
+		lock := r == len(counts)-1
+		for i, w := range widths {
+			c.Drawers = append(c.Drawers, Drawer{
+				X: x, Y: y, W: w, H: rowH, Lock: lock && i == 0,
+			})
+			x += w + gap
+		}
+		y += rowH + gap
+	}
+	// The lock lights first, then the drawers above it.
 	lit := LinkedCount(d)
-	on := map[int]bool{}
-	// Bottom lock first, then the row above, then upward.
-	order := []int{8, 6, 7, 4, 3, 5, 2, 0, 1}
-	for i := 0; i < lit && i < len(order); i++ {
-		on[order[i]] = true
+	for i := 0; i < lit && i < len(c.Drawers); i++ {
+		c.Drawers[len(c.Drawers)-1-i].Lit = true
 	}
-	faces := []Drawer{
-		{X: 24, Y: 26, W: 34, H: 15},
-		{X: 62, Y: 26, W: 34, H: 15},
-		{X: 24, Y: 44, W: 72, H: 14},
-		{X: 24, Y: 61, W: 22, H: 14},
-		{X: 49, Y: 61, W: 22, H: 14},
-		{X: 74, Y: 61, W: 22, H: 14},
-		{X: 24, Y: 78, W: 34, H: 14},
-		{X: 62, Y: 78, W: 34, H: 14},
-		{X: 24, Y: 95, W: 72, H: 14, Lock: true},
+	return c
+}
+
+// rowCounts packs n drawers into rows. The bottom row is the lock.
+// Six apps become two small, one wide, two small, and the lock.
+func rowCounts(n int) []int {
+	if n <= 0 {
+		return nil
 	}
-	for i := range faces {
-		faces[i].Lit = on[i]
+	if n == 1 {
+		return []int{1}
 	}
-	return faces
+	rest := n - 1
+	wide := 2
+	if rest > 8 {
+		wide = 3
+	}
+	var rows []int
+	for rest > 0 {
+		if rest < wide {
+			rows = append(rows, rest)
+			break
+		}
+		if wide == 2 && rest%2 == 1 && len(rows) == 1 {
+			rows = append(rows, 1)
+			rest--
+			continue
+		}
+		rows = append(rows, wide)
+		rest -= wide
+	}
+	return append(rows, 1)
+}
+
+// splitWidths divides a row into count faces that add back to total.
+func splitWidths(total, count, gap int) []int {
+	if count <= 1 {
+		return []int{total}
+	}
+	inner := total - gap*(count-1)
+	w := inner / count
+	extra := inner - w*count
+	out := make([]int, count)
+	for i := range out {
+		out[i] = w
+		if i < extra {
+			out[i]++
+		}
+	}
+	return out
+}
+
+// ChestLabel is the connected/total fraction, or the title when no app is registered.
+func ChestLabel(p Page, d HubData) string {
+	if AppCount(d) == 0 {
+		return p.T("hub.title")
+	}
+	return p.T("hub.drawers", "count", strconv.Itoa(LinkedCount(d)), "max", strconv.Itoa(AppCount(d)))
 }
 
 // DrawerClass marks a lit face so the accent fill can follow the link.

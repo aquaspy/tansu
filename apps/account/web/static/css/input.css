@@ -438,7 +438,7 @@ input:focus, select:focus, textarea:focus {
   padding: 0.4rem 0 5.5rem;
 }
 
-/* Tansu: nine drawers, lit as apps connect. The center face is the lock. */
+/* Tansu: one drawer per registered app. The bottom face is the lock. */
 .chest { text-align: center; margin: 1.15rem 0 1.7rem; }
 .cabinet { width: min(13.5rem, 56vw); height: auto; display: block; margin: 0 auto 0.85rem; }
 .cabinet-lip, .cabinet-foot { fill: var(--ink); }
