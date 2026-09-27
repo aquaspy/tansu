@@ -75,6 +75,13 @@ CREATE TABLE IF NOT EXISTS pending_signups (
   created_at TEXT NOT NULL,
   attempts INTEGER NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS password_resets (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  token_digest TEXT NOT NULL UNIQUE,
+  locale TEXT NOT NULL DEFAULT 'en',
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
 `
 
 type Store struct {

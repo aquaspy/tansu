@@ -19,7 +19,8 @@ type Config struct {
 	// [{"id","secret","name","home","icon","redirect_uris":[]}].
 	ClientsJSON string
 	Clients     []ClientConfig
-	// ResendAPIKey enables email confirmation. Empty keeps immediate signup.
+	// ResendAPIKey enables signup confirmation and password reset.
+	// Empty keeps immediate signup and hides the forgot-password link.
 	ResendAPIKey string
 	// ResendFrom is the verified sender. Required when ResendAPIKey is set.
 	ResendFrom string
@@ -48,8 +49,9 @@ func Load() Config {
 	}
 }
 
-// MailEnabled reports whether signup must confirm the inbox before
-// creating a user. Self-host installs leave the key empty.
+// MailEnabled reports whether Resend is configured. Signup then waits
+// for an inbox link, and login offers password reset. Self-host installs
+// leave the key empty: signup is immediate and reset stays on the shell.
 func (c Config) MailEnabled() bool { return c.ResendAPIKey != "" }
 
 // Validate fails closed when mail is configured without a usable sender.

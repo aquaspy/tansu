@@ -39,7 +39,7 @@ func (s *Server) handleSignupNew(w http.ResponseWriter, r *http.Request) {
 	}
 	p := s.page(w, r, pTitle(r, "titles.signup"), "auth-body")
 	p.Next = requestNext(r)
-	render(w, r, http.StatusOK, views.Layout(p, views.NoHead(), views.SignupPage(p, "")))
+	render(w, r, http.StatusOK, views.Layout(p, views.NoHead(), views.SignupPage(p, "", s.Config.MailEnabled())))
 }
 
 func (s *Server) handleSignupCreate(w http.ResponseWriter, r *http.Request) {
@@ -55,7 +55,7 @@ func (s *Server) handleSignupCreate(w http.ResponseWriter, r *http.Request) {
 		p := s.page(w, r, pTitle(r, "titles.signup"), "auth-body")
 		p.Alert = i18n.T(l, "auth.too_many")
 		p.Next = requestNext(r)
-		render(w, r, http.StatusTooManyRequests, views.Layout(p, views.NoHead(), views.SignupPage(p, r.FormValue("email"))))
+		render(w, r, http.StatusTooManyRequests, views.Layout(p, views.NoHead(), views.SignupPage(p, r.FormValue("email"), s.Config.MailEnabled())))
 		return
 	}
 	email := r.FormValue("email")
@@ -85,7 +85,7 @@ func (s *Server) renderSignup(w http.ResponseWriter, r *http.Request, status int
 	p := s.page(w, r, pTitle(r, "titles.signup"), "auth-body")
 	p.Alert = alert
 	p.Next = requestNext(r)
-	render(w, r, status, views.Layout(p, views.NoHead(), views.SignupPage(p, email)))
+	render(w, r, status, views.Layout(p, views.NoHead(), views.SignupPage(p, email, s.Config.MailEnabled())))
 }
 
 func (s *Server) signupImmediate(w http.ResponseWriter, r *http.Request, email, password string) {
@@ -253,15 +253,20 @@ func (s *Server) renderConfirmInvalid(w http.ResponseWriter, r *http.Request, st
 	render(w, r, status, views.Layout(p, views.NoHead(), views.SignupConfirmInvalidPage(p)))
 }
 
-// confirmURL builds the link in the confirmation email. A configured
-// KURA_HOST wins over the request host: behind a local proxy every
-// peer is loopback, so the host allowlist does not run.
+// confirmURL builds the link in the confirmation email.
 func (s *Server) confirmURL(r *http.Request, token string) string {
+	return s.publicURL(r, "/signup/confirm", token)
+}
+
+// publicURL builds an emailed link. A configured KURA_HOST wins over
+// the request host: behind a local proxy every peer is loopback, so
+// the host allowlist does not run.
+func (s *Server) publicURL(r *http.Request, path, token string) string {
 	host := r.Host
 	if len(s.Config.KuraHosts) > 0 {
 		host = s.Config.KuraHosts[0]
 	}
-	u := url.URL{Scheme: s.publicScheme(r), Host: host, Path: "/signup/confirm"}
+	u := url.URL{Scheme: s.publicScheme(r), Host: host, Path: path}
 	q := url.Values{}
 	q.Set("token", token)
 	u.RawQuery = q.Encode()
@@ -284,39 +289,35 @@ func (s *Server) handleLoginNew(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	s.renderLogin(w, r, http.StatusOK, "", "")
+}
+
+func (s *Server) renderLogin(w http.ResponseWriter, r *http.Request, status int, alert, email string) {
 	p := s.page(w, r, pTitle(r, "titles.login"), "auth-body")
+	p.Alert = alert
 	p.Next = requestNext(r)
-	render(w, r, http.StatusOK, views.Layout(p, views.NoHead(),
-		views.LoginPage(p, "", s.Config.SignupEnabled)))
+	if alert == "" && r.URL.Query().Get("reset") == "1" {
+		p.Notice = i18n.T(LocaleOf(r), "auth.reset_done")
+	}
+	render(w, r, status, views.Layout(p, views.NoHead(),
+		views.LoginPage(p, email, s.Config.SignupEnabled, s.Config.MailEnabled())))
 }
 
 func (s *Server) handleLoginCreate(w http.ResponseWriter, r *http.Request) {
 	l := LocaleOf(r)
 	email := r.FormValue("email")
 	if !s.Limiter.Allow("login:"+clientIP(r), 20, 3*time.Minute) {
-		p := s.page(w, r, pTitle(r, "titles.login"), "auth-body")
-		p.Alert = i18n.T(l, "auth.too_many")
-		p.Next = requestNext(r)
-		render(w, r, http.StatusTooManyRequests, views.Layout(p, views.NoHead(),
-			views.LoginPage(p, email, s.Config.SignupEnabled)))
+		s.renderLogin(w, r, http.StatusTooManyRequests, i18n.T(l, "auth.too_many"), email)
 		return
 	}
 	user, err := s.Store.FindUserByEmail(email)
 	if err != nil || bcrypt.CompareHashAndPassword([]byte(user.PasswordDigest), []byte(r.FormValue("password"))) != nil {
-		p := s.page(w, r, pTitle(r, "titles.login"), "auth-body")
-		p.Alert = i18n.T(l, "js.invalid_credentials")
-		p.Next = requestNext(r)
-		render(w, r, http.StatusUnprocessableEntity, views.Layout(p, views.NoHead(),
-			views.LoginPage(p, email, s.Config.SignupEnabled)))
+		s.renderLogin(w, r, http.StatusUnprocessableEntity, i18n.T(l, "js.invalid_credentials"), email)
 		return
 	}
 	sess, err := s.Store.CreateSession(user.ID)
 	if err != nil {
-		p := s.page(w, r, pTitle(r, "titles.login"), "auth-body")
-		p.Alert = i18n.T(l, "auth.too_many")
-		p.Next = requestNext(r)
-		render(w, r, http.StatusUnprocessableEntity, views.Layout(p, views.NoHead(),
-			views.LoginPage(p, email, s.Config.SignupEnabled)))
+		s.renderLogin(w, r, http.StatusUnprocessableEntity, i18n.T(l, "auth.too_many"), email)
 		return
 	}
 	s.setSessionCookie(w, r, sess.ID)

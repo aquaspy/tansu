@@ -1,10 +1,13 @@
 package views
 
-templ LoginPage(p Page, email string, signupOpen bool) {
+templ LoginPage(p Page, email string, signupOpen bool, mailEnabled bool) {
 	<section class="auth-card">
 		@Wordmark()
 		<h1>{ p.T("auth.sign_in") }</h1>
 		<p class="lede">{ p.T("auth.sign_in_lede") }</p>
+		if p.Notice != "" {
+			<p class="flash flash-notice" role="status">{ p.Notice }</p>
+		}
 		<form action="/login" method="post" class="auth-form">
 			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
 			if p.Next != "" {
@@ -23,6 +26,9 @@ templ LoginPage(p Page, email string, signupOpen bool) {
 			</label>
 			<input type="submit" value={ p.T("auth.sign_in") } class="btn-primary"/>
 		</form>
+		if mailEnabled {
+			<p class="auth-foot"><a href={ templ.SafeURL(WithNext("/password/forgot", p.Next)) }>{ p.T("auth.forgot_password") }</a></p>
+		}
 		if signupOpen {
 			<p class="auth-foot">{ p.T("auth.no_account") } <a href={ templ.SafeURL(WithNext("/signup", p.Next)) }>{ p.T("auth.create_one") }</a></p>
 		}
@@ -30,11 +36,15 @@ templ LoginPage(p Page, email string, signupOpen bool) {
 	</section>
 }
 
-templ SignupPage(p Page, email string) {
+templ SignupPage(p Page, email string, mailEnabled bool) {
 	<section class="auth-card">
 		@Wordmark()
 		<h1>{ p.T("auth.create_account") }</h1>
-		<p class="lede">{ p.T("auth.signup_lede") }</p>
+		if mailEnabled {
+			<p class="lede">{ p.T("auth.signup_lede_mail") }</p>
+		} else {
+			<p class="lede">{ p.T("auth.signup_lede") }</p>
+		}
 		<form action="/signup" method="post" class="auth-form">
 			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
 			if p.Next != "" {
@@ -89,6 +99,77 @@ templ SignupConfirmPage(p Page, token string) {
 			</label>
 			<input type="submit" value={ p.T("auth.signup_confirm_submit") } class="btn-primary"/>
 		</form>
+		@ThemeSwitch(p)
+	</section>
+}
+
+templ ForgotPasswordPage(p Page, email string) {
+	<section class="auth-card">
+		@Wordmark()
+		<h1>{ p.T("auth.forgot_title") }</h1>
+		<p class="lede">{ p.T("auth.forgot_lede") }</p>
+		<form action="/password/forgot" method="post" class="auth-form">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			if p.Next != "" {
+				<input type="hidden" name="next" value={ p.Next }/>
+			}
+			if p.Alert != "" {
+				<p class="error">{ p.Alert }</p>
+			}
+			<label>
+				{ p.T("auth.email") }
+				<input type="email" name="email" value={ email } autocomplete="username" required autofocus/>
+			</label>
+			<input type="submit" value={ p.T("auth.forgot_submit") } class="btn-primary"/>
+		</form>
+		<p class="auth-foot"><a href={ templ.SafeURL(WithNext("/login", p.Next)) }>{ p.T("auth.sign_in") }</a></p>
+		@ThemeSwitch(p)
+	</section>
+}
+
+templ ForgotPasswordSentPage(p Page, email string) {
+	<section class="auth-card">
+		@Wordmark()
+		<h1>{ p.T("auth.forgot_sent_title") }</h1>
+		<p class="lede">{ p.T("auth.forgot_sent_lede", "email", email) }</p>
+		<p class="auth-foot"><a href={ templ.SafeURL(WithNext("/login", p.Next)) }>{ p.T("auth.sign_in") }</a></p>
+		@ThemeSwitch(p)
+	</section>
+}
+
+templ ResetPasswordPage(p Page, token string) {
+	<section class="auth-card">
+		@Wordmark()
+		<h1>{ p.T("auth.reset_title") }</h1>
+		<p class="lede">{ p.T("auth.reset_lede") }</p>
+		<form action="/password/reset" method="post" class="auth-form">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<input type="hidden" name="token" value={ token }/>
+			if p.Alert != "" {
+				<p class="error">{ p.Alert }</p>
+			}
+			<label>
+				{ p.T("auth.new_password") }
+				<input type="password" name="password" autocomplete="new-password" required minlength="8" autofocus/>
+			</label>
+			<label>
+				{ p.T("auth.confirm_new_password") }
+				<input type="password" name="password_confirmation" autocomplete="new-password" required minlength="8"/>
+			</label>
+			<input type="submit" value={ p.T("auth.reset_submit") } class="btn-primary"/>
+		</form>
+		@ThemeSwitch(p)
+	</section>
+}
+
+templ ResetPasswordInvalidPage(p Page) {
+	<section class="auth-card">
+		@Wordmark()
+		<h1>{ p.T("auth.reset_title") }</h1>
+		if p.Alert != "" {
+			<p class="error">{ p.Alert }</p>
+		}
+		<p class="auth-foot"><a href="/password/forgot">{ p.T("auth.forgot_password") }</a></p>
 		@ThemeSwitch(p)
 	</section>
 }
