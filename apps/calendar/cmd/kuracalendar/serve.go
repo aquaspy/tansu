@@ -9,6 +9,7 @@ import (
 
 	"github.com/aquasp/kuracalendar/internal/config"
 	"github.com/aquasp/kuracalendar/internal/handler"
+	"github.com/aquasp/kuracalendar/internal/ics"
 	"github.com/aquasp/kuracalendar/internal/store"
 )
 
@@ -33,9 +34,11 @@ func runServe(cfg config.Config) error {
 		for range t.C {
 			_ = st.DeleteStaleSessions(store.SessionMaxAge)
 			_ = st.DeleteStaleKuraLogins(store.KuraLoginTTL)
-	_ = st.DeleteStaleAgentGrants()
+			_ = st.DeleteStaleAgentGrants()
 		}
 	}()
+
+	ics.RunPeriodic(st, 15*time.Minute)
 
 	srv := handler.NewServer(cfg, st)
 	addr := cfg.ListenAddr()

@@ -395,6 +395,32 @@
     },
   };
 
+  // ---- subscribed ICS event (read-only) -----------------------------------
+  controllers.ics = {
+    open({ element, scope }) {
+      const title = target(scope, "ics", "title");
+      const feed = target(scope, "ics", "feed");
+      const when = target(scope, "ics", "when");
+      const body = target(scope, "ics", "body");
+      if (title) title.textContent = element.dataset.title || "";
+      if (feed) feed.textContent = element.dataset.feed || "";
+      if (when) when.textContent = element.dataset.when || "";
+      if (body) {
+        const text = element.dataset.body || "";
+        body.textContent = text;
+        body.hidden = text.trim() === "";
+      }
+      target(scope, "ics", "box")?.showModal();
+    },
+    close({ scope }) {
+      target(scope, "ics", "box")?.close();
+    },
+    backdrop({ event, scope }) {
+      const box = target(scope, "ics", "box");
+      if (event.target === box) box?.close();
+    },
+  };
+
   // ---- composer -----------------------------------------------------------
   const DRAFT_PREFIX = "kuracalendar_draft_";
 

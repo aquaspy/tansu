@@ -22,6 +22,7 @@ type Cell struct {
 	Today        bool
 	Selected     bool
 	Events       []*store.Event
+	ICSEvents    []*store.ICSEvent
 	Birthdays    []*store.Birthday
 	Holidays     []holidays.Holiday
 	TagCountries bool // >1 pack selected: suffix " · BR"
@@ -48,6 +49,9 @@ func (c *Cell) Marks(holidayName func(h holidays.Holiday) string) ([]Mark, int) 
 	for _, e := range c.Events {
 		list = append(list, Mark{Kind: "event", Label: withEmoji(e.Emoji, e.Title)})
 	}
+	for _, e := range c.ICSEvents {
+		list = append(list, Mark{Kind: "ics", Label: e.Title})
+	}
 	extra := len(list) - 3
 	if extra < 0 {
 		extra = 0
@@ -67,7 +71,7 @@ func withEmoji(emoji, label string) string {
 }
 
 func (c *Cell) Empty() bool {
-	return len(c.Events) == 0 && len(c.Birthdays) == 0 && len(c.Holidays) == 0
+	return len(c.Events) == 0 && len(c.ICSEvents) == 0 && len(c.Birthdays) == 0 && len(c.Holidays) == 0
 }
 
 // Grid is one rendered month, mirroring CalendarGrid.
@@ -138,6 +142,27 @@ func BuildGrid(st *store.Store, userID int64, codes []string, month, selected, t
 		}
 	}
 
+	icsRows, err := st.ICSEventsInRange(userID,
+		start.Format("2006-01-02"), end.Format("2006-01-02"))
+	if err != nil {
+		return nil, err
+	}
+	icsByDate := map[string][]*store.ICSEvent{}
+	for _, e := range icsRows {
+		evStart, ok := store.ParseDate(e.StartsOn)
+		if !ok {
+			continue
+		}
+		evEnd, ok := store.ParseDate(e.EndsOn)
+		if !ok || evEnd.Before(evStart) {
+			evEnd = evStart
+		}
+		for d := maxDate(evStart, start); !d.After(minDate(evEnd, end)); d = d.AddDate(0, 0, 1) {
+			key := d.Format("2006-01-02")
+			icsByDate[key] = append(icsByDate[key], e)
+		}
+	}
+
 	birthdays, err := st.ListBirthdays(userID)
 	if err != nil {
 		return nil, err
@@ -165,6 +190,7 @@ func BuildGrid(st *store.Store, userID int64, codes []string, month, selected, t
 			Today:        d.Equal(today),
 			Selected:     d.Equal(selected),
 			Events:       eventsByDate[key],
+			ICSEvents:    icsByDate[key],
 			Birthdays:    dayBirthdays,
 			Holidays:     holidaysByDate[key],
 			TagCountries: tag,
