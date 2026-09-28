@@ -33,7 +33,7 @@ cp .env.example .env
 ```
 
 ```bash
-KURA_HOST=mail.gettansu.com
+KURA_HOST=email.gettansu.com
 SIGNUP_ENABLED=true
 FORCE_SSL=false
 BIND=127.0.0.1:3002
@@ -55,12 +55,12 @@ docker compose exec -e EMAIL=you@example.com -e PASSWORD='at-least-8' web ./kura
 Point Caddy at the app:
 
 ```
-mail.gettansu.com {
+email.gettansu.com {
   reverse_proxy 127.0.0.1:3002
 }
 ```
 
-Account SSO uses the same three variables as the other apps (`KURA_ACCOUNT_URL`, `KURA_CLIENT_ID=kuraemail`, `KURA_CLIENT_SECRET`). Register `https://mail.gettansu.com/login/kura/callback` in the Account's `KURA_CLIENTS_JSON`.
+Account SSO uses the same three variables as the other apps (`KURA_ACCOUNT_URL`, `KURA_CLIENT_ID=kuraemail`, `KURA_CLIENT_SECRET`). Register `https://email.gettansu.com/login/kura/callback` in the Account's `KURA_CLIENTS_JSON`.
 
 Assistant linking needs `KURA_ASSISTANT_URL` here and `KURA_EMAIL_URL` on Assistant.
 

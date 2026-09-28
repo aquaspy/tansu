@@ -61,7 +61,7 @@ type Config struct {
 	CalendarURL string
 	SpendURL    string
 	PeopleURL   string
-	EmailURL    string
+	EmailURL    string // production: https://email.gettansu.com (not mail.gettansu.com)
 	AppsKey     []byte
 	TimeZone    *time.Location
 	ToolModel   string

@@ -12,7 +12,7 @@ cloud you did not choose.
 | Tansu Calendar | `apps/calendar` | 3003 | `calendar.gettansu.com` |
 | Tansu Spend | `apps/spend` | 3004 | `spend.gettansu.com` |
 | Tansu People | `apps/people` | 3005 | `people.gettansu.com` |
-| Tansu Email | `apps/email` | 3002 | `mail.gettansu.com` |
+| Tansu Email | `apps/email` | 3002 | `email.gettansu.com` |
 
 The 3000 default is shared by Notes and Assistant — run one at a time, or
 override `BIND` (the E2E script below uses scratch ports for the full fleet).
@@ -47,7 +47,7 @@ opaque tokens. Each app keeps working standalone — the Account only adds the
 ## Deploy the suite
 
 One VPS, Docker, and seven DNS `A` records pointing at it
-(`account`, `notes`, `assistant`, `calendar`, `spend`, `people`, `mail` under
+(`account`, `notes`, `assistant`, `calendar`, `spend`, `people`, `email` under
 your domain). Each app is its own Compose project with its own volume — there
 is no shared database and no orchestrator to learn.
 
@@ -70,7 +70,7 @@ done
 | calendar | `127.0.0.1:3003` | `calendar.gettansu.com` |
 | spend | `127.0.0.1:3004` | `spend.gettansu.com` |
 | people | `127.0.0.1:3005` | `people.gettansu.com` |
-| email | `127.0.0.1:3002` | `mail.gettansu.com` |
+| email | `127.0.0.1:3002` | `email.gettansu.com` |
 
 Set `FORCE_SSL=true` in every `.env` (Caddy terminates HTTPS below).
 Keep Account `SIGNUP_ENABLED=true` until the first Account user exists, then
@@ -105,7 +105,7 @@ done
   {"id": "kuracalendar", "secret": "<calendar-secret>", "name": "Tansu Calendar", "home": "https://calendar.gettansu.com/", "icon": "📅", "redirect_uris": ["https://calendar.gettansu.com/login/kura/callback"]},
   {"id": "kuraspend", "secret": "<spend-secret>", "name": "Tansu Spend", "home": "https://spend.gettansu.com/", "icon": "💸", "redirect_uris": ["https://spend.gettansu.com/login/kura/callback"]},
   {"id": "kurapeople", "secret": "<people-secret>", "name": "Tansu People", "home": "https://people.gettansu.com/", "icon": "🧑", "redirect_uris": ["https://people.gettansu.com/login/kura/callback"]},
-  {"id": "kuraemail", "secret": "<email-secret>", "name": "Tansu Email", "home": "https://mail.gettansu.com/", "icon": "✉️", "redirect_uris": ["https://mail.gettansu.com/login/kura/callback"]}
+  {"id": "kuraemail", "secret": "<email-secret>", "name": "Tansu Email", "home": "https://email.gettansu.com/", "icon": "✉️", "redirect_uris": ["https://email.gettansu.com/login/kura/callback"]}
 ]
 ```
 
@@ -161,7 +161,7 @@ spend.gettansu.com {
 people.gettansu.com {
   reverse_proxy 127.0.0.1:3005
 }
-mail.gettansu.com {
+email.gettansu.com {
   reverse_proxy 127.0.0.1:3002
 }
 ```

@@ -17,7 +17,7 @@ A token can read and change every mailbox that belongs to that user.
 
 ## Conventions
 
-- Base path: `/api/v1`.
+- Base path: `/api/v1` (e.g. `https://email.gettansu.com/api/v1/accounts`).
 - Mailbox creates accept a nested `mailbox` object or the same fields flat.
 - Success: `200`, `201` on create, `204` on delete, trash, and token revoke.
 - Errors: `401 {"error":"unauthorized"}`, `404 {"error":"not_found"}`,
