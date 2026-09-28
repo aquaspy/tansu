@@ -450,6 +450,7 @@ func (s *Server) Routes() *chi.Mux {
 	r.Group(func(r chi.Router) {
 		r.Use(s.requireAuth, s.requireUnlock)
 		r.Get("/", s.handleHubIndex)
+		r.Post("/timezone", s.handleTimezone)
 	})
 	return r
 }

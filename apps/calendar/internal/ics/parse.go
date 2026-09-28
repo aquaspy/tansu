@@ -40,15 +40,20 @@ type Event struct {
 }
 
 // Window is the inclusive date span a sync keeps: about a month back
-// through FutureMonths ahead, using now's calendar date.
+// through FutureMonths ahead, using now's calendar date. now must already
+// be in the user's zone; Date() follows that location.
 func Window(now time.Time) (from, to time.Time) {
 	y, m, d := now.Date()
 	day := time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
 	return day.AddDate(0, 0, -PastDays), day.AddDate(0, FutureMonths, 0)
 }
 
-// Parse reads one calendar. loc is the zone used for UTC (Z) times; nil
-// means UTC. from/to bound expanded repeats (inclusive dates). A body
+// Parse reads one calendar. loc is the user's zone. Absolute times (Z,
+// and a TZID Go can load) expand in their own zone, then each instance
+// is stored as a wall clock in loc. Floating times keep the digits as
+// written. VALUE=DATE stays a civil date, including an exclusive DTEND.
+// A nil loc means UTC. An unknown TZID stays floating rather than UTC.
+// from/to bound expanded repeats (inclusive civil dates). A body
 // without VCALENDAR is ErrParse. A valid calendar with no events returns
 // an empty slice.
 func Parse(data []byte, loc *time.Location, from, to time.Time) ([]Event, error) {
@@ -203,7 +208,7 @@ func buildEvent(props []prop, loc *time.Location, from, to string) ([]Event, boo
 		summary, desc, location, uid, status, recur, duration string
 		start                                                 time.Time
 		end                                                   time.Time
-		hasStart, hasEnd, allDay                              bool
+		hasStart, hasEnd, allDay, startAbs                    bool
 		rule                                                  *rrule
 		exdates                                               = map[string]struct{}{}
 	)
@@ -230,11 +235,11 @@ func buildEvent(props []prop, loc *time.Location, from, to string) ([]Event, boo
 		case "RECURRENCE-ID":
 			recur = strings.TrimSpace(p.value)
 		case "DTSTART":
-			if t, day, ok := parseWhen(p.value, p.params, loc); ok {
-				start, allDay, hasStart = t, day, true
+			if t, day, abs, ok := parseWhen(p.value, p.params); ok {
+				start, allDay, startAbs, hasStart = t, day, abs, true
 			}
 		case "DTEND":
-			if t, _, ok := parseWhen(p.value, p.params, loc); ok {
+			if t, _, _, ok := parseWhen(p.value, p.params); ok {
 				end, hasEnd = t, true
 			}
 		case "DURATION":
@@ -247,7 +252,7 @@ func buildEvent(props []prop, loc *time.Location, from, to string) ([]Event, boo
 			}
 		case "EXDATE":
 			for _, part := range strings.Split(p.value, ",") {
-				if t, _, ok := parseWhen(strings.TrimSpace(part), p.params, loc); ok {
+				if t, _, _, ok := parseWhen(strings.TrimSpace(part), p.params); ok {
 					exdates[t.Format("2006-01-02")] = struct{}{}
 				}
 			}
@@ -287,16 +292,27 @@ func buildEvent(props []prop, loc *time.Location, from, to string) ([]Event, boo
 		body += locLine
 	}
 
-	// An override instance is one row. A master with a simple rule expands.
+	// An override instance is one row. A master with a simple rule expands
+	// on the original instant (the Z zone, or the TZID zone). Projecting
+	// into the user zone first would walk the wrong DST.
 	expanded := rule != nil && !rule.exotic && recur == ""
+	absolute := startAbs && !allDay
+	fromQ, toQ := from, to
+	if absolute {
+		fromQ = shiftCivil(from, -1)
+		toQ = shiftCivil(to, 1)
+	}
 	var spans []span
 	if expanded {
-		spans = expandRule(start, end, allDay, rule, exdates, from, to)
-	} else if overlaps(start, end, allDay, from, to) && !excluded(start, exdates) {
+		spans = expandRule(start, end, allDay, rule, exdates, fromQ, toQ)
+	} else if !excluded(start, exdates) {
 		spans = []span{{start: start, end: end}}
 	}
 	if len(spans) == 0 {
 		return nil, false
+	}
+	if loc == nil {
+		loc = time.UTC
 	}
 	out := make([]Event, 0, len(spans))
 	for _, sp := range spans {
@@ -310,22 +326,41 @@ func buildEvent(props []prop, loc *time.Location, from, to string) ([]Event, boo
 				key = uid + "#" + recur
 			}
 		}
+		shownStart, shownEnd := sp.start, sp.end
+		if absolute {
+			shownStart = sp.start.In(loc)
+			shownEnd = sp.end.In(loc)
+		}
+		if !overlaps(shownStart, shownEnd, allDay, from, to) {
+			continue
+		}
 		ev := Event{UID: key, Title: title, Body: body, AllDay: allDay}
-		ev.StartsOn = sp.start.Format("2006-01-02")
+		ev.StartsOn = shownStart.Format("2006-01-02")
 		if allDay {
-			incl := sp.end.AddDate(0, 0, -1)
-			if incl.Before(sp.start) {
-				incl = sp.start
+			incl := shownEnd.AddDate(0, 0, -1)
+			if incl.Before(shownStart) {
+				incl = shownStart
 			}
 			ev.EndsOn = incl.Format("2006-01-02")
 		} else {
-			ev.EndsOn = sp.end.Format("2006-01-02")
-			ev.StartsAt = sp.start.Format("15:04")
-			ev.EndsAt = sp.end.Format("15:04")
+			ev.EndsOn = shownEnd.Format("2006-01-02")
+			ev.StartsAt = shownStart.Format("15:04")
+			ev.EndsAt = shownEnd.Format("15:04")
 		}
 		out = append(out, ev)
 	}
+	if len(out) == 0 {
+		return nil, false
+	}
 	return out, true
+}
+
+func shiftCivil(s string, days int) string {
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return s
+	}
+	return t.AddDate(0, 0, days).Format("2006-01-02")
 }
 
 func excluded(start time.Time, ex map[string]struct{}) bool {
@@ -395,7 +430,7 @@ func parseRRule(value string) *rrule {
 				r.count = n
 			}
 		case "UNTIL":
-			if t, _, ok := parseWhen(v, nil, time.UTC); ok {
+			if t, _, _, ok := parseWhen(v, nil); ok {
 				r.until = t
 			} else {
 				r.exotic = true
@@ -614,10 +649,14 @@ func takeNum(s string, unit byte) (int, string, bool) {
 	return n, s[i+1:], true
 }
 
-func parseWhen(value string, params map[string]string, loc *time.Location) (time.Time, bool, bool) {
+// parseWhen reads one ICS date-time.
+// allDay is VALUE=DATE (or an 8-digit date). absolute is a real instant:
+// a Z time, or a TZID LoadLocation accepts. Floating times and unknown
+// TZIDs are not absolute — the digits stay as written.
+func parseWhen(value string, params map[string]string) (time.Time, bool, bool, bool) {
 	value = strings.TrimSpace(value)
 	if value == "" {
-		return time.Time{}, false, false
+		return time.Time{}, false, false, false
 	}
 	dateOnly := len(value) == 8 && !strings.Contains(value, "T")
 	if params != nil && strings.EqualFold(params["VALUE"], "DATE") {
@@ -626,9 +665,9 @@ func parseWhen(value string, params map[string]string, loc *time.Location) (time
 	if dateOnly {
 		t, err := time.Parse("20060102", value[:8])
 		if err != nil {
-			return time.Time{}, false, false
+			return time.Time{}, false, false, false
 		}
-		return t, true, true
+		return t, true, false, true
 	}
 	utc := strings.HasSuffix(value, "Z")
 	v := strings.TrimSuffix(value, "Z")
@@ -639,12 +678,9 @@ func parseWhen(value string, params map[string]string, loc *time.Location) (time
 	if utc {
 		t, err := time.Parse(layout, v)
 		if err != nil {
-			return time.Time{}, false, false
+			return time.Time{}, false, false, false
 		}
-		if loc == nil {
-			loc = time.UTC
-		}
-		return t.In(loc), false, true
+		return t, false, true, true
 	}
 	if params != nil {
 		if tz := params["TZID"]; tz != "" {
@@ -652,22 +688,22 @@ func parseWhen(value string, params map[string]string, loc *time.Location) (time
 			if err != nil {
 				t, err := time.Parse(layout, v)
 				if err != nil {
-					return time.Time{}, false, false
+					return time.Time{}, false, false, false
 				}
-				return t, false, true
+				return t, false, false, true
 			}
 			t, err := time.ParseInLocation(layout, v, zone)
 			if err != nil {
-				return time.Time{}, false, false
+				return time.Time{}, false, false, false
 			}
-			return t, false, true
+			return t, false, true, true
 		}
 	}
 	t, err := time.Parse(layout, v)
 	if err != nil {
-		return time.Time{}, false, false
+		return time.Time{}, false, false, false
 	}
-	return t, false, true
+	return t, false, false, true
 }
 
 func unescape(s string) string {

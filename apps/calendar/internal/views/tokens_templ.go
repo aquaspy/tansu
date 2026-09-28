@@ -397,7 +397,7 @@ func lastUsed(p Page, tok *store.APIToken) string {
 	if tok.LastUsedAt == nil {
 		return p.T("tokens.never_used")
 	}
-	return i18n.TimeShort(p.L, *tok.LastUsedAt)
+	return i18n.TimeShort(p.L, *tok.LastUsedAt, p.Zone)
 }
 
 var _ = templruntime.GeneratedTemplate

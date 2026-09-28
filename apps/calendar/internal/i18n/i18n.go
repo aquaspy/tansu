@@ -86,9 +86,12 @@ func JS(l Locale) map[string]string {
 }
 
 // TimeShort mirrors the Rails time.formats.short: "Sep 19, 10:00" in en,
-// "19/09, 10:00" in pt.
-func TimeShort(l Locale, t time.Time) string {
-	t = t.Local()
+// "19/09, 10:00" in pt. A nil location is UTC. The process zone is not used.
+func TimeShort(l Locale, t time.Time, loc *time.Location) string {
+	if loc == nil {
+		loc = time.UTC
+	}
+	t = t.In(loc)
 	if l == PT {
 		return t.Format("02/01, 15:04")
 	}
@@ -190,6 +193,15 @@ var strings_ = map[Locale]map[string]string{
 		"tokens.revoked":          "Token revoked.",
 		"tokens.name_blank":       "Name can't be blank.",
 		"tokens.too_many":         "Ten tokens is enough. Revoke one first.",
+
+		"zone.title":   "Timezone",
+		"zone.lede":    "ICS clocks and “today” use this IANA zone. A time you type stays as you typed it.",
+		"zone.label":   "IANA timezone",
+		"zone.save":    "Save timezone",
+		"zone.saved":   "Timezone saved.",
+		"zone.invalid": "Use an IANA name such as America/Sao_Paulo.",
+		"zone.managed": "Timezone is set on Tansu Account.",
+		"zone.account": "Open Account",
 
 		"feeds.title":            "ICS feeds",
 		"feeds.lede":             "Paste an HTTPS link to a public .ics calendar. Events show on the month, read-only, and refresh on their own.",
@@ -443,6 +455,15 @@ var strings_ = map[Locale]map[string]string{
 		"tokens.revoked":          "Token revogado.",
 		"tokens.name_blank":       "Nome não pode ficar em branco.",
 		"tokens.too_many":         "Dez tokens bastam. Revogue um antes.",
+
+		"zone.title":   "Fuso horário",
+		"zone.lede":    "Relógios ICS e “hoje” usam este fuso IANA. Um horário que você digita continua como foi digitado.",
+		"zone.label":   "Fuso IANA",
+		"zone.save":    "Salvar fuso",
+		"zone.saved":   "Fuso salvo.",
+		"zone.invalid": "Use um nome IANA, como America/Sao_Paulo.",
+		"zone.managed": "O fuso é definido no Tansu Account.",
+		"zone.account": "Abrir Account",
 
 		"feeds.title":            "Calendários ICS",
 		"feeds.lede":             "Cole um link HTTPS de um calendário .ics público. Os eventos aparecem no mês, só leitura, e atualizam sozinhos.",

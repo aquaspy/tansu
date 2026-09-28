@@ -470,6 +470,7 @@ func (s *Server) Routes() *chi.Mux {
 		r.Post("/holidays", s.handleUpdateHolidays)
 
 		r.Get("/feeds", s.handleFeedsIndex)
+		r.Post("/timezone", s.handleTimezone)
 		r.Post("/feeds", s.handleFeedsCreate)
 		r.Post("/feeds/{id}/refresh", s.handleFeedsRefresh)
 		r.Post("/feeds/{id}/pause", s.handleFeedsPause)

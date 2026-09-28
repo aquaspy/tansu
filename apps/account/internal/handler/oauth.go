@@ -171,9 +171,14 @@ func (s *Server) handleUserinfo(w http.ResponseWriter, r *http.Request) {
 		writeOAuthError(w, http.StatusUnauthorized, "invalid_token", "unknown user")
 		return
 	}
+	zone := user.Timezone
+	if zone == "" {
+		zone = "UTC"
+	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]string{
-		"sub":   itoa64(user.ID),
-		"email": user.Email,
+		"sub":      itoa64(user.ID),
+		"email":    user.Email,
+		"zoneinfo": zone,
 	})
 }

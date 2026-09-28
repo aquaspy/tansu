@@ -7,6 +7,7 @@ import (
 	"time"
 
 	_ "modernc.org/sqlite"
+	_ "time/tzdata"
 )
 
 // timeLayout matches the Rails datetime serialization so imported rows and
@@ -19,6 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT NOT NULL UNIQUE,
   password_digest TEXT NOT NULL,
   account_sub TEXT NOT NULL DEFAULT '',
+  timezone TEXT NOT NULL DEFAULT 'UTC',
   holiday_countries TEXT NOT NULL DEFAULT 'BR',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -180,6 +182,7 @@ func migrate(db *sql.DB) error {
 		{"birthdays", "emoji", "TEXT NOT NULL DEFAULT ''"},
 		{"birthdays", "source_key", "TEXT NOT NULL DEFAULT ''"},
 		{"users", "account_sub", "TEXT NOT NULL DEFAULT ''"},
+		{"users", "timezone", "TEXT NOT NULL DEFAULT 'UTC'"},
 	}
 	for _, step := range steps {
 		has, err := hasColumn(db, step.table, step.column)

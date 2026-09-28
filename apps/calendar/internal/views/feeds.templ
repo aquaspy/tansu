@@ -19,6 +19,7 @@ templ FeedsPage(p Page, list []*store.ICSFeed) {
 		@Wordmark()
 		<h1>{ p.T("feeds.title") }</h1>
 		<p class="lede">{ p.T("feeds.lede") }</p>
+		@TimezoneForm(p)
 		<form action="/feeds" method="post" class="auth-form">
 			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
 			<label>
@@ -95,9 +96,31 @@ func FeedMeta(p Page, f *store.ICSFeed) string {
 		parts = append(parts, p.T("feeds.paused"))
 	}
 	if f.LastFetchedAt != nil {
-		parts = append(parts, p.T("feeds.last_sync")+" "+i18n.TimeShort(p.L, *f.LastFetchedAt))
+		parts = append(parts, p.T("feeds.last_sync")+" "+i18n.TimeShort(p.L, *f.LastFetchedAt, p.Zone))
 	} else {
 		parts = append(parts, p.T("feeds.never"))
 	}
 	return strings.Join(parts, " · ")
+}
+
+templ TimezoneForm(p Page) {
+	<section class="zone-block">
+		<h2 class="tokens-heading">{ p.T("zone.title") }</h2>
+		if p.ZoneLocked {
+			<p class="lede">{ p.T("zone.managed") } <strong>{ p.Timezone }</strong></p>
+			if p.AccountURL != "" {
+				<p class="auth-foot"><a href={ templ.SafeURL(p.AccountURL) }>{ p.T("zone.account") }</a></p>
+			}
+		} else {
+			<p class="lede">{ p.T("zone.lede") }</p>
+			<form action="/timezone" method="post" class="auth-form">
+				<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+				<label>
+					{ p.T("zone.label") }
+					<input type="text" name="timezone" value={ p.Timezone } maxlength="64" autocomplete="off" spellcheck="false" placeholder="America/Sao_Paulo"/>
+				</label>
+				<input type="submit" value={ p.T("zone.save") } class="btn-primary"/>
+			</form>
+		}
+	</section>
 }

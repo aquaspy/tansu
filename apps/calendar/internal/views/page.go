@@ -22,6 +22,12 @@ type Page struct {
 	Alert      string
 	KuraLogin  bool
 	AccountURL string
+	// Zone formats absolute instants. Nil means UTC.
+	Zone *time.Location
+	// Timezone is the IANA name shown on the standalone form.
+	Timezone string
+	// ZoneLocked is true when Account owns the zone (account_sub set).
+	ZoneLocked bool
 }
 
 // T translates key with optional %{name}, value pairs.

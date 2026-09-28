@@ -7,6 +7,7 @@ import (
 	"time"
 
 	_ "modernc.org/sqlite"
+	_ "time/tzdata"
 )
 
 // timeLayout matches the sibling apps so rows compare identically with
@@ -18,6 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   email TEXT NOT NULL UNIQUE,
   password_digest TEXT NOT NULL,
+  timezone TEXT NOT NULL DEFAULT 'UTC',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -143,7 +145,33 @@ func (s *Store) migrate() error {
 			return err
 		}
 	}
+	userCols, err := s.tableColumns("users")
+	if err != nil {
+		return err
+	}
+	if !userCols["timezone"] {
+		if _, err := s.db.Exec(`ALTER TABLE users ADD COLUMN timezone TEXT NOT NULL DEFAULT 'UTC'`); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+func (s *Store) tableColumns(table string) (map[string]bool, error) {
+	rows, err := s.db.Query(`SELECT name FROM pragma_table_info('` + table + `')`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	have := map[string]bool{}
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		have[name] = true
+	}
+	return have, rows.Err()
 }
 
 func (s *Store) Close() error { return s.db.Close() }

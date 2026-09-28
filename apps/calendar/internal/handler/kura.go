@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/aquasp/kuracalendar/internal/i18n"
+	"github.com/aquasp/kuracalendar/internal/ics"
 	"github.com/aquasp/kuracalendar/internal/store"
 	"github.com/aquasp/kuracalendar/internal/views"
 	"golang.org/x/oauth2"
@@ -68,8 +69,9 @@ func (s *Server) handleKuraStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Already inside the app: the hub can point here every time without
-	// minting another code.
-	if UserOf(r) != nil && sessionUsable(r) {
+	// minting another code. sync=1 still runs PKCE so the callback can
+	// refresh the cached timezone.
+	if r.URL.Query().Get("sync") != "1" && UserOf(r) != nil && sessionUsable(r) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
@@ -100,6 +102,7 @@ func (s *Server) handleKuraStart(w http.ResponseWriter, r *http.Request) {
 type kuraProfile struct {
 	Sub           string `json:"sub"`
 	Email         string `json:"email"`
+	Zoneinfo      string `json:"zoneinfo"`
 	EmailVerified bool   `json:"email_verified"`
 	Name          string `json:"name"`
 }
@@ -202,6 +205,23 @@ func (s *Server) handleKuraCallback(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		user.AccountSub = profile.Sub
+	}
+	zone := store.CanonicalTimezone(profile.Zoneinfo)
+	if user.Timezone != zone {
+		if err := s.Store.UpdateUserTimezone(user.ID, zone); err != nil {
+			fail(http.StatusUnprocessableEntity, "auth.kura_failed")
+			return
+		}
+		user.Timezone = zone
+		syncCtx, syncCancel := context.WithTimeout(context.Background(), 25*time.Second)
+		_ = ics.SyncUserFeeds(syncCtx, s.Store, user.ID, s.fetchFeed, time.Now(), user.Zone())
+		syncCancel()
+	}
+	// A hub click with ?sync=1 reaches here while the local session is
+	// already this user. Refresh the zone and keep the session.
+	if current := UserOf(r); current != nil && sessionUsable(r) && current.ID == user.ID {
+		http.Redirect(w, r, s.takeAgentReturn(w, r), http.StatusSeeOther)
+		return
 	}
 	sess, err := s.Store.CreateSession(user.ID)
 	if err != nil {
