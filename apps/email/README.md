@@ -35,8 +35,8 @@ cp .env.example .env
 ```bash
 KURA_HOST=email.gettansu.com
 SIGNUP_ENABLED=true
-FORCE_SSL=false
-BIND=127.0.0.1:3002
+FORCE_SSL=true
+BIND=127.0.0.1:3015
 KURA_SECRETS_KEY=$(openssl rand -hex 32)
 ```
 
@@ -46,7 +46,9 @@ KURA_SECRETS_KEY=$(openssl rand -hex 32)
 docker compose up -d --build
 ```
 
-Open `http://127.0.0.1:3002` and create the first account, or:
+The public URL is https://email.gettansu.com. `KURA_HOST` is the hostname; with `FORCE_SSL=true` that is the base URL the app uses for SSO redirects. `mail.gettansu.com` is Resend, not this app.
+
+`docker-compose.override.yml` publishes `127.0.0.1:3015` (the same VPS pattern as Calendar on 3013 and Spend on 3014). Open `http://127.0.0.1:3015` and create the first account, or:
 
 ```bash
 docker compose exec -e EMAIL=you@example.com -e PASSWORD='at-least-8' web ./kuraemail create
@@ -56,7 +58,7 @@ Point Caddy at the app:
 
 ```
 email.gettansu.com {
-  reverse_proxy 127.0.0.1:3002
+  reverse_proxy 127.0.0.1:3015
 }
 ```
 

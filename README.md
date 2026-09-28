@@ -12,7 +12,7 @@ cloud you did not choose.
 | Tansu Calendar | `apps/calendar` | 3003 | `calendar.gettansu.com` |
 | Tansu Spend | `apps/spend` | 3004 | `spend.gettansu.com` |
 | Tansu People | `apps/people` | 3005 | `people.gettansu.com` |
-| Tansu Email | `apps/email` | 3002 | `email.gettansu.com` |
+| Tansu Email | `apps/email` | 3015 | `email.gettansu.com` |
 
 The 3000 default is shared by Notes and Assistant — run one at a time, or
 override `BIND` (the E2E script below uses scratch ports for the full fleet).
@@ -70,7 +70,7 @@ done
 | calendar | `127.0.0.1:3003` | `calendar.gettansu.com` |
 | spend | `127.0.0.1:3004` | `spend.gettansu.com` |
 | people | `127.0.0.1:3005` | `people.gettansu.com` |
-| email | `127.0.0.1:3002` | `email.gettansu.com` |
+| email | `127.0.0.1:3015` | `email.gettansu.com` |
 
 Set `FORCE_SSL=true` in every `.env` (Caddy terminates HTTPS below).
 Keep Account `SIGNUP_ENABLED=true` until the first Account user exists, then
@@ -162,7 +162,7 @@ people.gettansu.com {
   reverse_proxy 127.0.0.1:3005
 }
 email.gettansu.com {
-  reverse_proxy 127.0.0.1:3002
+  reverse_proxy 127.0.0.1:3015
 }
 ```
 

@@ -4,7 +4,7 @@ services:
     image: kuraemail:latest
     restart: unless-stopped
     ports:
-      - "${BIND:-127.0.0.1:3002}:80"
+      - "${BIND:-127.0.0.1:3015}:80"
     env_file: .env
     environment:
       DATA_DIR: /data

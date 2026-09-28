@@ -35,7 +35,7 @@ type Config struct {
 
 func Load() Config {
 	return Config{
-		Bind:          envOr("BIND", "127.0.0.1:3002"),
+		Bind:          envOr("BIND", "127.0.0.1:3015"),
 		DataDir:       envOr("DATA_DIR", "storage"),
 		KuraHosts:     splitList(os.Getenv("KURA_HOST")),
 		SignupEnabled: flag("SIGNUP_ENABLED", true),
