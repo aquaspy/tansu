@@ -269,7 +269,7 @@ func TestAPIMailboxRoundTrip(t *testing.T) {
 	if !strings.Contains(body, "is-unread") || !strings.Contains(body, "unread-badge") || !strings.Contains(body, ">Unread<") || !strings.Contains(body, "Quarterly update") {
 		t.Fatalf("unread badge missing")
 	}
-	if !strings.Contains(body, `data-search-active="false"`) || !strings.Contains(body, `hx-trigger="search-clear"`) || !strings.Contains(body, `hx-params="account,folder"`) {
+	if !strings.Contains(body, `data-search-active="false"`) || !strings.Contains(body, `hx-trigger="search-clear"`) || !strings.Contains(body, `hx-params="account,folder"`) || !strings.Contains(body, `data-action="search#clear"`) || !strings.Contains(body, "Clear search") {
 		t.Fatalf("search clear form missing")
 	}
 	code, body, _ = f.get("/?account="+id+"&folder=INBOX&q=hello", nil)
@@ -281,7 +281,7 @@ func TestAPIMailboxRoundTrip(t *testing.T) {
 		t.Fatalf("hx inbox fragment: %d %s", code, body)
 	}
 	code, body, _ = f.get("/?account="+id, map[string]string{"Accept-Language": "pt"})
-	if code != http.StatusOK || !strings.Contains(body, "Não lida") || !strings.Contains(body, `placeholder="Buscar"`) {
+	if code != http.StatusOK || !strings.Contains(body, "Não lida") || !strings.Contains(body, `placeholder="Buscar"`) || !strings.Contains(body, "Limpar busca") {
 		t.Fatalf("pt unread: %d", code)
 	}
 	code, body, _ = f.get("/?account="+id+"&folder=INBOX&q=text:missing", nil)

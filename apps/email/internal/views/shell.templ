@@ -106,6 +106,9 @@ templ Shell(p Page, d MailData) {
 						<input type="hidden" name="folder" value={ d.Folder }/>
 					}
 					<input type="search" name="q" value={ d.Query } placeholder={ p.T("mail.search") } class="search" enterkeyhint="search" autocomplete="off"/>
+					<button type="button" class="search-clear" data-action="search#clear" aria-label={ p.T("mail.clear_search") }>
+						<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 4.2 11.8 11.8M11.8 4.2 4.2 11.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>
+					</button>
 				</form>
 			</div>
 			@MailList(p, d)

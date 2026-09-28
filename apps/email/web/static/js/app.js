@@ -293,6 +293,7 @@
         if (el.dataset.searchActive !== "true" || input.value.trim() !== "") return;
         timer = setTimeout(runClear, 250);
       };
+      let submitting = false;
       input.addEventListener("input", () => {
         clearTimeout(timer);
         if (input.value.trim() !== "") {
@@ -301,15 +302,30 @@
         }
         scheduleClear();
       });
+      // The native clear control can fire `search` before it empties the
+      // field, and it does not always fire `input`. Read the value after
+      // that control has finished.
       input.addEventListener("search", () => {
-        if (input.value.trim() === "") scheduleClear();
+        setTimeout(() => {
+          if (!submitting) scheduleClear();
+        }, 0);
       });
-      el.addEventListener("submit", () => clearTimeout(timer));
+      el.addEventListener("submit", () => {
+        submitting = true;
+        clearTimeout(timer);
+      });
       el.addEventListener("htmx:afterRequest", (event) => {
         if (event.detail?.successful && input.value.trim() === "") {
           el.dataset.searchActive = "false";
         }
       });
+    },
+    clear({ event, element }) {
+      event.preventDefault();
+      const input = element.closest("form")?.querySelector("input[name='q']");
+      if (!input) return;
+      input.value = "";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
     },
   };
 
