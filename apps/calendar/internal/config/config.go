@@ -25,7 +25,8 @@ type Config struct {
 	// Empty disables /agent/connect.
 	KuraAssistantURL string
 
-	// SyncSecret authenticates People pushing birthdays. Empty disables it.
+	// SyncSecret authenticates People (birthdays) and Spend (payment days).
+	// Empty disables both. The same value is set on those apps.
 	SyncSecret string
 }
 

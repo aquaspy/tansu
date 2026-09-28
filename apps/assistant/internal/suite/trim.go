@@ -88,7 +88,6 @@ func ShapeList(kind string, payload []byte) ([]byte, error) {
 			out = append(out, map[string]any{
 				"id": m["id"], "title": str(m, "title"), "amount_cents": m["amount_cents"],
 				"currency": str(m, "currency"), "interval": str(m, "interval"),
-				"due_day": m["due_day"], "billing_month": m["billing_month"],
 				"active": m["active"], "notes": notes,
 			})
 		case "payment_days":

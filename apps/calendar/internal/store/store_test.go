@@ -158,6 +158,54 @@ func TestMigrateLocalBirthdaysToYearlyEvents(t *testing.T) {
 	}
 }
 
+func TestSyncedPaymentDayUpsertClampAndDelete(t *testing.T) {
+	st := openTest(t)
+	u := seedUser(t, st, "ada@example.com")
+	d, errs, err := st.UpsertSyncedPaymentDay(u.ID, "spend:3", PaymentDayInput{
+		Title: "Card", DueDay: 31, Notes: "limit",
+	})
+	if err != nil || len(errs) > 0 {
+		t.Fatalf("upsert: %v %+v", err, errs)
+	}
+	if d.Title != "Card" || d.DueDay != 31 || d.SourceKey != "spend:3" {
+		t.Fatalf("row: %+v", d)
+	}
+	feb := time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC)
+	if !d.ObservedOn(feb) || d.ObservedOn(time.Date(2026, 2, 27, 0, 0, 0, 0, time.UTC)) {
+		t.Fatal("feb 31 should land on the 28th")
+	}
+	leap := time.Date(2024, 2, 29, 0, 0, 0, 0, time.UTC)
+	if !d.ObservedOn(leap) {
+		t.Fatal("leap feb 31 should land on the 29th")
+	}
+	again, errs, err := st.UpsertSyncedPaymentDay(u.ID, "spend:3", PaymentDayInput{
+		Title: "Card", DueDay: 10, Notes: "updated",
+	})
+	if err != nil || len(errs) > 0 || again.ID != d.ID || again.DueDay != 10 || again.Notes != "updated" {
+		t.Fatalf("update: %+v %v %+v", again, err, errs)
+	}
+	rows, err := st.ListPaymentDays(u.ID)
+	if err != nil || len(rows) != 1 {
+		t.Fatalf("list: %v %+v", err, rows)
+	}
+	if _, errs, err := st.UpsertSyncedPaymentDay(u.ID, "spend:4", PaymentDayInput{Title: "", DueDay: 1}); len(errs) == 0 || err != nil {
+		t.Fatal("blank title accepted")
+	}
+	if _, errs, err := st.UpsertSyncedPaymentDay(u.ID, "spend:4", PaymentDayInput{Title: "X", DueDay: 32}); len(errs) == 0 || err != nil {
+		t.Fatal("due day 32 accepted")
+	}
+	if err := st.DeleteSyncedPaymentDay(u.ID, "spend:3"); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.DeleteSyncedPaymentDay(u.ID, "spend:missing"); err != nil {
+		t.Fatal(err)
+	}
+	rows, _ = st.ListPaymentDays(u.ID)
+	if len(rows) != 0 {
+		t.Fatalf("after delete: %+v", rows)
+	}
+}
+
 func TestBirthdayEmojiRoundTrip(t *testing.T) {
 	st := openTest(t)
 	u := seedUser(t, st, "ada@example.com")

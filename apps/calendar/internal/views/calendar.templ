@@ -114,6 +114,8 @@ templ MonthCellInner(p Page, cell *calendar.Cell) {
 		for _, mark := range MarksOf(p, cell).Pills {
 			if mark.Kind == "ics" {
 				<span class="pill ics"><span class="pill-tag">{ p.T("feeds.badge") }</span> { mark.Label }</span>
+			} else if mark.Kind == "payment" {
+				<span class="pill payment"><span class="pill-tag">{ p.T("app.payment_badge") }</span> { mark.Label }</span>
 			} else {
 				<span class={ "pill " + mark.Kind }>{ mark.Label }</span>
 			}
@@ -147,6 +149,17 @@ templ DayPanel(p Page, d CalData) {
 							<span class="item-kind">{ BirthdayLabel(b, d.Cell.Date) }</span>
 							if b.Body != "" {
 								<span class="item-note">{ b.Body }</span>
+							}
+						</div>
+					</li>
+				}
+				for _, pay := range d.Cell.PaymentDays {
+					<li class="day-item is-payment">
+						<div class="item-main">
+							<span class="item-kind">{ pay.Title }</span>
+							<span class="item-ics">{ p.T("app.payment_source") }</span>
+							if pay.Notes != "" {
+								<span class="item-note">{ pay.Notes }</span>
 							}
 						</div>
 					</li>

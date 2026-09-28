@@ -343,6 +343,26 @@ func TestBirthdayEmojiFlow(t *testing.T) {
 	}
 }
 
+func TestPaymentDayMarkerIsReadOnly(t *testing.T) {
+	f := newFlow(t, nil)
+	u := f.seedUser("ada@example.com", "secret-password")
+	f.login(u.Email, "secret-password")
+	if _, errs, err := f.store.UpsertSyncedPaymentDay(u.ID, "spend:4", store.PaymentDayInput{
+		Title: "Water", DueDay: 10, Notes: "the bill",
+	}); err != nil || len(errs) > 0 {
+		t.Fatalf("sync: %v %+v", err, errs)
+	}
+	_, body, _ := f.get("/2026/9/10", nil)
+	mustContain(t, body, `class="pill payment"`)
+	mustContain(t, body, `class="day-item is-payment"`)
+	mustContain(t, body, "Water")
+	mustContain(t, body, "the bill")
+	mustContain(t, body, "Tansu Spend")
+	if strings.Contains(body, `action="/payment_days"`) || strings.Contains(body, "composer#newPayment") {
+		t.Fatal("payment day is editable from Calendar")
+	}
+}
+
 func TestBirthdayCreateRetired(t *testing.T) {
 	f := newFlow(t, nil)
 	u := f.seedUser("ada@example.com", "secret-password")

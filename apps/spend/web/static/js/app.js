@@ -441,11 +441,8 @@
     target(scope, "composer", "subAmount").value = data.amount || "";
     if (data.currency) target(scope, "composer", "subCurrency").value = data.currency;
     target(scope, "composer", "subInterval").value = data.interval || "monthly";
-    target(scope, "composer", "subBillingMonth").value = data.billingMonth || "1";
-    target(scope, "composer", "subDueDay").value = data.dueDay || "";
     target(scope, "composer", "subNotes").value = data.notes || "";
     restoreInto(target(scope, "composer", "subForm"));
-    controllers.composer.toggleInterval({ scope });
     const del = target(scope, "composer", "subDelete");
     if (del) {
       del.hidden = !id;
@@ -503,12 +500,6 @@
       if (event.target === target(scope, "composer", "expenseBox")) controllers.composer.closeExpense({ scope });
       if (event.target === target(scope, "composer", "payBox")) controllers.composer.closePay({ scope });
       if (event.target === target(scope, "composer", "subBox")) controllers.composer.closeSub({ scope });
-    },
-    toggleInterval({ scope }) {
-      const wrap = target(scope, "composer", "subBillingWrap");
-      const interval = target(scope, "composer", "subInterval");
-      if (!wrap || !interval) return;
-      wrap.hidden = interval.value !== "yearly";
     },
     store({ event }) {
       const form = event.target.closest("form");

@@ -126,8 +126,19 @@ func intPtrString(v *int) string {
 // DueDayString renders an optional due day for data attributes and inputs.
 func DueDayString(v *int) string { return intPtrString(v) }
 
-// BillingMonthString renders an optional billing month.
-func BillingMonthString(v *int) string { return intPtrString(v) }
+// SubscriptionAmount is the stored charge (the yearly total, or the monthly
+// amount). The row's displayed cents are the share counted this month.
+func SubscriptionAmount(line spend.Line) int64 {
+	if line.EnteredCents != 0 {
+		return line.EnteredCents
+	}
+	return line.AmountCents
+}
+
+// EnteredMoney formats the stored subscription amount in its own currency.
+func EnteredMoney(p Page, line spend.Line) string {
+	return money.Format(SubscriptionAmount(line), line.Currency, p.L)
+}
 
 // IntervalString renders an optional interval.
 func IntervalString(v *string) string {

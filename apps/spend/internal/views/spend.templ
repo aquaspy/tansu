@@ -1,7 +1,6 @@
 package views
 
 import (
-	"github.com/aquasp/kuraspend/internal/i18n"
 	"github.com/aquasp/kuraspend/internal/money"
 	"github.com/aquasp/kuraspend/internal/store"
 )
@@ -262,19 +261,17 @@ templ SubscriptionsPanel(p Page, d SpendData) {
 							data-action="composer#editSubscription"
 							data-id={ Itoa64(LineID(line)) }
 							data-title={ line.Title }
-							data-amount={ AmountInput(p, line.AmountCents) }
+							data-amount={ AmountInput(p, SubscriptionAmount(line)) }
 							data-currency={ line.Currency }
 							data-interval={ IntervalString(line.Interval) }
-							data-due-day={ DueDayString(line.DueDay) }
-							data-billing-month={ BillingMonthString(line.BillingMonth) }
 							data-notes={ line.Notes }
 							data-heading={ p.T("app.edit_subscription") }
 						>
 							<span class="item-kind">{ line.Title }</span>
 							<span class="item-note">
 								{ p.T("app.interval_" + IntervalString(line.Interval)) }
-								if line.DueDay != nil {
-									· { p.T("app.due_day") } { DueDayString(line.DueDay) }
+								if IntervalString(line.Interval) == "yearly" {
+									· { p.T("app.per_year", "amount", EnteredMoney(p, line)) }
 								}
 							</span>
 						</button>
@@ -407,22 +404,11 @@ templ SpendDialogs(p Page, d SpendData) {
 			</div>
 			<label>
 				{ p.T("app.interval") }
-				<select name="subscription[interval]" data-composer-target="subInterval" data-action="composer#toggleInterval">
+				<select name="subscription[interval]" data-composer-target="subInterval">
 					<option value="monthly">{ p.T("app.interval_monthly") }</option>
 					<option value="yearly">{ p.T("app.interval_yearly") }</option>
 				</select>
-			</label>
-			<label data-composer-target="subBillingWrap" hidden>
-				{ p.T("app.billing_month") }
-				<select name="subscription[billing_month]" data-composer-target="subBillingMonth">
-					for m := 1; m <= 12; m++ {
-						<option value={ Itoa(m) }>{ i18n.MonthName(p.L, m) }</option>
-					}
-				</select>
-			</label>
-			<label>
-				{ p.T("app.due_day") }
-				<input type="number" name="subscription[due_day]" min="1" max="31" data-composer-target="subDueDay"/>
+				<span class="field-hint">{ p.T("app.subscription_hint") }</span>
 			</label>
 			<label>
 				{ p.T("app.notes") }

@@ -198,7 +198,6 @@ func apiSubscription(su *store.Subscription) map[string]any {
 	return map[string]any{
 		"id": su.ID, "title": su.Title, "amount_cents": su.AmountCents,
 		"currency": su.Currency, "interval": su.Interval,
-		"due_day": su.DueDay, "billing_month": su.BillingMonth,
 		"active": su.Active, "notes": su.Notes,
 		"created_at": isoTime(su.CreatedAt), "updated_at": isoTime(su.UpdatedAt),
 	}
@@ -396,12 +395,6 @@ func subscriptionPatchFromAPI(src map[string]any) store.SubscriptionPatch {
 	if v, ok := apiString(src, "interval"); ok {
 		p.Interval = &v
 	}
-	if v, ok := apiString(src, "due_day"); ok {
-		p.DueDay = &v
-	}
-	if v, ok := apiString(src, "billing_month"); ok {
-		p.BillingMonth = &v
-	}
 	if v, ok := apiBool(src, "active"); ok {
 		p.Active = &v
 	}
@@ -561,6 +554,7 @@ func (s *Server) handleAPIPaymentDaysCreate(w http.ResponseWriter, r *http.Reque
 		apiFailures(w, r, "payment_day", fails)
 		return
 	}
+	s.pushPaymentDay(user, d, false)
 	writeAPIJSON(w, http.StatusCreated, map[string]any{"payment_day": apiPaymentDay(d)})
 }
 
@@ -587,6 +581,7 @@ func (s *Server) handleAPIPaymentDaysUpdate(w http.ResponseWriter, r *http.Reque
 		apiFailures(w, r, "payment_day", fails)
 		return
 	}
+	s.pushPaymentDay(user, d, false)
 	writeAPIJSON(w, http.StatusOK, map[string]any{"payment_day": apiPaymentDay(d)})
 }
 
@@ -597,10 +592,12 @@ func (s *Server) handleAPIPaymentDaysDestroy(w http.ResponseWriter, r *http.Requ
 		writeAPIError(w, http.StatusNotFound, "not_found")
 		return
 	}
-	if _, err := s.Store.FindPaymentDay(user.ID, id); err != nil {
+	day, err := s.Store.FindPaymentDay(user.ID, id)
+	if err != nil {
 		writeAPIError(w, http.StatusNotFound, "not_found")
 		return
 	}
+	s.pushPaymentDay(user, day, true)
 	_ = s.Store.DeletePaymentDay(user.ID, id)
 	s.Store.ReclaimSpace()
 	w.WriteHeader(http.StatusNoContent)
@@ -609,22 +606,21 @@ func (s *Server) handleAPIPaymentDaysDestroy(w http.ResponseWriter, r *http.Requ
 // --- month summary ---
 
 type apiLine struct {
-	ID           *int64  `json:"id"`
-	Kind         string  `json:"kind"`
-	Title        string  `json:"title"`
-	Notes        string  `json:"notes"`
-	AmountCents  int64   `json:"amount_cents"`
-	Currency     string  `json:"currency"`
-	HomeCents    *int64  `json:"home_cents"`
-	Skipped      bool    `json:"skipped"`
-	DueDay       *int    `json:"due_day"`
-	DueOn        *string `json:"due_on"`
-	Overdue      bool    `json:"overdue"`
-	DueToday     bool    `json:"due_today"`
-	Category     string  `json:"category"`
-	SpentOn      *string `json:"spent_on"`
-	Interval     *string `json:"interval"`
-	BillingMonth *int    `json:"billing_month"`
+	ID          *int64  `json:"id"`
+	Kind        string  `json:"kind"`
+	Title       string  `json:"title"`
+	Notes       string  `json:"notes"`
+	AmountCents int64   `json:"amount_cents"`
+	Currency    string  `json:"currency"`
+	HomeCents   *int64  `json:"home_cents"`
+	Skipped     bool    `json:"skipped"`
+	DueDay      *int    `json:"due_day,omitempty"`
+	DueOn       *string `json:"due_on,omitempty"`
+	Overdue     bool    `json:"overdue"`
+	DueToday    bool    `json:"due_today"`
+	Category    string  `json:"category"`
+	SpentOn     *string `json:"spent_on,omitempty"`
+	Interval    *string `json:"interval,omitempty"`
 }
 
 func apiLineFrom(line spend.Line) apiLine {
@@ -633,7 +629,7 @@ func apiLineFrom(line spend.Line) apiLine {
 		AmountCents: line.AmountCents, Currency: line.Currency,
 		HomeCents: line.HomeCents, Skipped: line.Skipped,
 		DueDay: line.DueDay, Overdue: line.Overdue, DueToday: line.DueToday,
-		Category: line.Category, Interval: line.Interval, BillingMonth: line.BillingMonth,
+		Category: line.Category, Interval: line.Interval,
 	}
 	if line.DueOn != nil {
 		s := line.DueOn.Format("2006-01-02")

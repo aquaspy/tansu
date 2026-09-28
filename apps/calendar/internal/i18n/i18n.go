@@ -312,6 +312,8 @@ var strings_ = map[Locale]map[string]string{
 		"app.import_done":      "Imported %{count} items.",
 		"app.import_invalid":   "That file is not a valid TansuCalendar export.",
 		"app.birthday_retired": "Birthdays live in Tansu People and show up here. Add a normal event instead.",
+		"app.payment_badge":    "Pay",
+		"app.payment_source":   "Tansu Spend",
 		"app.offline":          "You're offline. You can open months you've already viewed, but changes won't save.",
 		"app.overflow":         "+%{count}",
 
@@ -563,6 +565,8 @@ var strings_ = map[Locale]map[string]string{
 		"app.import_done":      "Importados %{count} itens.",
 		"app.import_invalid":   "Esse arquivo não é um export válido do TansuCalendar.",
 		"app.birthday_retired": "Aniversários ficam no Tansu People e aparecem aqui. Adicione um evento normal.",
+		"app.payment_badge":    "Pagar",
+		"app.payment_source":   "Tansu Spend",
 		"app.offline":          "Você está offline. Pode abrir meses que já viu, mas não salvar.",
 		"app.overflow":         "+%{count}",
 

@@ -181,15 +181,13 @@ func expenseFields() map[string]any {
 
 func subscriptionFields() map[string]any {
 	return map[string]any{
-		"title":         strProp("name of the recurring bill"),
-		"amount":        strProp("decimal money such as 19.90. Use this or amount_cents."),
-		"amount_cents":  intProp("integer cents. If both are sent, amount_cents wins."),
-		"currency":      strProp("BRL, USD, or EUR. Default BRL."),
-		"interval":      strProp("monthly (default) or yearly"),
-		"due_day":       intProp("1-31, optional"),
-		"billing_month": intProp("1-12, yearly only. Monthly subscriptions ignore it."),
-		"active":        boolProp("defaults to true. false pauses the subscription."),
-		"notes":         strProp("free text that does not fit a field above"),
+		"title":        strProp("name of the recurring bill"),
+		"amount":       strProp("decimal money such as 19.90. Use this or amount_cents."),
+		"amount_cents": intProp("integer cents. If both are sent, amount_cents wins."),
+		"currency":     strProp("BRL, USD, or EUR. Default BRL."),
+		"interval":     strProp("monthly (default) or yearly. Yearly is the amount for the whole year; leftover counts one twelfth each month."),
+		"active":       boolProp("defaults to true. false pauses the subscription."),
+		"notes":        strProp("free text that does not fit a field above"),
 	}
 }
 
@@ -223,7 +221,7 @@ func toolset(app string) []openrouter.Tool {
 		return []openrouter.Tool{
 			{Name: CalList, Description: "List events from a date to a date (YYYY-MM-DD), including times, repeat, and repeat_until. Series are expanded, so id can repeat.", Parameters: obj(map[string]any{"from": strProp("YYYY-MM-DD"), "to": strProp("YYYY-MM-DD")}, []string{"from", "to"})},
 			{Name: CalRead, Description: "Read one event by id, including body, times, repeat, and repeat_until.", Parameters: obj(map[string]any{"id": intProp("event id")}, []string{"id"})},
-			{Name: CalCreate, Description: "Create an event. title and starts_on are required. All-day is the default. Timed events need all_day false plus starts_at and ends_at (HH:MM; 2:30 PM and 14h30 work). repeat is none, daily, weekly, monthly, or yearly. repeat_until bounds a series; omit it to repeat forever. There is no location or attendee field; put a place or guests in body. Do not wrap fields in an event object. Birthdays belong on a person in People.", Parameters: obj(eventFields(), []string{"title", "starts_on"})},
+			{Name: CalCreate, Description: "Create an event. title and starts_on are required. All-day is the default. Timed events need all_day false plus starts_at and ends_at (HH:MM; 2:30 PM and 14h30 work). repeat is none, daily, weekly, monthly, or yearly. repeat_until bounds a series; omit it to repeat forever. There is no location or attendee field; put a place or guests in body. Do not wrap fields in an event object. Birthdays belong on a person in People. Payment-day reminders belong in Spend.", Parameters: obj(eventFields(), []string{"title", "starts_on"})},
 			{Name: CalUpdate, Description: "Update an event by id. Partial merge: send only fields that change. Timed events need all_day false plus starts_at and ends_at. repeat_until bounds a series.", Parameters: obj(updateEvent, []string{"id"})},
 			{Name: CalDelete, Description: "Ask to delete one event. It does not run until the person confirms. Deleting a series deletes every occurrence.", Parameters: obj(map[string]any{"id": intProp("event id")}, []string{"id"})},
 		}
@@ -252,9 +250,9 @@ func toolset(app string) []openrouter.Tool {
 			{Name: SpendUpdate, Description: "Update an expense by id. Partial merge: send only fields that change. amount_cents is integer cents; amount is a decimal. category is food, transport, home, health, leisure, or other.", Parameters: obj(updateExpense, []string{"id"})},
 			{Name: SpendDelete, Description: "Ask to delete one expense. It does not run until the person confirms.", Parameters: obj(map[string]any{"id": intProp("expense id")}, []string{"id"})},
 			{Name: SpendSubscriptionList, Description: "List subscriptions (recurring bills). Pass active true to hide paused ones.", Parameters: obj(map[string]any{"active": boolProp("true lists only active subscriptions")}, nil)},
-			{Name: SpendSubscriptionRead, Description: "Read one subscription by id, including interval, due_day, billing_month, active, and notes.", Parameters: obj(map[string]any{"id": intProp("subscription id")}, []string{"id"})},
-			{Name: SpendSubscriptionCreate, Description: "Create a subscription, which is a recurring bill and not a one-off expense. title and an amount are required. interval is monthly (default) or yearly. due_day is 1-31. billing_month is 1-12 and only applies to yearly. active defaults to true. Use amount_cents or amount the same way as an expense. Do not wrap fields in a subscription object.", Parameters: obj(subscriptionFields(), []string{"title"})},
-			{Name: SpendSubscriptionUpdate, Description: "Update a subscription by id. Partial merge: send only fields that change. active false pauses it. interval monthly clears billing_month.", Parameters: obj(updateSub, []string{"id"})},
+			{Name: SpendSubscriptionRead, Description: "Read one subscription by id, including interval, active, and notes. There is no due day or billing month.", Parameters: obj(map[string]any{"id": intProp("subscription id")}, []string{"id"})},
+			{Name: SpendSubscriptionCreate, Description: "Create a subscription, which is a recurring bill and not a one-off expense. title and an amount are required. interval is monthly (default) or yearly. A yearly amount is the charge for the whole year and leftover counts one twelfth each month. active defaults to true. There is no due day or billing month; use a payment day for the reminder. Use amount_cents or amount the same way as an expense. Do not wrap fields in a subscription object.", Parameters: obj(subscriptionFields(), []string{"title"})},
+			{Name: SpendSubscriptionUpdate, Description: "Update a subscription by id. Partial merge: send only fields that change. active false pauses it. There is no due day or billing month.", Parameters: obj(updateSub, []string{"id"})},
 			{Name: SpendSubscriptionDelete, Description: "Ask to delete one subscription. It does not run until the person confirms.", Parameters: obj(map[string]any{"id": intProp("subscription id")}, []string{"id"})},
 			{Name: SpendPaymentDayList, Description: "List payment-day reminders. They do not change the leftover and they are not expenses.", Parameters: obj(map[string]any{}, nil)},
 			{Name: SpendPaymentDayRead, Description: "Read one payment day by id.", Parameters: obj(map[string]any{"id": intProp("payment day id")}, []string{"id"})},

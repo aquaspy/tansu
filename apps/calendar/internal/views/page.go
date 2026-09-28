@@ -140,7 +140,7 @@ func CellClass(c *calendar.Cell) string {
 	if c.Selected {
 		class += " is-selected"
 	}
-	if len(c.Events) > 0 || len(c.ICSEvents) > 0 || len(c.Birthdays) > 0 || len(c.Holidays) > 0 {
+	if len(c.Events) > 0 || len(c.ICSEvents) > 0 || len(c.Birthdays) > 0 || len(c.PaymentDays) > 0 || len(c.Holidays) > 0 {
 		class += " has-items"
 	}
 	return class

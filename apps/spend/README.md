@@ -33,7 +33,7 @@ It is part of the **Tansu** family: the same calm shell as [Tansu Assistant](../
 ## What you get
 
 - Multi-user accounts on one instance (family, friends, just you)
-- Monthly and yearly subscriptions, payment-day reminders, daily expenses
+- Monthly and yearly subscriptions (a yearly amount counts as one twelfth each month), payment-day reminders (mirrored on Tansu Calendar when linked), daily expenses
 - Salary + home currency + FX rates; leftover math in one number
 - Live USD/EUR quotes (dolarhoje.com, refreshed at boot, every 6h, and on demand) with manual rates as fallback
 - API tokens + JSON API for AI agents (see API.md)
@@ -206,6 +206,8 @@ go vet ./...
 | `DATA_DIR` | Where `kuraspend.sqlite3` lives. Default `storage` (`/data` in Docker) |
 | `KURA_ACCOUNT_URL` | Tansu Account base URL. Empty = standalone, no SSO button |
 | `KURA_CLIENT_ID` / `KURA_CLIENT_SECRET` | This app's OAuth credentials (must match its registry entry). See [Deploy the suite](../../README.md#deploy-the-suite) |
+| `KURA_CALENDAR_URL` | Tansu Calendar origin. With `KURA_SYNC_SECRET`, payment days are pushed there. Empty keeps them only in Spend |
+| `KURA_SYNC_SECRET` | Shared secret, same value as Calendar's. 16+ characters |
 
 ---
 

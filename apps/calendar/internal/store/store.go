@@ -62,6 +62,18 @@ CREATE TABLE IF NOT EXISTS birthdays (
 );
 CREATE INDEX IF NOT EXISTS index_birthdays_on_user_id ON birthdays(user_id);
 CREATE INDEX IF NOT EXISTS index_birthdays_on_user_id_and_month_and_day ON birthdays(user_id, month, day);
+CREATE TABLE IF NOT EXISTS payment_days (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  source_key TEXT NOT NULL,
+  title TEXT NOT NULL,
+  due_day INTEGER NOT NULL,
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS payment_days_source_key ON payment_days(user_id, source_key);
+CREATE INDEX IF NOT EXISTS index_payment_days_on_user_id ON payment_days(user_id);
 CREATE TABLE IF NOT EXISTS api_tokens (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -188,6 +200,24 @@ func migrate(db *sql.DB) error {
 	}
 	if _, err := db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS birthdays_source_key
 		ON birthdays(user_id, source_key) WHERE source_key != ''`); err != nil {
+		return err
+	}
+	// payment_days is created by schema on fresh databases. Existing
+	// files predate the table; CREATE IF NOT EXISTS is idempotent.
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS payment_days (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		source_key TEXT NOT NULL,
+		title TEXT NOT NULL,
+		due_day INTEGER NOT NULL,
+		notes TEXT NOT NULL DEFAULT '',
+		created_at TEXT NOT NULL,
+		updated_at TEXT NOT NULL
+	)`); err != nil {
+		return err
+	}
+	if _, err := db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS payment_days_source_key
+		ON payment_days(user_id, source_key)`); err != nil {
 		return err
 	}
 	return migrateLocalBirthdays(db)

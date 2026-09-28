@@ -149,8 +149,14 @@ func TestSpendSubscriptionAndPaymentDay(t *testing.T) {
 	if sub["title"] != "Music" || sub["amount"] != "19.9" || sub["currency"] != "EUR" {
 		t.Fatalf("money %#v", sub)
 	}
-	if sub["interval"] != "yearly" || sub["due_day"] != float64(10) || sub["billing_month"] != float64(3) || sub["active"] != false {
+	if sub["interval"] != "yearly" || sub["active"] != false {
 		t.Fatalf("schedule %#v", sub)
+	}
+	if _, ok := sub["due_day"]; ok {
+		t.Fatalf("due_day still sent: %#v", sub)
+	}
+	if _, ok := sub["billing_month"]; ok {
+		t.Fatalf("billing_month still sent: %#v", sub)
 	}
 
 	out = Execute(context.Background(), c, SpendSubscriptionUpdate, map[string]any{
@@ -361,7 +367,7 @@ func TestSuiteToolSchemasCoverWritableFields(t *testing.T) {
 			t.Fatalf("expense missing %s", key)
 		}
 	}
-	for _, key := range []string{"interval", "due_day", "billing_month", "active", "amount", "amount_cents"} {
+	for _, key := range []string{"interval", "active", "amount", "amount_cents"} {
 		if byName[SpendSubscriptionCreate][key] == nil || byName[SpendSubscriptionUpdate][key] == nil {
 			t.Fatalf("subscription missing %s", key)
 		}

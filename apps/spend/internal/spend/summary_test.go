@@ -30,20 +30,17 @@ func TestLeftoverSubtractsSubsAndExpenses(t *testing.T) {
 	u := seedSummaryUser(t, st)
 	today := time.Date(2026, 8, 25, 0, 0, 0, 0, time.UTC)
 
-	mustSub := func(title string, cents int64, interval, billing string) {
+	mustSub := func(title string, cents int64, interval string) {
 		t.Helper()
 		p := store.SubscriptionPatch{Title: strptr(title), AmountCents: &cents,
 			Currency: strptr("BRL"), Interval: strptr(interval)}
-		if billing != "" {
-			p.BillingMonth = &billing
-		}
 		if _, fails, err := st.CreateSubscription(u.ID, p); err != nil || len(fails) > 0 {
 			t.Fatalf("sub %s: %v %v", title, fails, err)
 		}
 	}
-	mustSub("Netflix", 5_000, "monthly", "")
-	mustSub("Domain", 12_000, "yearly", "3")
-	mustSub("Insurance", 20_000, "yearly", "8")
+	mustSub("Netflix", 5_000, "monthly")
+	mustSub("Domain", 12_000, "yearly")
+	mustSub("Insurance", 20_000, "yearly")
 
 	for _, d := range []string{"10", "8"} {
 		day, title := d, "Water"
@@ -73,13 +70,14 @@ func TestLeftoverSubtractsSubsAndExpenses(t *testing.T) {
 	if got := s.IncomeHomeCents(); got != 1_000_000 {
 		t.Errorf("income: %d", got)
 	}
-	if got := s.SubscriptionsHomeCents(); got != 25_000 {
+	// Netflix 5000 + Domain 12000/12 + Insurance 20000/12.
+	if got := s.SubscriptionsHomeCents(); got != 7_666 {
 		t.Errorf("subs: %d", got)
 	}
 	if got := s.ExpensesHomeCents(); got != 6_950 {
 		t.Errorf("expenses: %d (want 1500 + 5450)", got)
 	}
-	if got := s.LeftoverCents(); got != 968_050 {
+	if got := s.LeftoverCents(); got != 985_384 {
 		t.Errorf("leftover: %d", got)
 	}
 	if len(s.PaymentDays()) != 2 {
@@ -95,12 +93,11 @@ func TestLeftoverSubtractsSubsAndExpenses(t *testing.T) {
 	}
 }
 
-func TestYearlyOutOfMonthAndInactiveDoNotCount(t *testing.T) {
+func TestYearlyCountsATwelfthAndInactiveDoesNot(t *testing.T) {
 	st, _ := store.Open(":memory:")
 	defer st.Close()
 	u := seedSummaryUser(t, st)
 	inactive := false
-	billing := "1"
 	if _, fails, err := st.CreateSubscription(u.ID, store.SubscriptionPatch{
 		Title: strptr("Old"), AmountCents: int64ptr(9_000), Currency: strptr("BRL"),
 		Interval: strptr("monthly"), Active: &inactive}); err != nil || len(fails) > 0 {
@@ -108,18 +105,22 @@ func TestYearlyOutOfMonthAndInactiveDoNotCount(t *testing.T) {
 	}
 	if _, fails, err := st.CreateSubscription(u.ID, store.SubscriptionPatch{
 		Title: strptr("Domain"), AmountCents: int64ptr(12_000), Currency: strptr("BRL"),
-		Interval: strptr("yearly"), BillingMonth: &billing}); err != nil || len(fails) > 0 {
+		Interval: strptr("yearly")}); err != nil || len(fails) > 0 {
 		t.Fatalf("yearly: %v %v", fails, err)
 	}
 	s := NewSummary(st, u, 2026, 8, time.Date(2026, 8, 25, 0, 0, 0, 0, time.UTC))
-	if got := s.SubscriptionsHomeCents(); got != 0 {
+	if got := s.SubscriptionsHomeCents(); got != 1_000 {
 		t.Errorf("subs: %d", got)
 	}
 	if len(s.SubscriptionRows()) != 1 {
 		t.Errorf("rows: %d", len(s.SubscriptionRows()))
 	}
-	if len(s.Subscriptions()) != 0 {
-		t.Errorf("counting: %d", len(s.Subscriptions()))
+	if len(s.Subscriptions()) != 1 || s.Subscriptions()[0].EnteredCents != 12_000 {
+		t.Errorf("counting: %+v", s.Subscriptions())
+	}
+	dec := NewSummary(st, u, 2026, 12, time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC))
+	if got := dec.SubscriptionsHomeCents(); got != 1_000 {
+		t.Errorf("december: %d", got)
 	}
 }
 

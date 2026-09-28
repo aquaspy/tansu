@@ -21,23 +21,26 @@ const (
 // Line is one summary row. HomeCents is nil when Skipped (missing FX rate),
 // like the Rails Line with a nil home_cents.
 type Line struct {
-	ID           *int64
-	Kind         string
-	Title        string
-	Notes        string
-	AmountCents  int64
-	Currency     string
-	HomeCents    *int64
-	Skipped      bool
-	DueDay       *int
-	DueOn        *time.Time
-	Overdue      bool
-	DueToday     bool
-	Category     string
-	SpentOn      *time.Time
-	Interval     *string
-	Counts       bool
-	BillingMonth *int
+	ID          *int64
+	Kind        string
+	Title       string
+	Notes       string
+	AmountCents int64
+	Currency    string
+	HomeCents   *int64
+	Skipped     bool
+	DueDay      *int
+	DueOn       *time.Time
+	Overdue     bool
+	DueToday    bool
+	Category    string
+	SpentOn     *time.Time
+	Interval    *string
+	Counts      bool
+	// EnteredCents is the stored subscription amount. AmountCents on a
+	// subscription line is the share counted this month (a twelfth when
+	// the interval is yearly).
+	EnteredCents int64
 }
 
 // DayGroup is one day's expenses, days in spent_on desc order.
@@ -96,11 +99,14 @@ func (s *Summary) load(st *store.Store) {
 	}
 	for _, su := range subs {
 		counts := su.AppliesIn(s.Year, s.Month)
+		charge := int64(0)
+		if counts {
+			charge = su.MonthCents(s.Month)
+		}
 		line := s.convert(&su.ID, KindSubscription, su.Title, su.Notes,
-			su.AmountCents, su.Currency)
-		line.DueDay = su.DueDay
+			charge, su.Currency)
 		line.Interval = &su.Interval
-		line.BillingMonth = su.BillingMonth
+		line.EnteredCents = su.AmountCents
 		line.Counts = counts
 		s.subRows = append(s.subRows, line)
 		if counts {

@@ -42,12 +42,8 @@ func Import(st *store.Store, userID int64, data []byte) (int, error) {
 		if cents, ok := intField(row, "amount_cents"); ok {
 			p.AmountCents = &cents
 		}
-		if raw, ok := dayField(row, "due_day"); ok {
-			p.DueDay = &raw
-		}
-		if raw, ok := dayField(row, "billing_month"); ok {
-			p.BillingMonth = &raw
-		}
+		// due_day and billing_month on old exports are ignored. The columns
+		// stay in the database; new rows simply don't set them.
 		if v, present := row["active"]; present {
 			active := truthy(v)
 			p.Active = &active
