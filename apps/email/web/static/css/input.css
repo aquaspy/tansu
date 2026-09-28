@@ -528,13 +528,36 @@ a.folder-item { font-size: 0.9rem; font-weight: 550; }
 
 .list-head { padding: 0.9rem 0.8rem 0.4rem; display: grid; gap: 0.65rem; }
 .list-head .desktop-only { margin: 0; }
-.search-form { margin: 0; }
+.search-form { display: flex; align-items: center; gap: 0.2rem; margin: 0; }
 
 .search {
+  flex: 1;
+  width: auto;
+  min-width: 0;
   border-radius: 10px;
   padding: 0.55rem 0.75rem;
   font-size: 0.9rem;
   background: var(--surface);
+}
+.search-clear {
+  flex: none;
+  width: 1.9rem;
+  height: 1.9rem;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.search-clear svg { width: 0.85rem; height: 0.85rem; display: block; }
+.search-clear:hover { color: var(--ink); background: var(--line-soft); }
+.search-form:has(input:placeholder-shown) .search-clear { visibility: hidden; }
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .btn-new {
@@ -659,6 +682,7 @@ a.folder-item { font-size: 0.9rem; font-weight: 550; }
 
 .editor-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.2rem;
   align-items: center;
   padding: 0.5rem 0.9rem;
@@ -1127,6 +1151,19 @@ a.folder-item { font-size: 0.9rem; font-weight: 550; }
 }
 .note-item.is-unread strong { font-weight: 700; }
 .note-item.is-unread .note-item-link { box-shadow: inset 3px 0 0 var(--accent); }
+.note-item .unread-badge {
+  display: inline-block;
+  margin-right: 0.4rem;
+  padding: 0.02rem 0.38rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-style: normal;
+  font-weight: 700;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  vertical-align: 0.05em;
+}
 .pager {
   display: flex;
   gap: 0.8rem;

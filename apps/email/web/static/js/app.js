@@ -260,6 +260,75 @@
     },
   };
 
+  controllers.search = {
+    connect(el) {
+      if (state(el).searchBound) return;
+      state(el).searchBound = true;
+      const input = el.querySelector("input[name='q']");
+      if (!input) return;
+      let timer = null;
+      const folderURL = () => {
+        const params = new URLSearchParams();
+        const account = el.querySelector("input[name='account']")?.value;
+        const folder = el.querySelector("input[name='folder']")?.value;
+        if (account) params.set("account", account);
+        if (folder) params.set("folder", folder);
+        const qs = params.toString();
+        return qs ? "/?" + qs : "/";
+      };
+      const runClear = () => {
+        if (el.dataset.searchActive !== "true" || input.value.trim() !== "") return;
+        if (document.querySelector(".mail-read")) {
+          window.location.assign(folderURL());
+          return;
+        }
+        if (window.htmx) {
+          window.htmx.trigger(el, "search-clear");
+          return;
+        }
+        window.location.assign(folderURL());
+      };
+      const scheduleClear = () => {
+        clearTimeout(timer);
+        if (el.dataset.searchActive !== "true" || input.value.trim() !== "") return;
+        timer = setTimeout(runClear, 250);
+      };
+      let submitting = false;
+      input.addEventListener("input", () => {
+        clearTimeout(timer);
+        if (input.value.trim() !== "") {
+          window.htmx?.trigger(el, "htmx:abort");
+          return;
+        }
+        scheduleClear();
+      });
+      // The native clear control can fire `search` before it empties the
+      // field, and it does not always fire `input`. Read the value after
+      // that control has finished.
+      input.addEventListener("search", () => {
+        setTimeout(() => {
+          if (!submitting) scheduleClear();
+        }, 0);
+      });
+      el.addEventListener("submit", () => {
+        submitting = true;
+        clearTimeout(timer);
+      });
+      el.addEventListener("htmx:afterRequest", (event) => {
+        if (event.detail?.successful && input.value.trim() === "") {
+          el.dataset.searchActive = "false";
+        }
+      });
+    },
+    clear({ event, element }) {
+      event.preventDefault();
+      const input = element.closest("form")?.querySelector("input[name='q']");
+      if (!input) return;
+      input.value = "";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    },
+  };
+
   controllers.offline = {
     connect() {
       const paint = () => {

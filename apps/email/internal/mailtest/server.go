@@ -15,15 +15,19 @@ import (
 
 // IMAP is an in-process mailbox with two messages in INBOX.
 type IMAP struct {
-	ln       net.Listener
-	Addr     string
-	Host     string
-	Port     int
-	User     string
-	Password string
-	Moved    []uint32
-	Deleted  []uint32
-	mu       sync.Mutex
+	ln          net.Listener
+	Addr        string
+	Host        string
+	Port        int
+	User        string
+	Password    string
+	Moved       []uint32
+	Deleted     []uint32
+	SeenStore   []uint32
+	UnseenStore []uint32
+	Lines       []string
+	seen        map[uint32]bool
+	mu          sync.Mutex
 }
 
 func StartIMAP(user, password string) (*IMAP, error) {
@@ -33,7 +37,10 @@ func StartIMAP(user, password string) (*IMAP, error) {
 	}
 	host, portStr, _ := net.SplitHostPort(ln.Addr().String())
 	port, _ := strconv.Atoi(portStr)
-	s := &IMAP{ln: ln, Addr: ln.Addr().String(), Host: host, Port: port, User: user, Password: password}
+	s := &IMAP{
+		ln: ln, Addr: ln.Addr().String(), Host: host, Port: port, User: user, Password: password,
+		seen: map[uint32]bool{11: true},
+	}
 	go s.serve()
 	return s, nil
 }
@@ -63,6 +70,9 @@ func (s *IMAP) handle(c net.Conn) {
 			return
 		}
 		line = strings.TrimRight(line, "\r\n")
+		s.mu.Lock()
+		s.Lines = append(s.Lines, line)
+		s.mu.Unlock()
 		if os.Getenv("MAILTEST_DEBUG") == "1" {
 			log.Printf("IMAP C: %s", line)
 		}
@@ -102,17 +112,47 @@ func (s *IMAP) handle(c net.Conn) {
 }
 
 func (s *IMAP) writeMessages(w io.Writer, rest string, seqs, uids []string) {
-	header := "From: Ada <ada@example.com>\r\nTo: Bob <bob@example.com>\r\nSubject: Hello\r\nDate: Mon, 28 Sep 2026 12:00:00 +0000\r\nMessage-Id: <m1@example.com>\r\n\r\n"
-	body := header + "Hello from Ada.\r\n"
-	payload := header
 	section := fetchSection(rest)
-	if section == "BODY[]" {
-		payload = body
-	}
+	full := section == "BODY[]"
 	for i := range uids {
-		seq := seqs[i]
-		fmt.Fprintf(w, "* %s FETCH (UID %s FLAGS (\\Seen) %s {%d}\r\n%s)\r\n", seq, uids[i], section, len(payload), payload)
+		header, text := sampleMessage(uids[i])
+		payload := header
+		if full {
+			payload = header + text
+		}
+		fmt.Fprintf(w, "* %s FETCH (UID %s FLAGS (%s) %s {%d}\r\n%s)\r\n", seqs[i], uids[i], s.flagList(uids[i]), section, len(payload), payload)
 	}
+}
+
+func sampleMessage(uid string) (header, text string) {
+	subject := "Hello"
+	text = "Hello from Ada.\r\n"
+	if uid == "10" {
+		subject = "Quarterly update"
+		text = "Unread note.\r\n"
+	}
+	header = "From: Ada <ada@example.com>\r\nTo: Bob <bob@example.com>\r\nSubject: " + subject + "\r\nDate: Mon, 28 Sep 2026 12:00:00 +0000\r\nMessage-Id: <m" + uid + "@example.com>\r\n\r\n"
+	return header, text
+}
+
+func (s *IMAP) flagList(uid string) string {
+	n, err := strconv.ParseUint(uid, 10, 32)
+	if err != nil {
+		return ""
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.seen[uint32(n)] {
+		return `\Seen`
+	}
+	return ""
+}
+
+// Snapshot returns the IMAP commands received so far.
+func (s *IMAP) Snapshot() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.Lines...)
 }
 
 func fetchSection(rest string) string {
@@ -160,15 +200,43 @@ func (s *IMAP) uid(w io.Writer, r *bufio.Reader, tag, arg, selected string) {
 		s.mu.Unlock()
 		fmt.Fprintf(w, "%s OK MOVE\r\n", tag)
 	case "STORE":
-		s.mu.Lock()
-		s.Deleted = append(s.Deleted, 11)
-		s.mu.Unlock()
+		s.noteStore(rest)
 		fmt.Fprintf(w, "%s OK STORE\r\n", tag)
 	case "COPY":
 		fmt.Fprintf(w, "%s OK COPY\r\n", tag)
 	default:
 		fmt.Fprintf(w, "%s OK done\r\n", tag)
 	}
+}
+
+func (s *IMAP) noteStore(rest string) {
+	upper := strings.ToUpper(rest)
+	uid := leadingUID(rest)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if strings.Contains(upper, `\SEEN`) {
+		if s.seen == nil {
+			s.seen = map[uint32]bool{}
+		}
+		if strings.Contains(upper, "-FLAGS") {
+			s.seen[uid] = false
+			s.UnseenStore = append(s.UnseenStore, uid)
+		} else {
+			s.seen[uid] = true
+			s.SeenStore = append(s.SeenStore, uid)
+		}
+		return
+	}
+	s.Deleted = append(s.Deleted, uid)
+}
+
+func leadingUID(rest string) uint32 {
+	fields := strings.Fields(rest)
+	if len(fields) == 0 {
+		return 0
+	}
+	n, _ := strconv.ParseUint(strings.Trim(fields[0], ","), 10, 32)
+	return uint32(n)
 }
 
 // SMTP accepts one authenticated session and records the DATA payload.

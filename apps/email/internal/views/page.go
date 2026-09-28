@@ -147,6 +147,13 @@ type AccountForm struct {
 	Rows        []MailboxRow
 }
 
+func searchActive(q string) string {
+	if strings.TrimSpace(q) != "" {
+		return "true"
+	}
+	return "false"
+}
+
 func MailHref(account int64, folder, q string, page int) string {
 	v := url.Values{}
 	if account > 0 {

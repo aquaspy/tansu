@@ -97,6 +97,8 @@ search did not cover the whole mailbox.
 
 `GET /api/v1/accounts/{id}/messages/{uid}?folder=INBOX`
 
+The body is fetched once with `BODY.PEEK[]`. If the message was unread, the server then gets `UID STORE +FLAGS.SILENT (\Seen)` and `seen` in the response is true. That store does not fetch the body again. List rows already include `seen` from `FLAGS` on the same header FETCH as the other fields, so opening the folder does not `SEARCH UNSEEN`.
+
 ```json
 { "message": { "uid": 11, "from": "", "to": "", "cc": "", "subject": "", "date": "", "seen": true, "text": "", "attachments": [ { "index": 0, "name": "a.pdf", "mime": "application/pdf", "size": 12 } ] } }
 ```

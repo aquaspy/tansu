@@ -25,6 +25,8 @@ func (s *Server) handleMailIndex(w http.ResponseWriter, r *http.Request) {
 	s.renderMail(w, r, false, false)
 }
 
+func isHX(r *http.Request) bool { return r.Header.Get("HX-Request") == "true" }
+
 func (s *Server) handleMailRead(w http.ResponseWriter, r *http.Request) {
 	s.renderMail(w, r, true, false)
 }
@@ -61,14 +63,14 @@ func (s *Server) renderMail(w http.ResponseWriter, r *http.Request, reading, com
 	d.ListHref = views.MailHref(accountID, d.Folder, d.Query, d.Page)
 	p := s.page(w, r, pTitle(r, "titles.app"), "app-body")
 	if accountID == 0 {
-		render(w, r, http.StatusOK, views.Layout(p, views.NoHead(), views.Shell(p, d)))
+		s.finishMail(w, r, p, d, reading, composing)
 		return
 	}
 	_, creds, err := s.openBox(user.ID, accountID)
 	if err != nil {
 		p.Alert = i18n.T(l, "mail.secrets_missing")
 		d.Problem = "secrets"
-		render(w, r, http.StatusOK, views.Layout(p, views.NoHead(), views.Shell(p, d)))
+		s.finishMail(w, r, p, d, reading, composing)
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), mailOpTimeout)
@@ -77,7 +79,7 @@ func (s *Server) renderMail(w http.ResponseWriter, r *http.Request, reading, com
 	if err != nil {
 		p.Alert = i18n.T(l, "mail.unavailable")
 		d.Problem = "unavailable"
-		render(w, r, http.StatusOK, views.Layout(p, views.NoHead(), views.Shell(p, d)))
+		s.finishMail(w, r, p, d, reading, composing)
 		return
 	}
 	defer sess.Close()
@@ -128,10 +130,13 @@ func (s *Server) renderMail(w http.ResponseWriter, r *http.Request, reading, com
 	if reading {
 		uid, ok := parseUID(r.URL.Query().Get("uid"))
 		if ok && ferr == nil && d.Problem == "" {
-			msg, err := sess.Read(d.Folder, uid)
+			msg, err := sess.Read(accountID, d.Folder, uid)
 			if err != nil {
 				p.Alert = i18n.T(l, "mail.unavailable")
 			} else {
+				if msg.Seen {
+					markRowSeen(&d, uid)
+				}
 				d.Open = &views.OpenMessage{
 					From: msg.From, To: msg.To, Cc: msg.Cc, Subject: msg.Subject,
 					When: views.FormatWhen(l, msg.Date), Text: msg.Text,
@@ -145,7 +150,10 @@ func (s *Server) renderMail(w http.ResponseWriter, r *http.Request, reading, com
 	if composing {
 		c := &views.Composer{}
 		if uid, ok := parseUID(r.URL.Query().Get("uid")); ok && ferr == nil && d.Problem == "" {
-			if msg, err := sess.Read(d.Folder, uid); err == nil {
+			if msg, err := sess.Read(accountID, d.Folder, uid); err == nil {
+				if msg.Seen {
+					markRowSeen(&d, uid)
+				}
 				out := quoteOutgoing(msg)
 				c.To = strings.Join(out.To, ", ")
 				c.Subject = out.Subject
@@ -158,7 +166,23 @@ func (s *Server) renderMail(w http.ResponseWriter, r *http.Request, reading, com
 	}
 	d.ListHref = views.MailHref(accountID, d.Folder, d.Query, d.Page)
 	d.ComposeHref = views.ComposeHref(accountID, d.Folder, 0)
+	s.finishMail(w, r, p, d, reading, composing)
+}
+
+func (s *Server) finishMail(w http.ResponseWriter, r *http.Request, p views.Page, d views.MailData, reading, composing bool) {
+	if isHX(r) && !reading && !composing {
+		render(w, r, http.StatusOK, views.MailList(p, d))
+		return
+	}
 	render(w, r, http.StatusOK, views.Layout(p, views.NoHead(), views.Shell(p, d)))
+}
+
+func markRowSeen(d *views.MailData, uid uint32) {
+	for i := range d.Messages {
+		if d.Messages[i].UID == uid {
+			d.Messages[i].Seen = true
+		}
+	}
 }
 
 func (s *Server) handleMailTrash(w http.ResponseWriter, r *http.Request) {
@@ -167,6 +191,38 @@ func (s *Server) handleMailTrash(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleMailDelete(w http.ResponseWriter, r *http.Request) {
 	s.moveWeb(w, r, false)
+}
+
+func (s *Server) handleMailUnread(w http.ResponseWriter, r *http.Request) {
+	l := LocaleOf(r)
+	user := UserOf(r)
+	id := queryID(r, "account")
+	uid, ok := parseUID(r.FormValue("uid"))
+	folder := r.FormValue("folder")
+	q := strings.TrimSpace(r.FormValue("q"))
+	page := 1
+	if n, err := strconv.Atoi(r.FormValue("page")); err == nil && n > 0 {
+		page = n
+	}
+	if !ok || id == 0 {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+	_, creds, err := s.openBox(user.ID, id)
+	back := views.MailHref(id, folder, q, page)
+	if err != nil {
+		flashAlert(s, r, i18n.T(l, "mail.secrets_missing"))
+		http.Redirect(w, r, back, http.StatusSeeOther)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), mailOpTimeout)
+	defer cancel()
+	if err := s.Mail.SetSeen(ctx, id, creds, folder, uid, false); err != nil {
+		flashAlert(s, r, i18n.T(l, "mail.unavailable"))
+	} else {
+		flashNotice(s, r, i18n.T(l, "mail.marked_unread"))
+	}
+	http.Redirect(w, r, back, http.StatusSeeOther)
 }
 
 func (s *Server) moveWeb(w http.ResponseWriter, r *http.Request, trash bool) {

@@ -66,9 +66,18 @@ func (s *Session) List(accountID int64, folder, query string, page int) (Page, e
 	return s.svc.listCached(s.cl, accountID, folder, query, page)
 }
 
-// Read fetches one message body on this connection.
-func (s *Session) Read(folder string, uid uint32) (*Message, error) {
-	return readOn(s.cl, defaultFolder(folder), uid)
+// Read fetches one message body on this connection and marks it \Seen when
+// it was unread. accountID patches the header cache; zero skips that.
+func (s *Session) Read(accountID int64, folder string, uid uint32) (*Message, error) {
+	folder = defaultFolder(folder)
+	msg, err := readOn(s.cl, folder, uid)
+	if err != nil {
+		return nil, err
+	}
+	if msg.Seen {
+		s.svc.markCachedSeen(accountID, folder, uid, true)
+	}
+	return msg, nil
 }
 
 func (s *Service) listCached(cl *client.Client, accountID int64, folder, query string, page int) (Page, error) {
@@ -546,6 +555,9 @@ func headerFetchSection() *imap.BodySectionName {
 	}
 }
 
+// fetchHeaders loads one page of list rows in a single FETCH: UID, FLAGS,
+// and BODY.PEEK[HEADER.FIELDS ...]. FLAGS carries \Seen for the unread
+// badge. This does not SEARCH UNSEEN and does not fetch bodies.
 func fetchHeaders(cl *client.Client, set *imap.SeqSet, byUID bool) ([]Header, error) {
 	if set == nil {
 		return []Header{}, nil
@@ -590,8 +602,12 @@ func hasFlag(flags []string, want string) bool {
 	return false
 }
 
+// readOn loads the body once with BODY.PEEK so the server does not set
+// \Seen as a fetch side effect. An unread message is then marked with one
+// UID STORE +FLAGS.SILENT (\Seen), which does not return a new body.
+// The mailbox is selected read-write so that STORE is allowed.
 func readOn(cl *client.Client, folder string, uid uint32) (*Message, error) {
-	if _, err := cl.Select(folder, true); err != nil {
+	if _, err := cl.Select(folder, false); err != nil {
 		return nil, err
 	}
 	set := new(imap.SeqSet)
@@ -626,7 +642,33 @@ func readOn(cl *client.Client, folder string, uid uint32) (*Message, error) {
 	}
 	parsed.UID = uid
 	parsed.Seen = hasFlag(flags, imap.SeenFlag)
+	if parsed.Seen {
+		return parsed, nil
+	}
+	if err := storeSeen(cl, set, true); err != nil {
+		return parsed, nil
+	}
+	parsed.Seen = true
 	return parsed, nil
+}
+
+func setSeenOn(cl *client.Client, folder string, uid uint32, seen bool) error {
+	if _, err := cl.Select(folder, false); err != nil {
+		return err
+	}
+	set := new(imap.SeqSet)
+	set.AddNum(uid)
+	return storeSeen(cl, set, seen)
+}
+
+func storeSeen(cl *client.Client, set *imap.SeqSet, seen bool) error {
+	op := imap.FlagsOp(imap.AddFlags)
+	if !seen {
+		op = imap.RemoveFlags
+	}
+	// A nil update channel asks go-imap for FLAGS.SILENT, so the server
+	// does not send the message back.
+	return cl.UidStore(set, imap.FormatFlagsOp(op, true), []any{imap.SeenFlag}, nil)
 }
 
 func moveOn(cl *client.Client, folder string, uid uint32) error {

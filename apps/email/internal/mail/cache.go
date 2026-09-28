@@ -74,6 +74,32 @@ func (c *listCache) put(account int64, folder, query string, page int, p Page) {
 	c.m[key] = cacheEntry{at: now, page: p}
 }
 
+// markSeen updates \Seen on cached header rows for one UID. The next list
+// page can stay on the header cache instead of refetching after open or
+// mark-unread.
+func (c *listCache) markSeen(account int64, folder string, uid uint32, seen bool) {
+	if c == nil || account == 0 || uid == 0 {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for k, e := range c.m {
+		if k.account != account || k.folder != folder {
+			continue
+		}
+		changed := false
+		for i := range e.page.Messages {
+			if e.page.Messages[i].UID == uid && e.page.Messages[i].Seen != seen {
+				e.page.Messages[i].Seen = seen
+				changed = true
+			}
+		}
+		if changed {
+			c.m[k] = e
+		}
+	}
+}
+
 func (c *listCache) drop(account int64) {
 	if c == nil {
 		return

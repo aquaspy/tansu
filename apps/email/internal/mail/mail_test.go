@@ -62,7 +62,7 @@ func TestOnDemandListSearchReadMoveSend(t *testing.T) {
 	if err != nil || found.Total < 1 {
 		t.Fatalf("%+v %v", found, err)
 	}
-	msg, err := svc.Read(ctx, c, "INBOX", page.Messages[0].UID)
+	msg, err := svc.Read(ctx, 1, c, "INBOX", page.Messages[0].UID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,6 +88,155 @@ func TestOnDemandListSearchReadMoveSend(t *testing.T) {
 	if !strings.Contains(sm.Data, "Subject:") || strings.Contains(sm.Data, "secret") {
 		t.Fatalf("smtp data %q", sm.Data)
 	}
+}
+
+func TestListFlagsAndMarkSeenWithoutExtraFetch(t *testing.T) {
+	im, err := mailtest.StartIMAP("ada", "secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer im.Close()
+	sm, err := mailtest.StartSMTP("ada", "secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sm.Close()
+	svc := NewService()
+	ctx := context.Background()
+	c := testCreds(im, sm)
+
+	page, err := svc.List(ctx, 7, c, "INBOX", "", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var unread uint32
+	seenRows := 0
+	for _, m := range page.Messages {
+		if m.Seen {
+			seenRows++
+			continue
+		}
+		unread = m.UID
+		if m.Subject != "Quarterly update" {
+			t.Fatalf("unseen row %+v", m)
+		}
+	}
+	if unread != 10 || seenRows != 1 {
+		t.Fatalf("page %+v", page)
+	}
+	headerFetches := 0
+	for _, line := range im.Snapshot() {
+		upper := strings.ToUpper(line)
+		if strings.Contains(upper, "UNSEEN") {
+			t.Fatalf("list searched UNSEEN: %s", line)
+		}
+		if !strings.Contains(upper, "FETCH") {
+			continue
+		}
+		headerFetches++
+		if !strings.Contains(upper, "FLAGS") || !strings.Contains(upper, "BODY.PEEK[HEADER.FIELDS") {
+			t.Fatalf("header fetch missing FLAGS or header fields: %s", line)
+		}
+		if strings.Contains(upper, "BODY.PEEK[]") || strings.Contains(upper, "BODY[]") {
+			t.Fatalf("list fetch included a body: %s", line)
+		}
+	}
+	if headerFetches != 1 {
+		t.Fatalf("header fetches = %d", headerFetches)
+	}
+
+	before := len(im.Snapshot())
+	msg, err := svc.Read(ctx, 7, c, "INBOX", unread)
+	if err != nil || !msg.Seen || !strings.Contains(msg.Text, "Unread note") {
+		t.Fatalf("read %+v %v", msg, err)
+	}
+	bodyFetches := 0
+	stores := 0
+	for _, line := range im.Snapshot()[before:] {
+		upper := strings.ToUpper(line)
+		if strings.Contains(upper, "FETCH") {
+			bodyFetches++
+			if !strings.Contains(upper, "BODY.PEEK[]") {
+				t.Fatalf("read fetch should be BODY.PEEK[]: %s", line)
+			}
+		}
+		if strings.Contains(upper, "STORE") {
+			stores++
+			if !strings.Contains(upper, "+FLAGS.SILENT") || !strings.Contains(upper, `\SEEN`) {
+				t.Fatalf("store: %s", line)
+			}
+		}
+	}
+	if bodyFetches != 1 || stores != 1 {
+		t.Fatalf("fetches %d stores %d", bodyFetches, stores)
+	}
+
+	again, err := svc.List(ctx, 7, c, "INBOX", "", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range again.Messages {
+		if !m.Seen {
+			t.Fatalf("cache still unread: %+v", m)
+		}
+	}
+	if fetches := countSubstr(im.Snapshot(), "FETCH"); fetches != headerFetches+bodyFetches {
+		t.Fatalf("cached list refetched: fetches %d", fetches)
+	}
+
+	before = len(im.Snapshot())
+	if _, err := svc.Read(ctx, 7, c, "INBOX", unread); err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range im.Snapshot()[before:] {
+		if strings.Contains(strings.ToUpper(line), "STORE") {
+			t.Fatalf("second open stored again: %s", line)
+		}
+	}
+
+	before = len(im.Snapshot())
+	if err := svc.SetSeen(ctx, 7, c, "INBOX", unread, false); err != nil {
+		t.Fatal(err)
+	}
+	marked := false
+	for _, line := range im.Snapshot()[before:] {
+		upper := strings.ToUpper(line)
+		if strings.Contains(upper, "FETCH") {
+			t.Fatalf("mark unread fetched: %s", line)
+		}
+		if strings.Contains(upper, "STORE") && strings.Contains(upper, "-FLAGS.SILENT") && strings.Contains(upper, `\SEEN`) {
+			marked = true
+		}
+	}
+	if !marked {
+		t.Fatal("missing -FLAGS.SILENT \\Seen")
+	}
+	unseen, err := svc.List(ctx, 7, c, "INBOX", "", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, m := range unseen.Messages {
+		if m.UID == unread {
+			found = true
+			if m.Seen {
+				t.Fatal("cache stayed seen")
+			}
+		}
+	}
+	if !found {
+		t.Fatal("missing row")
+	}
+}
+
+func countSubstr(lines []string, needle string) int {
+	n := 0
+	for _, line := range lines {
+		if strings.Contains(strings.ToUpper(line), strings.ToUpper(needle)) {
+			n++
+		}
+	}
+	return n
 }
 
 func TestSearchCriteria(t *testing.T) {
