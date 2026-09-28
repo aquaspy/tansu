@@ -145,7 +145,7 @@ Compose creates each new named volume as root. The image runs as `app`
 until `/data` is owned by that user. In the app directory, once for that volume:
 
 ```sh
-docker compose run --rm --user root --entrypoint chown web -R 1000:1000 /data
+docker compose run --rm --user root --entrypoint chown web -- -R 1000:1000 /data
 docker compose up -d
 ```
 
