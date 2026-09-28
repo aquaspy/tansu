@@ -86,9 +86,12 @@ func JS(l Locale) map[string]string {
 }
 
 // TimeShort mirrors the Rails time.formats.short: "Sep 19, 10:00" in en,
-// "19/09, 10:00" in pt.
-func TimeShort(l Locale, t time.Time) string {
-	t = t.Local()
+// "19/09, 10:00" in pt. A nil location is UTC. The process zone is not used.
+func TimeShort(l Locale, t time.Time, loc *time.Location) string {
+	if loc == nil {
+		loc = time.UTC
+	}
+	t = t.In(loc)
 	if l == PT {
 		return t.Format("02/01, 15:04")
 	}
@@ -210,6 +213,13 @@ var strings_ = map[Locale]map[string]string{
 		"hub.link_lede":   "Tansu Assistant can read and change Notes, Calendar, Spend, and People once you link them. You confirm each app.",
 		"hub.link_action": "Connect apps",
 
+		"hub.timezone_title":   "Timezone",
+		"hub.timezone_lede":    "Times in the suite follow this IANA zone. Leave it blank to use UTC.",
+		"hub.timezone_label":   "IANA timezone",
+		"hub.timezone_save":    "Save timezone",
+		"hub.timezone_saved":   "Timezone saved.",
+		"hub.timezone_invalid": "Use an IANA name such as America/Sao_Paulo. Abbreviations and offsets are not accepted.",
+
 		"js.invalid_credentials": "Invalid email or password.",
 		"js.wrong_password":      "Wrong password.",
 		"js.theme_system":        "Theme: system",
@@ -306,6 +316,13 @@ var strings_ = map[Locale]map[string]string{
 		"hub.link_title":  "Ligue apps ao Assistant",
 		"hub.link_lede":   "O Tansu Assistant pode ler e alterar Notas, Calendário, Gastos e Pessoas depois que você liga cada um. Você confirma cada app.",
 		"hub.link_action": "Conectar apps",
+
+		"hub.timezone_title":   "Fuso horário",
+		"hub.timezone_lede":    "Os horários da suíte seguem este fuso IANA. Deixe em branco para usar UTC.",
+		"hub.timezone_label":   "Fuso IANA",
+		"hub.timezone_save":    "Salvar fuso",
+		"hub.timezone_saved":   "Fuso salvo.",
+		"hub.timezone_invalid": "Use um nome IANA, como America/Sao_Paulo. Abreviações e deslocamentos não valem.",
 
 		"js.invalid_credentials": "Email ou senha inválidos.",
 		"js.wrong_password":      "Senha incorreta.",

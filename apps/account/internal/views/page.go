@@ -64,10 +64,12 @@ func (p Page) I18nScript() templ.Component {
 
 // HubData drives the account launcher.
 type HubData struct {
-	Email    string
-	Clients  []*store.Client
-	Linked   map[string]bool
-	AutoLock bool
+	Email         string
+	Clients       []*store.Client
+	Linked        map[string]bool
+	AutoLock      bool
+	Timezone      string
+	TimezoneError string
 }
 
 // AppCount is how many suite apps this Account knows about.
@@ -264,8 +266,18 @@ func AppHref(c *store.Client) string {
 	if !strings.HasSuffix(home, "/") {
 		home += "/"
 	}
-	return home + "login/kura"
+	href := home + "login/kura"
+	// Calendar caches zoneinfo at the SSO callback. sync=1 refreshes that
+	// cache when the hub session is already open. Other apps ignore the
+	// query until they learn it.
+	if c.ID == calendarClientID {
+		return href + "?sync=1"
+	}
+	return href
 }
+
+// calendarClientID is the static registry id for Tansu Calendar.
+const calendarClientID = "kuracalendar"
 
 // assistantClientID is the static registry id for Tansu Assistant.
 const assistantClientID = "kurachat"

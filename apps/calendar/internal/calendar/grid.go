@@ -112,6 +112,24 @@ func (g *Grid) SelectedCell() *Cell {
 	return nil
 }
 
+// CivilToday is now's year-month-day in loc, at UTC midnight, so grid
+// date keys match the user's civil date. A nil loc is UTC.
+func CivilToday(now time.Time, loc *time.Location) time.Time {
+	if loc == nil {
+		loc = time.UTC
+	}
+	y, m, d := now.In(loc).Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+}
+
+// MonthContaining is the civil month that holds now in loc.
+func MonthContaining(now time.Time, loc *time.Location) (start, end time.Time) {
+	today := CivilToday(now, loc)
+	start = time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC)
+	end = time.Date(today.Year(), today.Month()+1, 0, 0, 0, 0, 0, time.UTC)
+	return start, end
+}
+
 // BuildGrid mirrors CalendarGrid: the month's Monday-first cells with the
 // user's events, birthdays (Feb 29 observed Feb 28 in common years), and
 // the selected packs' holidays.

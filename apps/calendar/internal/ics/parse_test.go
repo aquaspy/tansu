@@ -168,6 +168,120 @@ func TestParseRejectsNonCalendar(t *testing.T) {
 	}
 }
 
+func TestParseProjectsAbsoluteTimes(t *testing.T) {
+	from, to := window("2026-09-01", "2026-09-30")
+	sp, err := time.LoadLocation("America/Sao_Paulo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := `BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:z
+SUMMARY:Standup
+DTSTART:20260928T120000Z
+DTEND:20260928T130000Z
+END:VEVENT
+BEGIN:VEVENT
+UID:ny
+SUMMARY:New York
+DTSTART;TZID=America/New_York:20260928T090000
+DTEND;TZID=America/New_York:20260928T100000
+END:VEVENT
+BEGIN:VEVENT
+UID:sp
+SUMMARY:Local
+DTSTART;TZID=America/Sao_Paulo:20260928T090000
+DTEND;TZID=America/Sao_Paulo:20260928T100000
+END:VEVENT
+BEGIN:VEVENT
+UID:float
+SUMMARY:Floating
+DTSTART:20260928T090000
+DTEND:20260928T100000
+END:VEVENT
+BEGIN:VEVENT
+UID:unknown
+SUMMARY:Unknown zone
+DTSTART;TZID=Mars/Olympus:20260928T090000
+DTEND;TZID=Mars/Olympus:20260928T100000
+END:VEVENT
+BEGIN:VEVENT
+UID:day
+SUMMARY:Trip
+DTSTART;VALUE=DATE:20260928
+DTEND;VALUE=DATE:20260930
+END:VEVENT
+END:VCALENDAR`
+	for _, tc := range []struct {
+		loc *time.Location
+		uid string
+		on  string
+		at  string
+		end string
+		day bool
+	}{
+		{sp, "z", "2026-09-28", "09:00", "10:00", false},
+		{time.UTC, "z", "2026-09-28", "12:00", "13:00", false},
+		{sp, "ny", "2026-09-28", "10:00", "11:00", false},
+		{sp, "sp", "2026-09-28", "09:00", "10:00", false},
+		{sp, "float", "2026-09-28", "09:00", "10:00", false},
+		{time.UTC, "float", "2026-09-28", "09:00", "10:00", false},
+		{sp, "unknown", "2026-09-28", "09:00", "10:00", false},
+		{time.UTC, "unknown", "2026-09-28", "09:00", "10:00", false},
+		{sp, "day", "2026-09-28", "", "", true},
+	} {
+		events, err := Parse([]byte(body), tc.loc, from, to)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got Event
+		found := false
+		for _, e := range events {
+			if e.UID == tc.uid {
+				got = e
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("loc %s missing %s in %+v", tc.loc, tc.uid, events)
+		}
+		if got.StartsOn != tc.on || got.StartsAt != tc.at || got.EndsAt != tc.end || got.AllDay != tc.day {
+			t.Fatalf("loc %s uid %s = %+v", tc.loc, tc.uid, got)
+		}
+		if tc.day && got.EndsOn != "2026-09-29" {
+			t.Fatalf("all-day end = %+v", got)
+		}
+	}
+}
+
+func TestParseExpandsBeforeProjectingDST(t *testing.T) {
+	from, to := window("2026-03-01", "2026-03-31")
+	ny, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := `BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:utc-week
+SUMMARY:UTC weekly
+DTSTART:20260301T120000Z
+DTEND:20260301T130000Z
+RRULE:FREQ=WEEKLY;COUNT=2
+END:VEVENT
+END:VCALENDAR`
+	events, err := Parse([]byte(body), ny, from, to)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, e := range events {
+		got[e.StartsOn] = e.StartsAt
+	}
+	if got["2026-03-01"] != "07:00" || got["2026-03-08"] != "08:00" {
+		t.Fatalf("dst clocks = %+v", got)
+	}
+}
+
 func TestParseOutsideWindowDropped(t *testing.T) {
 	from, to := window("2026-09-01", "2026-09-30")
 	body := `BEGIN:VCALENDAR

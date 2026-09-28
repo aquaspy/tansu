@@ -116,6 +116,54 @@ func TestGridSelectedAndToday(t *testing.T) {
 	}
 }
 
+func TestGridTodayIsUserCivilDate(t *testing.T) {
+	st := openTest(t)
+	u, _ := st.CreateUser("ada@example.com", "digest")
+	if _, errs, err := st.UpsertSyncedPaymentDay(u.ID, "spend:1", store.PaymentDayInput{
+		Title: "Rent", DueDay: 28,
+	}); err != nil || len(errs) > 0 {
+		t.Fatalf("upsert: %v %+v", err, errs)
+	}
+	sp, err := time.LoadLocation("America/Sao_Paulo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 22:00 on the 28th in São Paulo is already the 29th in UTC.
+	now := time.Date(2026, 9, 29, 1, 0, 0, 0, time.UTC)
+	today := CivilToday(now, sp)
+	if today.Format("2006-01-02") != "2026-09-28" {
+		t.Fatalf("civil today = %s", today.Format("2006-01-02"))
+	}
+	if CivilToday(now, time.UTC).Format("2006-01-02") != "2026-09-29" {
+		t.Fatal("utc civil date drifted")
+	}
+	month := time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC)
+	g, err := BuildGrid(st, u.ID, nil, month, today, today)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cell *Cell
+	for _, c := range g.Cells {
+		if c.Today {
+			cell = c
+		}
+	}
+	if cell == nil || cell.Date.Format("2006-01-02") != "2026-09-28" {
+		t.Fatalf("today cell = %+v", cell)
+	}
+	if len(cell.PaymentDays) != 1 || cell.PaymentDays[0].DueDay != 28 {
+		t.Fatalf("payment = %+v", cell.PaymentDays)
+	}
+	start, end := MonthContaining(time.Date(2026, 10, 1, 2, 0, 0, 0, time.UTC), sp)
+	if start.Format("2006-01-02") != "2026-09-01" || end.Format("2006-01-02") != "2026-09-30" {
+		t.Fatalf("sp month = %s %s", start.Format("2006-01-02"), end.Format("2006-01-02"))
+	}
+	start, end = MonthContaining(time.Date(2026, 10, 1, 2, 0, 0, 0, time.UTC), time.UTC)
+	if start.Format("2006-01-02") != "2026-10-01" {
+		t.Fatalf("utc month = %s", start.Format("2006-01-02"))
+	}
+}
+
 func TestGridSpanningEventOnBothDays(t *testing.T) {
 	st := openTest(t)
 	u, _ := st.CreateUser("ada@example.com", "digest")

@@ -11,7 +11,7 @@ import (
 // page builds the shared page model with flash + CSRF.
 func (s *Server) page(w http.ResponseWriter, r *http.Request, title, bodyClass string) views.Page {
 	flash := FlashOf(r)
-	return views.Page{
+	p := views.Page{
 		L:          LocaleOf(r),
 		Title:      title,
 		BodyClass:  bodyClass,
@@ -21,6 +21,15 @@ func (s *Server) page(w http.ResponseWriter, r *http.Request, title, bodyClass s
 		KuraLogin:  s.Config.AccountEnabled(),
 		AccountURL: s.Config.KuraAccountURL,
 	}
+	if u := UserOf(r); u != nil {
+		p.Zone = u.Zone()
+		p.Timezone = u.Timezone
+		if p.Timezone == "" {
+			p.Timezone = "UTC"
+		}
+		p.ZoneLocked = u.AccountSub != ""
+	}
+	return p
 }
 
 func render(w http.ResponseWriter, r *http.Request, status int, c templ.Component) {

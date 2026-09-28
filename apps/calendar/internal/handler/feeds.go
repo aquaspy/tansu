@@ -29,6 +29,38 @@ func (s *Server) checkFeedURL(ctx context.Context, raw string) error {
 }
 
 func (s *Server) handleFeedsIndex(w http.ResponseWriter, r *http.Request) {
+	s.renderFeeds(w, r, http.StatusOK, "", "")
+}
+
+func (s *Server) handleTimezone(w http.ResponseWriter, r *http.Request) {
+	l := LocaleOf(r)
+	user := UserOf(r)
+	if user.AccountSub != "" {
+		http.Redirect(w, r, "/feeds", http.StatusSeeOther)
+		return
+	}
+	raw := r.FormValue("timezone")
+	zone, err := store.NormalizeTimezone(raw)
+	if err != nil {
+		s.renderFeeds(w, r, http.StatusUnprocessableEntity, raw, i18n.T(l, "zone.invalid"))
+		return
+	}
+	if zone != user.Timezone {
+		if err := s.Store.UpdateUserTimezone(user.ID, zone); err != nil {
+			http.Error(w, "calendar unavailable", http.StatusInternalServerError)
+			return
+		}
+		user.Timezone = zone
+		if err := ics.SyncUserFeeds(r.Context(), s.Store, user.ID, s.fetchFeed, time.Now(), user.Zone()); err != nil {
+			http.Error(w, "calendar unavailable", http.StatusInternalServerError)
+			return
+		}
+	}
+	flashNotice(s, r, i18n.T(l, "zone.saved"))
+	http.Redirect(w, r, "/feeds", http.StatusSeeOther)
+}
+
+func (s *Server) renderFeeds(w http.ResponseWriter, r *http.Request, status int, timezone, alert string) {
 	user := UserOf(r)
 	list, err := s.Store.ListICSFeeds(user.ID)
 	if err != nil {
@@ -36,7 +68,13 @@ func (s *Server) handleFeedsIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := s.page(w, r, pTitle(r, "titles.feeds"), "auth-body")
-	render(w, r, http.StatusOK, views.Layout(p, views.NoHead(), views.FeedsPage(p, list)))
+	if alert != "" {
+		p.Alert = alert
+	}
+	if timezone != "" {
+		p.Timezone = timezone
+	}
+	render(w, r, status, views.Layout(p, views.NoHead(), views.FeedsPage(p, list)))
 }
 
 func (s *Server) handleFeedsCreate(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +108,7 @@ func (s *Server) handleFeedsCreate(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	if err := ics.SyncFeed(r.Context(), s.Store, feed, s.fetchFeed, time.Now(), time.Local); err != nil {
+	if err := ics.SyncFeed(r.Context(), s.Store, feed, s.fetchFeed, time.Now(), user.Zone()); err != nil {
 		http.Error(w, "calendar unavailable", http.StatusInternalServerError)
 		return
 	}
@@ -89,7 +127,7 @@ func (s *Server) handleFeedsRefresh(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/feeds", http.StatusSeeOther)
 		return
 	}
-	if err := ics.SyncFeed(r.Context(), s.Store, feed, s.fetchFeed, time.Now(), time.Local); err != nil {
+	if err := ics.SyncFeed(r.Context(), s.Store, feed, s.fetchFeed, time.Now(), user.Zone()); err != nil {
 		http.Error(w, "calendar unavailable", http.StatusInternalServerError)
 		return
 	}

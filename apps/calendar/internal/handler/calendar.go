@@ -44,7 +44,7 @@ func resolveSelected(month time.Time, dayS string, today time.Time) time.Time {
 
 func (s *Server) handleCalendarShow(w http.ResponseWriter, r *http.Request) {
 	user := UserOf(r)
-	today := time.Now()
+	today := calendar.CivilToday(time.Now(), user.Zone())
 	month := resolveMonth(chi.URLParam(r, "year"), chi.URLParam(r, "month"), today)
 	selected := resolveSelected(month, chi.URLParam(r, "day"), today)
 	grid, err := calendar.BuildGrid(s.Store, user.ID, user.HolidayCountryCodes(), month, selected, today)
@@ -73,7 +73,7 @@ func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "calendar unavailable", http.StatusInternalServerError)
 		return
 	}
-	filename := "kuracalendar-" + time.Now().Format("2006-01-02") + ".json"
+	filename := "kuracalendar-" + calendar.CivilToday(time.Now(), UserOf(r).Zone()).Format("2006-01-02") + ".json"
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Disposition", "attachment; filename="+strconv.Quote(filename))
 	_, _ = w.Write(data)
@@ -139,7 +139,7 @@ func (s *Server) handleUpdateHolidays(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "calendar unavailable", http.StatusInternalServerError)
 		return
 	}
-	today := time.Now()
+	today := calendar.CivilToday(time.Now(), user.Zone())
 	month := resolveMonth(r.FormValue("year"), r.FormValue("month"), today)
 	selected := resolveSelected(month, r.FormValue("day"), today)
 	http.Redirect(w, r, views.CalPath(selected), http.StatusSeeOther)
@@ -180,8 +180,7 @@ func eventFallback(r *http.Request) time.Time {
 	if d, ok := store.ParseDate(strings.TrimSpace(r.FormValue("starts_on"))); ok {
 		return d
 	}
-	today := time.Now()
-	return time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.UTC)
+	return calendar.CivilToday(time.Now(), UserOf(r).Zone())
 }
 
 // webCreateLimited mirrors the Rails create rate limit (60/minute per

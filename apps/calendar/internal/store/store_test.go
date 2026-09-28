@@ -509,7 +509,7 @@ func TestMigrateOldUsersSSO(t *testing.T) {
 	}
 	t.Cleanup(func() { s.Close() })
 	u, err := s.FindUserByEmail("old@x.com")
-	if err != nil || u.AccountSub != "" {
+	if err != nil || u.AccountSub != "" || u.Timezone != "UTC" {
 		t.Fatalf("old user = %+v, err = %v", u, err)
 	}
 	if err := s.SetUserSub(u.ID, "acct-old"); err != nil {

@@ -79,6 +79,7 @@ templ HubPage(p Page, d HubData) {
 					<p class="chest-count">{ p.T("hub.drawers", "count", strconv.Itoa(LinkedCount(d)), "max", strconv.Itoa(AppCount(d))) }</p>
 				}
 			</section>
+			@TimezoneForm(p, d)
 			if len(d.Clients) == 0 {
 				<section class="empty">
 					<h2>{ p.T("hub.empty_title") }</h2>
@@ -117,4 +118,24 @@ templ HubPage(p Page, d HubData) {
 			}
 		</main>
 	</div>
+}
+
+templ TimezoneForm(p Page, d HubData) {
+	<section class="zone-card">
+		<div>
+			<h2>{ p.T("hub.timezone_title") }</h2>
+			<p>{ p.T("hub.timezone_lede") }</p>
+		</div>
+		<form action="/timezone" method="post" class="zone-form">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<label>
+				{ p.T("hub.timezone_label") }
+				<input type="text" name="timezone" value={ d.Timezone } maxlength="64" autocomplete="off" spellcheck="false" placeholder="America/Sao_Paulo"/>
+			</label>
+			if d.TimezoneError != "" {
+				<p class="flash flash-alert" role="alert">{ p.T(d.TimezoneError) }</p>
+			}
+			<input type="submit" value={ p.T("hub.timezone_save") } class="btn-primary"/>
+		</form>
+	</section>
 }

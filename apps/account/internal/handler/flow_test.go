@@ -268,8 +268,15 @@ func TestOAuthHappyPath(t *testing.T) {
 	}
 	var info map[string]string
 	_ = json.Unmarshal([]byte(body), &info)
-	if info["email"] != u.Email || info["sub"] == "" {
+	if info["email"] != u.Email || info["sub"] == "" || info["zoneinfo"] != "UTC" {
 		t.Fatalf("userinfo: %s", body)
+	}
+	var legacy struct {
+		Sub   string `json:"sub"`
+		Email string `json:"email"`
+	}
+	if err := json.Unmarshal([]byte(body), &legacy); err != nil || legacy.Email != u.Email || legacy.Sub == "" {
+		t.Fatalf("legacy userinfo decode: %v %s", err, body)
 	}
 }
 
@@ -406,4 +413,63 @@ func TestLocaleCookieOverridesHeader(t *testing.T) {
 	}
 	_, body, _ = f.get("/login", map[string]string{"Accept-Language": "pt-BR"})
 	mustContain(t, body, "Sign in")
+}
+
+func TestHubTimezoneRoundTrip(t *testing.T) {
+	f := newFlow(t, nil)
+	u := f.seedUser("ada@example.com", "secret-password")
+	f.login(u.Email, "secret-password")
+	code, body, _ := f.get("/", nil)
+	if code != http.StatusOK {
+		t.Fatalf("hub: %d", code)
+	}
+	mustContain(t, body, `name="timezone"`)
+	mustContain(t, body, `value="UTC"`)
+	mustContain(t, body, "America/Sao_Paulo")
+
+	code, _, h := f.post("/timezone", url.Values{"timezone": {"America/Sao_Paulo"}}, nil)
+	if code != http.StatusSeeOther || h.Get("Location") != "/" {
+		t.Fatalf("save: %d %q", code, h.Get("Location"))
+	}
+	saved, err := f.store.FindUser(u.ID)
+	if err != nil || saved.Timezone != "America/Sao_Paulo" {
+		t.Fatalf("saved = %+v err=%v", saved, err)
+	}
+	_, body, _ = f.get("/", nil)
+	mustContain(t, body, `value="America/Sao_Paulo"`)
+	mustContain(t, body, "Timezone saved.")
+
+	code, body, _ = f.post("/timezone", url.Values{"timezone": {"BRT"}}, nil)
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("invalid status = %d", code)
+	}
+	mustContain(t, body, "Abbreviations and offsets are not accepted.")
+	mustContain(t, body, `value="BRT"`)
+	saved, err = f.store.FindUser(u.ID)
+	if err != nil || saved.Timezone != "America/Sao_Paulo" {
+		t.Fatalf("invalid write = %+v err=%v", saved, err)
+	}
+
+	if code, _, _ = f.post("/timezone", url.Values{"timezone": {"  Etc/UTC  "}}, nil); code != http.StatusSeeOther {
+		t.Fatalf("etc/utc: %d", code)
+	}
+	saved, _ = f.store.FindUser(u.ID)
+	if saved.Timezone != "UTC" {
+		t.Fatalf("etc/utc stored %q", saved.Timezone)
+	}
+}
+
+func TestHubCalendarLinkSyncsZone(t *testing.T) {
+	f := newFlow(t, nil)
+	if err := f.store.SeedClients([]store.SeedClient{{
+		ID: "kuracalendar", Secret: testClientSecret,
+		Name: "Tansu Calendar", Home: "http://127.0.0.1:3004/", Icon: "📅",
+		RedirectURIs: []string{"http://127.0.0.1:3004/login/kura/callback"},
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	u := f.seedUser("ada@example.com", "secret-password")
+	f.login(u.Email, "secret-password")
+	_, body, _ := f.get("/", nil)
+	mustContain(t, body, "http://127.0.0.1:3004/login/kura?sync=1")
 }

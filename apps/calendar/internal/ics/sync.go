@@ -30,6 +30,8 @@ func SyncFeed(ctx context.Context, st *store.Store, feed *store.ICSFeed, get Get
 	if loc == nil {
 		loc = time.UTC
 	}
+	// Window follows the user's civil date, not the process zone.
+	now = now.In(loc)
 	body, err := get(ctx, feed.URL)
 	if err != nil {
 		code := feedErrorCode(err)
@@ -88,11 +90,38 @@ func syncActive(st *store.Store) {
 		log.Printf("ics sync list failed")
 		return
 	}
+	zones := map[int64]*time.Location{}
 	for _, f := range feeds {
+		loc, ok := zones[f.UserID]
+		if !ok {
+			loc = time.UTC
+			if u, err := st.FindUser(f.UserID); err == nil {
+				loc = u.Zone()
+			}
+			zones[f.UserID] = loc
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
-		if err := SyncFeed(ctx, st, f, nil, time.Now(), time.Local); err != nil {
+		if err := SyncFeed(ctx, st, f, nil, time.Now(), loc); err != nil {
 			log.Printf("ics feed %d: store", f.ID)
 		}
 		cancel()
 	}
+}
+
+// SyncUserFeeds rewrites one user's unpaused feeds in loc. A failed fetch
+// leaves that feed's previous rows in place.
+func SyncUserFeeds(ctx context.Context, st *store.Store, userID int64, get Getter, now time.Time, loc *time.Location) error {
+	feeds, err := st.ListICSFeeds(userID)
+	if err != nil {
+		return err
+	}
+	for _, f := range feeds {
+		if f.Paused {
+			continue
+		}
+		if err := SyncFeed(ctx, st, f, get, now, loc); err != nil {
+			log.Printf("ics feed %d: store", f.ID)
+		}
+	}
+	return nil
 }

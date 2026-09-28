@@ -15,7 +15,10 @@ type User struct {
 	PasswordDigest string
 	// AccountSub is the Kura Account subject ("" = standalone-only).
 	// Stable across email changes; enforced unique when non-empty.
-	AccountSub       string
+	AccountSub string
+	// Timezone is the cached IANA zone. SSO copies zoneinfo; standalone
+	// edits it. Empty and invalid values read back as UTC.
+	Timezone         string
 	HolidayCountries string
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
@@ -63,6 +66,80 @@ func (u *User) SetHolidayCountryCodes(codes []string) {
 	u.HolidayCountries = strings.Join(out, ",")
 }
 
+// ErrTimezone is an IANA name LoadLocation will not accept.
+var ErrTimezone = errors.New("invalid timezone")
+
+// MaxTimezoneLen is the raw form cap, in bytes.
+const MaxTimezoneLen = 64
+
+// NormalizeTimezone accepts an IANA name. Empty after trim is UTC.
+// Abbreviations, numeric offsets, Local, and anything LoadLocation
+// rejects are errors. Etc/UTC is stored as UTC.
+func NormalizeTimezone(raw string) (string, error) {
+	if len(raw) > MaxTimezoneLen {
+		return "", ErrTimezone
+	}
+	name := strings.TrimSpace(raw)
+	if name == "" {
+		return "UTC", nil
+	}
+	if strings.EqualFold(name, "Local") {
+		return "", ErrTimezone
+	}
+	if name[0] == '+' || name[0] == '-' {
+		return "", ErrTimezone
+	}
+	loc, err := time.LoadLocation(name)
+	if err != nil || loc == nil {
+		return "", ErrTimezone
+	}
+	got := loc.String()
+	if got == "" || got == "Local" {
+		return "", ErrTimezone
+	}
+	if got == "UTC" || got == "Etc/UTC" {
+		return "UTC", nil
+	}
+	// Abbreviations such as EST load as legacy zones. Store only
+	// region/city names (America/Sao_Paulo) besides UTC.
+	if !strings.Contains(got, "/") {
+		return "", ErrTimezone
+	}
+	return got, nil
+}
+
+// CanonicalTimezone is the zone to cache from userinfo. Missing and
+// invalid values are UTC.
+func CanonicalTimezone(raw string) string {
+	zone, err := NormalizeTimezone(raw)
+	if err != nil {
+		return "UTC"
+	}
+	return zone
+}
+
+// LoadZone resolves a stored name. A missing or unknown name is UTC,
+// never the process zone.
+func LoadZone(name string) *time.Location {
+	name = strings.TrimSpace(name)
+	if name == "" || strings.EqualFold(name, "Local") {
+		return time.UTC
+	}
+	loc, err := time.LoadLocation(name)
+	if err != nil || loc == nil || loc.String() == "Local" {
+		return time.UTC
+	}
+	return loc
+}
+
+// Zone is this user's location for display and ICS projection.
+func (u *User) Zone() *time.Location {
+	if u == nil {
+		return time.UTC
+	}
+	return LoadZone(u.Timezone)
+}
+
 // NormalizeEmail mirrors the Rails normalizes (strip + downcase).
 func NormalizeEmail(email string) string { return strings.ToLower(strings.TrimSpace(email)) }
 
@@ -80,23 +157,23 @@ func ValidEmail(email string) bool {
 func (s *Store) CreateUser(email, passwordDigest string) (*User, error) {
 	email = NormalizeEmail(email)
 	ts := now()
-	res, err := s.db.Exec(`INSERT INTO users (email, password_digest, created_at, updated_at)
-		VALUES (?, ?, ?, ?)`, email, passwordDigest, ts, ts)
+	res, err := s.db.Exec(`INSERT INTO users (email, password_digest, timezone, created_at, updated_at)
+		VALUES (?, ?, 'UTC', ?, ?)`, email, passwordDigest, ts, ts)
 	if err != nil {
 		return nil, err
 	}
 	id, _ := res.LastInsertId()
 	t, _ := parseTime(ts)
 	return &User{ID: id, Email: email, PasswordDigest: passwordDigest,
-		HolidayCountries: "BR", CreatedAt: t, UpdatedAt: t}, nil
+		Timezone: "UTC", HolidayCountries: "BR", CreatedAt: t, UpdatedAt: t}, nil
 }
 
-const userCols = `id, email, password_digest, account_sub, holiday_countries, created_at, updated_at`
+const userCols = `id, email, password_digest, account_sub, timezone, holiday_countries, created_at, updated_at`
 
 func scanUser(row interface{ Scan(...any) error }) (*User, error) {
 	u := &User{}
 	var created, updated string
-	err := row.Scan(&u.ID, &u.Email, &u.PasswordDigest, &u.AccountSub, &u.HolidayCountries, &created, &updated)
+	err := row.Scan(&u.ID, &u.Email, &u.PasswordDigest, &u.AccountSub, &u.Timezone, &u.HolidayCountries, &created, &updated)
 	if err != nil {
 		return nil, err
 	}
@@ -141,6 +218,12 @@ func (s *Store) FindUserBySub(sub string) (*User, error) {
 func (s *Store) SetUserSub(id int64, sub string) error {
 	_, err := s.db.Exec(`UPDATE users SET account_sub = ?, updated_at = ? WHERE id = ?`,
 		sub, now(), id)
+	return err
+}
+
+func (s *Store) UpdateUserTimezone(id int64, zone string) error {
+	_, err := s.db.Exec(`UPDATE users SET timezone = ?, updated_at = ? WHERE id = ?`,
+		zone, now(), id)
 	return err
 }
 

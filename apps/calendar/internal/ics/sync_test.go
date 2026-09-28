@@ -132,6 +132,70 @@ func TestSyncUpsertAndDelete(t *testing.T) {
 	}
 }
 
+func TestSyncFeedUsesUserZoneNotProcessLocal(t *testing.T) {
+	prev := time.Local
+	time.Local = time.UTC
+	t.Cleanup(func() { time.Local = prev })
+
+	st := openStore(t)
+	u, err := st.CreateUser("ada@example.com", "digest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.UpdateUserTimezone(u.ID, "America/Sao_Paulo"); err != nil {
+		t.Fatal(err)
+	}
+	manual, _, err := st.CreateEvent(u.ID, store.EventInput{
+		Title: "Dentist", AllDay: false, StartsOn: "2026-09-28", EndsOn: "2026-09-28",
+		StartsAt: "09:00", EndsAt: "09:30",
+	})
+	if err != nil || manual == nil {
+		t.Fatal(err)
+	}
+	feed, err := st.CreateICSFeed(u.ID, "Rota", "https://feeds.example/cal.ics")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := `BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:z
+SUMMARY:Standup
+DTSTART:20260928T120000Z
+DTEND:20260928T130000Z
+END:VEVENT
+END:VCALENDAR`
+	get := func(context.Context, string) ([]byte, error) { return []byte(body), nil }
+	now := time.Date(2026, 9, 29, 1, 0, 0, 0, time.UTC) // 22:00 on the 28th in São Paulo
+	sp, err := time.LoadLocation("America/Sao_Paulo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := SyncFeed(context.Background(), st, feed, get, now, time.UTC); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := st.ICSEventsInRange(u.ID, "2026-09-01", "2026-09-30")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].StartsAt != "12:00" {
+		t.Fatalf("utc sync = %+v", rows)
+	}
+	if err := SyncUserFeeds(context.Background(), st, u.ID, get, now, sp); err != nil {
+		t.Fatal(err)
+	}
+	rows, err = st.ICSEventsInRange(u.ID, "2026-09-01", "2026-09-30")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].StartsAt != "09:00" || rows[0].StartsOn != "2026-09-28" {
+		t.Fatalf("sp resync = %+v", rows)
+	}
+	again, err := st.FindEvent(u.ID, manual.ID)
+	if err != nil || again.StartsAt != "09:00" || again.Title != "Dentist" {
+		t.Fatalf("manual event = %+v err=%v", again, err)
+	}
+}
+
 func TestSyncFetchErrorKeepsEvents(t *testing.T) {
 	st := openStore(t)
 	u, _ := st.CreateUser("ada@example.com", "digest")

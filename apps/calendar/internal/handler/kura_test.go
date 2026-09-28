@@ -241,6 +241,75 @@ func TestKuraCallbackProvisionsWhenSignupClosed(t *testing.T) {
 	}
 }
 
+func TestKuraSyncRefreshesZoneWithoutNewSession(t *testing.T) {
+	f, done := withAccount(t, `{"sub":"acct-9","email":"ada@example.com","zoneinfo":"America/Sao_Paulo"}`, nil)
+	defer done()
+	digest, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.MinCost)
+	user, err := f.store.CreateUser("ada@example.com", string(digest))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.store.SetUserSub(user.ID, "acct-9"); err != nil {
+		t.Fatal(err)
+	}
+	code, _, _ := f.methodCall(http.MethodPost, "/login", url.Values{
+		"email": {"ada@example.com"}, "password": {"password123"},
+	}, nil)
+	if code != http.StatusSeeOther {
+		t.Fatalf("login: %d", code)
+	}
+	var before int
+	if err := f.store.DB().QueryRow(`SELECT COUNT(*) FROM sessions`).Scan(&before); err != nil {
+		t.Fatal(err)
+	}
+	code, _, hdr := f.get("/login/kura", nil)
+	if code != http.StatusSeeOther || hdr.Get("Location") != "/" {
+		t.Fatalf("plain start = %d loc %q", code, hdr.Get("Location"))
+	}
+	code, _, hdr = f.get("/login/kura?sync=1", nil)
+	if code != http.StatusSeeOther || !strings.HasPrefix(hdr.Get("Location"), f.srv.Config.KuraAccountURL+"/authorize?") {
+		t.Fatalf("sync start = %d loc %q", code, hdr.Get("Location"))
+	}
+	code, _, hdr = kuraCallback(t, f, "state-sync")
+	if code != http.StatusSeeOther || hdr.Get("Location") != "/" {
+		t.Fatalf("sync callback = %d loc %q", code, hdr.Get("Location"))
+	}
+	var after int
+	if err := f.store.DB().QueryRow(`SELECT COUNT(*) FROM sessions`).Scan(&after); err != nil {
+		t.Fatal(err)
+	}
+	if after != before {
+		t.Fatalf("sessions %d -> %d", before, after)
+	}
+	saved, err := f.store.FindUser(user.ID)
+	if err != nil || saved.Timezone != "America/Sao_Paulo" {
+		t.Fatalf("zone = %+v err=%v", saved, err)
+	}
+}
+
+func TestKuraCallbackStoresZoneinfo(t *testing.T) {
+	f, done := withAccount(t, `{"sub":"acct-z","email":"zone@example.com","zoneinfo":"Etc/UTC"}`, nil)
+	defer done()
+	code, _, _ := kuraCallback(t, f, "state-zone")
+	if code != http.StatusSeeOther {
+		t.Fatalf("callback = %d", code)
+	}
+	user, err := f.store.FindUserByEmail("zone@example.com")
+	if err != nil || user.Timezone != "UTC" {
+		t.Fatalf("etc/utc = %+v err=%v", user, err)
+	}
+
+	f2, done2 := withAccount(t, `{"sub":"acct-bad","email":"bad@example.com","zoneinfo":"BRT"}`, nil)
+	defer done2()
+	if code, _, _ := kuraCallback(t, f2, "state-bad"); code != http.StatusSeeOther {
+		t.Fatalf("bad zone callback = %d", code)
+	}
+	user, err = f2.store.FindUserByEmail("bad@example.com")
+	if err != nil || user.Timezone != "UTC" {
+		t.Fatalf("invalid zoneinfo stored %+v err=%v", user, err)
+	}
+}
+
 func TestKuraStartUsesExistingSession(t *testing.T) {
 	f, done := withAccount(t, `{}`, nil)
 	defer done()

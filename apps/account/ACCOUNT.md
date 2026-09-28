@@ -78,15 +78,31 @@ codes (`invalid_client`, `invalid_grant`, `invalid_token`, `rate_limited`).
 ## Hub launch
 
 The Account hub links every registered app to `{home}/login/kura`, including
-apps that are already connected. A click starts that app's existing PKCE
-flow. When the Account session is already unlocked, `/authorize` issues the
-code with no consent screen and no second "Entrar com Tansu" click. The
-callback links or creates the local user the same way the login button does
+apps that are already connected. Calendar's link is
+`{home}/login/kura?sync=1` so a hub click refreshes that app's cached
+timezone. Other apps ignore `sync` until their own login handler learns it.
+A click starts that app's existing PKCE flow. When the Account session is
+already unlocked, `/authorize` issues the code with no consent screen and
+no second "Entrar com Tansu" click. The callback links or creates the local
+user the same way the login button does
 (`account_sub`, then email only while `account_sub` is empty, then provision).
 A completed SSO callback provisions even when `SIGNUP_ENABLED` is false.
 Public `/signup` and password registration stay closed. If the app already
 has a usable local session,
 `/login/kura` returns home and does not mint another code.
+`/login/kura?sync=1` skips that short-circuit. When the callback's
+`account_sub` matches the open session, the app updates its cached timezone
+and does not mint a second session.
+
+## Timezone
+
+`users.timezone` is `TEXT NOT NULL DEFAULT 'UTC'`. Existing rows become
+`UTC` when the column is added; nothing backfills a city. The hub form
+saves an IANA name (`time.LoadLocation`). Empty input saves `UTC`.
+Abbreviations (`BRT`), numeric offsets (`-03:00`), `Local`, and names
+longer than 64 bytes are rejected and the previous value stays. `Etc/UTC`
+is stored as `UTC`. The binary embeds `time/tzdata` because the image has
+no zoneinfo files. `/userinfo` exposes the column as `zoneinfo`.
 
 The client secret stays on the app server. The hub URL carries no code,
 token, or secret. Standalone apps (empty `KURA_ACCOUNT_URL`) still send
@@ -122,8 +138,11 @@ Interop details the checklist glosses over, all verified live:
 - `/token` takes `client_secret_basic` only. Pin
   `oauth2.Endpoint.AuthStyle = AuthStyleInHeader`; never send the secret
   in the body.
-- `userinfo` returns exactly `{"sub","email"}`. `sub` is the account's
-  numeric user id as a string — stable, use it as the join key.
+- `userinfo` returns `{"sub","email","zoneinfo"}`. `sub` is the account's
+  numeric user id as a string — stable, use it as the join key. `zoneinfo`
+  is the IANA timezone (`UTC` until the person sets one on the hub). Older
+  apps that decode only `sub` and `email` keep working. There is still no
+  JWT and no new scope.
 - Apps join on `account_sub` (unique partial index, empty = standalone).
   First SSO with a known email links the existing row only while
   `account_sub` is empty. A row already linked to a different subject

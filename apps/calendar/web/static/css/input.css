@@ -893,6 +893,9 @@ input:focus, select:focus, textarea:focus {
 .token-row .btn-dialog { flex: none; }
 
 .feeds-card { width: min(36rem, 100%); }
+.zone-block { margin: 0 0 1.25rem; padding-bottom: 1.1rem; border-bottom: 1px solid var(--line); }
+.zone-block .lede { margin-bottom: 0.75rem; }
+.zone-block .auth-foot { margin: 0.4rem 0 0; }
 .feed-row { align-items: flex-start; }
 .feed-actions { display: flex; flex-wrap: wrap; gap: 0.15rem; justify-content: flex-end; }
 .feed-actions form { margin: 0; }

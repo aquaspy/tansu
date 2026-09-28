@@ -195,10 +195,8 @@ func (s *Server) apiWriteLimited(w http.ResponseWriter, r *http.Request) bool {
 
 // dateRangeParams mirrors the Rails date_range_params: explicit from/to or
 // the current month, clamped to RANGE_MAX days.
-func dateRangeParams(r *http.Request) (string, string, bool) {
-	now := time.Now()
-	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
-	monthEnd := time.Date(now.Year(), now.Month()+1, 0, 0, 0, 0, 0, time.UTC)
+func dateRangeParams(r *http.Request, loc *time.Location) (string, string, bool) {
+	monthStart, monthEnd := calendar.MonthContaining(time.Now(), loc)
 	fromS := strings.TrimSpace(r.URL.Query().Get("from"))
 	toS := strings.TrimSpace(r.URL.Query().Get("to"))
 	if fromS == "" {
@@ -222,7 +220,7 @@ func dateRangeParams(r *http.Request) (string, string, bool) {
 }
 
 func (s *Server) handleAPIEventsIndex(w http.ResponseWriter, r *http.Request) {
-	from, to, ok := dateRangeParams(r)
+	from, to, ok := dateRangeParams(r, apiUserOf(r).Zone())
 	if !ok {
 		writeAPIErrors(w, http.StatusUnprocessableEntity,
 			[]string{i18n.T(LocaleOf(r), "api.invalid_date")})
