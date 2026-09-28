@@ -614,7 +614,6 @@ a.folder-item { font-size: 0.9rem; font-weight: 550; }
   justify-items: start;
 }
 .empty-connect .btn-new { width: auto; padding-inline: 1rem; }
-.empty-editor.is-error { color: var(--danger); font-weight: 650; }
 .empty-editor .btn-new { width: auto; margin-top: 0.85rem; padding-inline: 1rem; }
 
 /* ---- editor column ---- */
@@ -652,6 +651,10 @@ a.folder-item { font-size: 0.9rem; font-weight: 550; }
   max-width: 22rem;
   text-align: center;
   line-height: 1.6;
+}
+.empty-editor.is-error:not([hidden]) {
+  color: var(--danger);
+  font-weight: 650;
 }
 
 .editor-bar {
