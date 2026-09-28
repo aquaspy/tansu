@@ -15,14 +15,12 @@ type exportUser struct {
 }
 
 type exportSubscription struct {
-	Title        string `json:"title"`
-	AmountCents  int64  `json:"amount_cents"`
-	Currency     string `json:"currency"`
-	Interval     string `json:"interval"`
-	DueDay       *int   `json:"due_day"`
-	BillingMonth *int   `json:"billing_month"`
-	Active       bool   `json:"active"`
-	Notes        string `json:"notes"`
+	Title       string `json:"title"`
+	AmountCents int64  `json:"amount_cents"`
+	Currency    string `json:"currency"`
+	Interval    string `json:"interval"`
+	Active      bool   `json:"active"`
+	Notes       string `json:"notes"`
 }
 
 type exportPaymentDay struct {
@@ -81,8 +79,7 @@ func Export(st *store.Store, user *store.User) ([]byte, error) {
 	for _, su := range subs {
 		payload.Subscriptions = append(payload.Subscriptions, exportSubscription{
 			Title: su.Title, AmountCents: su.AmountCents, Currency: su.Currency,
-			Interval: su.Interval, DueDay: su.DueDay, BillingMonth: su.BillingMonth,
-			Active: su.Active, Notes: su.Notes,
+			Interval: su.Interval, Active: su.Active, Notes: su.Notes,
 		})
 	}
 	for _, d := range days {

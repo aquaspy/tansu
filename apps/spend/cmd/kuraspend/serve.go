@@ -35,7 +35,7 @@ func runServe(cfg config.Config) error {
 		for range t.C {
 			_ = st.DeleteStaleSessions(store.SessionMaxAge)
 			_ = st.DeleteStaleKuraLogins(store.KuraLoginTTL)
-	_ = st.DeleteStaleAgentGrants()
+			_ = st.DeleteStaleAgentGrants()
 		}
 	}()
 

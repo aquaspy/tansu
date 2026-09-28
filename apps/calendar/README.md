@@ -19,7 +19,7 @@ Calendar software tends to become infrastructure: invite RSVPs, free/busy, timez
 
 TansuCalendar is the second kind.
 
-- **Days you mark.** Simple events with times when you need them, including a yearly repeat. Birthdays are kept in Tansu People and show up here when the two apps share `KURA_SYNC_SECRET`.
+- **Days you mark.** Simple events with times when you need them, including a yearly repeat. Birthdays live in Tansu People and payment days live in Tansu Spend. Both show up here when the apps share `KURA_SYNC_SECRET`. Those markers are read-only.
 - **Holidays as packs, not plugins.** Flip on Brazil, the United States, Slovenia, and/or Czechia. Enough for a life that spans places — not a marketplace of calendar feeds. A public `.ics` link is the one exception, and it stays read-only.
 - **Your data stays a file.** Export JSON when you want a copy. Import adds; it does not overwrite your life by accident.
 - **No protocol cosplay.** If you need CalDAV and shared free/busy, use something built for that. This app is for *you*, on a VPS you trust.
@@ -32,7 +32,7 @@ Sister apps: [TansuNotes](../notes), [Tansu Assistant](../assistant), [TansuSpen
 ## What you get
 
 - Multi-user accounts on one instance
-- Month (and day) views with events and People-synced birthdays
+- Month (and day) views with events, People-synced birthdays, and Spend payment days
 - Recurring events (daily, weekly, monthly, yearly, optional end date) and emoji on events and birthdays
 - Holiday packs: **BR**, **US**, **SI**, **CZ**
 - Read-only ICS feeds: paste an HTTPS link, see those events on the month, refresh or remove the feed
@@ -224,6 +224,7 @@ go vet ./...
 | `DATA_DIR` | Where `kuracalendar.sqlite3` lives. Default `storage` (`/data` in Docker) |
 | `KURA_ACCOUNT_URL` | Tansu Account base URL. Empty = standalone, no SSO button |
 | `KURA_CLIENT_ID` / `KURA_CLIENT_SECRET` | This app's OAuth credentials (must match its registry entry). See [Deploy the suite](../../README.md#deploy-the-suite) |
+| `KURA_SYNC_SECRET` | Shared secret for People birthdays and Spend payment days. Empty disables both. 16+ characters |
 
 ---
 

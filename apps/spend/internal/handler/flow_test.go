@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"io"
@@ -502,16 +503,30 @@ func TestSubscriptionAndDayWebFlow(t *testing.T) {
 	u := f.seedUser("ada@example.com", "secret-password")
 	f.login(u.Email, "secret-password")
 
+	_, page, _ := f.get("/", nil)
+	if strings.Contains(page, `subscription[due_day]`) || strings.Contains(page, `subscription[billing_month]`) {
+		t.Fatal("subscription form still asks for a day or billing month")
+	}
 	code, _, _ := f.post("/subscriptions", url.Values{
 		"subscription[title]": {"Music"}, "subscription[amount]": {"19.90"},
-		"subscription[interval]": {"yearly"}, "subscription[billing_month]": {"3"},
+		"subscription[interval]":      {"yearly"},
+		"subscription[billing_month]": {"3"},
+		"subscription[due_day]":       {"10"},
 	}, nil)
 	if code != http.StatusSeeOther {
 		t.Fatalf("sub create: %d", code)
 	}
 	subs, _ := f.store.ListSubscriptions(u.ID, false)
-	if len(subs) != 1 || subs[0].Interval != "yearly" || *subs[0].BillingMonth != 3 {
+	if len(subs) != 1 || subs[0].Interval != "yearly" {
 		t.Fatalf("sub stored: %+v", subs)
+	}
+	var due, month sql.NullInt64
+	if err := f.store.DB().QueryRow(`SELECT due_day, billing_month FROM subscriptions WHERE id = ?`, subs[0].ID).
+		Scan(&due, &month); err != nil {
+		t.Fatal(err)
+	}
+	if due.Valid || month.Valid {
+		t.Fatalf("form fields were stored: due=%v month=%v", due, month)
 	}
 	sid := strconv.FormatInt(subs[0].ID, 10)
 	code, _, _ = f.post("/subscriptions/"+sid+"/delete", nil, nil)

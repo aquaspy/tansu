@@ -26,6 +26,7 @@
   --ring: rgba(14, 116, 144, 0.28);
   --holiday: #5d7a4f;
   --birthday: #b55220;
+  --payment: #1d4f91;
   color-scheme: light;
 }
 
@@ -53,6 +54,7 @@
   --ring: rgba(45, 212, 191, 0.3);
   --holiday: #9aaa86;
   --birthday: #e08a55;
+  --payment: #8eb6ef;
   color-scheme: dark;
 }
 
@@ -81,6 +83,7 @@
     --ring: rgba(14, 116, 144, 0.28);
     --holiday: #5d7a4f;
     --birthday: #b55220;
+    --payment: #1d4f91;
     color-scheme: light;
   }
 }
@@ -110,6 +113,7 @@
     --ring: rgba(45, 212, 191, 0.3);
     --holiday: #9aaa86;
     --birthday: #e08a55;
+    --payment: #8eb6ef;
     color-scheme: dark;
   }
 }
@@ -626,6 +630,7 @@ input:focus, select:focus, textarea:focus {
 }
 .dot.holiday { background: var(--holiday); }
 .dot.birthday { background: var(--birthday); }
+.dot.payment { background: var(--payment); }
 .dot.event { background: var(--accent); }
 .dot.ics {
   background: transparent;
@@ -651,6 +656,7 @@ input:focus, select:focus, textarea:focus {
 }
 .pill.holiday { background: color-mix(in srgb, var(--holiday) 22%, var(--surface)); color: var(--holiday); }
 .pill.birthday { background: color-mix(in srgb, var(--birthday) 18%, var(--surface)); color: var(--birthday); }
+.pill.payment { background: color-mix(in srgb, var(--payment) 16%, var(--surface)); color: var(--payment); }
 .pill.event { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent-2); }
 .pill.ics {
   background: transparent;
@@ -711,6 +717,7 @@ input:focus, select:focus, textarea:focus {
 }
 .day-item.is-holiday { border-color: color-mix(in srgb, var(--holiday) 35%, var(--line)); }
 .day-item.is-birthday { border-color: color-mix(in srgb, var(--birthday) 35%, var(--line)); }
+.day-item.is-payment { border-color: color-mix(in srgb, var(--payment) 35%, var(--line)); }
 .day-item.is-ics {
   border-style: dashed;
   background: transparent;
@@ -728,8 +735,8 @@ input:focus, select:focus, textarea:focus {
   font: inherit;
   cursor: pointer;
 }
-.day-item.is-holiday, .day-item.is-birthday { cursor: default; }
-.day-item.is-birthday .item-main { cursor: default; }
+.day-item.is-holiday, .day-item.is-birthday, .day-item.is-payment { cursor: default; }
+.day-item.is-birthday .item-main, .day-item.is-payment .item-main { cursor: default; }
 .item-time {
   font-size: 0.75rem;
   color: var(--accent-2);

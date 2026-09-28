@@ -271,52 +271,42 @@ func (s *Store) CountExpenses(userID int64) int64 {
 // --- subscriptions ---
 
 type Subscription struct {
-	ID           int64
-	UserID       int64
-	Title        string
-	AmountCents  int64
-	Currency     string
-	Interval     string // monthly | yearly
-	DueDay       *int   // 1-31, optional
-	BillingMonth *int   // 1-12, yearly only
-	Active       bool
-	Notes        string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID          int64
+	UserID      int64
+	Title       string
+	AmountCents int64
+	Currency    string
+	Interval    string // monthly | yearly
+	Active      bool
+	Notes       string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type SubscriptionPatch struct {
-	Title        *string
-	Amount       *string
-	AmountCents  *int64
-	Currency     *string
-	Interval     *string
-	DueDay       *string // blank clears
-	BillingMonth *string // blank clears (yearly normalizes to 1)
-	Active       *bool
-	Notes        *string
+	Title       *string
+	Amount      *string
+	AmountCents *int64
+	Currency    *string
+	Interval    *string
+	Active      *bool
+	Notes       *string
 }
 
+// subscriptionCols omits due_day and billing_month. Those columns stay in
+// SQLite so existing rows are not rewritten, but the app no longer reads
+// or writes them. Reminders belong on payment days.
 const subscriptionCols = `id, user_id, title, amount_cents, currency, interval,
-	due_day, billing_month, active, notes, created_at, updated_at`
+	active, notes, created_at, updated_at`
 
 func scanSubscription(row interface{ Scan(...any) error }) (*Subscription, error) {
 	su := &Subscription{}
-	var dueDay, billingMonth sql.NullInt64
 	var active int64
 	var created, updated string
 	err := row.Scan(&su.ID, &su.UserID, &su.Title, &su.AmountCents, &su.Currency,
-		&su.Interval, &dueDay, &billingMonth, &active, &su.Notes, &created, &updated)
+		&su.Interval, &active, &su.Notes, &created, &updated)
 	if err != nil {
 		return nil, err
-	}
-	if dueDay.Valid {
-		d := int(dueDay.Int64)
-		su.DueDay = &d
-	}
-	if billingMonth.Valid {
-		m := int(billingMonth.Int64)
-		su.BillingMonth = &m
 	}
 	su.Active = active != 0
 	su.CreatedAt, _ = parseTime(created)
@@ -324,19 +314,28 @@ func scanSubscription(row interface{ Scan(...any) error }) (*Subscription, error
 	return su, nil
 }
 
-// AppliesIn mirrors Subscription#applies_in?.
+// AppliesIn reports whether the subscription reduces leftover in year/month.
+// Every active subscription counts every month. Interval only changes how
+// much: monthly is the full amount, yearly is one twelfth (see MonthCents).
 func (su *Subscription) AppliesIn(year, month int) bool {
-	if !su.Active {
-		return false
+	return su.Active
+}
+
+// MonthCents is the amount counted toward leftover in month (1–12).
+// A yearly amount is the charge for the whole year, spread as integer
+// cents; December keeps the remainder so the twelve months add up.
+func (su *Subscription) MonthCents(month int) int64 {
+	if su.Interval != "yearly" {
+		return su.AmountCents
 	}
-	if su.Interval == "monthly" {
-		return true
+	if month < 1 || month > 12 {
+		month = 1
 	}
-	billing := 1
-	if su.BillingMonth != nil {
-		billing = *su.BillingMonth
+	base := su.AmountCents / 12
+	if month == 12 {
+		return su.AmountCents - base*11
 	}
-	return billing == month
+	return base
 }
 
 // parseDayOfMonth parses an optional 1-31 day; blank means absent.
@@ -354,7 +353,6 @@ func parseDayOfMonth(raw string, lo, hi int) (val *int, blank, invalid bool) {
 
 func normalizeSubscription(su *Subscription, p SubscriptionPatch, amount *int64, amountSet bool) []FieldError {
 	var fails []FieldError
-	var dueInvalid, billingInvalid bool
 	if p.Title != nil {
 		su.Title = strings.TrimSpace(*p.Title)
 	}
@@ -369,23 +367,6 @@ func normalizeSubscription(su *Subscription, p SubscriptionPatch, amount *int64,
 		if su.Interval == "" {
 			su.Interval = "monthly"
 		}
-	}
-	if p.DueDay != nil {
-		v, _, invalid := parseDayOfMonth(*p.DueDay, 1, 31)
-		dueInvalid = invalid
-		su.DueDay = v
-	}
-	if p.BillingMonth != nil {
-		v, _, invalid := parseDayOfMonth(*p.BillingMonth, 1, 12)
-		billingInvalid = invalid
-		su.BillingMonth = v
-	}
-	// Yearly without a month bills in January; monthly never keeps one.
-	if su.Interval == "monthly" {
-		su.BillingMonth = nil
-	} else if su.Interval == "yearly" && su.BillingMonth == nil && !billingInvalid {
-		one := 1
-		su.BillingMonth = &one
 	}
 	if p.Active != nil {
 		su.Active = *p.Active
@@ -410,12 +391,6 @@ func normalizeSubscription(su *Subscription, p SubscriptionPatch, amount *int64,
 	}
 	if su.Interval != "monthly" && su.Interval != "yearly" {
 		fails = append(fails, FieldError{"interval", "invalid"})
-	}
-	if dueInvalid {
-		fails = append(fails, FieldError{"due_day", "invalid"})
-	}
-	if billingInvalid {
-		fails = append(fails, FieldError{"billing_month", "invalid"})
 	}
 	if utf8.RuneCountInString(su.Notes) > NotesMax {
 		fails = append(fails, FieldError{"notes", "too_long"})
@@ -448,11 +423,13 @@ func (s *Store) CreateSubscription(userID int64, p SubscriptionPatch) (*Subscrip
 		return nil, fails, nil
 	}
 	ts := now()
+	// due_day and billing_month are left at their column default (NULL).
+	// Updates below also skip those columns so a legacy value is not wiped.
 	res, err := s.db.Exec(`INSERT INTO subscriptions
-		(user_id, title, amount_cents, currency, interval, due_day, billing_month, active, notes, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		(user_id, title, amount_cents, currency, interval, active, notes, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		userID, su.Title, su.AmountCents, su.Currency, su.Interval,
-		nullInt(su.DueDay), nullInt(su.BillingMonth), boolInt(su.Active), su.Notes, ts, ts)
+		boolInt(su.Active), su.Notes, ts, ts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -466,10 +443,6 @@ func (s *Store) UpdateSubscription(userID, id int64, p SubscriptionPatch) (*Subs
 	if err != nil {
 		return nil, nil, err
 	}
-	// Switching to monthly clears the stored billing month, like normalize.
-	if p.Interval != nil && strings.TrimSpace(*p.Interval) == "monthly" && p.BillingMonth == nil {
-		su.BillingMonth = nil
-	}
 	cents, set, invalid := resolveAmount(p.Amount, p.AmountCents)
 	if invalid {
 		cents, set = 0, true
@@ -478,10 +451,10 @@ func (s *Store) UpdateSubscription(userID, id int64, p SubscriptionPatch) (*Subs
 		return nil, fails, nil
 	}
 	_, err = s.db.Exec(`UPDATE subscriptions SET title = ?, amount_cents = ?, currency = ?,
-		interval = ?, due_day = ?, billing_month = ?, active = ?, notes = ?, updated_at = ?
+		interval = ?, active = ?, notes = ?, updated_at = ?
 		WHERE id = ? AND user_id = ?`,
 		su.Title, su.AmountCents, su.Currency, su.Interval,
-		nullInt(su.DueDay), nullInt(su.BillingMonth), boolInt(su.Active), su.Notes, now(), id, userID)
+		boolInt(su.Active), su.Notes, now(), id, userID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -716,13 +689,6 @@ func (s *Store) count(table string, userID int64) (int64, error) {
 	var n int64
 	err := s.db.QueryRow(`SELECT COUNT(*) FROM `+table+` WHERE user_id = ?`, userID).Scan(&n)
 	return n, err
-}
-
-func nullInt(v *int) any {
-	if v == nil {
-		return nil
-	}
-	return *v
 }
 
 func boolInt(b bool) int {

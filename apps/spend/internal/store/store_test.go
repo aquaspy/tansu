@@ -137,33 +137,67 @@ func TestExpenseScopedToUser(t *testing.T) {
 	}
 }
 
-func TestSubscriptionYearlyAppliesOnlyInBillingMonth(t *testing.T) {
+func TestSubscriptionYearlyIsATwelfthAndLegacyColumnsStay(t *testing.T) {
 	st, _ := Open(":memory:")
 	defer st.Close()
 	u := seedUser(t, st, "ada@example.com")
-	billing := "3"
 	yearly, fails, err := st.CreateSubscription(u.ID, SubscriptionPatch{
-		Title: strptr("Domain"), Amount: strptr("120"), Interval: strptr("yearly"),
-		BillingMonth: &billing})
+		Title: strptr("Domain"), Amount: strptr("120"), Interval: strptr("yearly")})
 	if err != nil || len(fails) > 0 {
 		t.Fatalf("create: %v %v", fails, err)
 	}
-	if !yearly.AppliesIn(2026, 3) || yearly.AppliesIn(2026, 8) {
-		t.Fatal("yearly window drifted")
+	if !yearly.AppliesIn(2026, 3) || !yearly.AppliesIn(2026, 8) {
+		t.Fatal("active yearly should count every month")
+	}
+	if yearly.MonthCents(8) != 1000 || yearly.MonthCents(12) != 1000 {
+		t.Fatalf("even twelfth: %d %d", yearly.MonthCents(8), yearly.MonthCents(12))
 	}
 	monthly, _, _ := st.CreateSubscription(u.ID, SubscriptionPatch{
 		Title: strptr("Netflix"), Amount: strptr("50")})
-	if !monthly.AppliesIn(2026, 1) || !monthly.AppliesIn(2026, 8) {
-		t.Fatal("monthly should always apply")
+	if !monthly.AppliesIn(2026, 1) || monthly.MonthCents(8) != monthly.AmountCents {
+		t.Fatal("monthly should count the full amount")
 	}
-	if monthly.BillingMonth != nil {
-		t.Fatal("monthly must not keep a billing month")
+	off := false
+	paused, _, _ := st.UpdateSubscription(u.ID, monthly.ID, SubscriptionPatch{Active: &off})
+	if paused.AppliesIn(2026, 8) {
+		t.Fatal("inactive should not count")
 	}
-	// Yearly without a month bills in January.
-	yr, _, _ := st.CreateSubscription(u.ID, SubscriptionPatch{
-		Title: strptr("Y"), Amount: strptr("10"), Interval: strptr("yearly")})
-	if yr.BillingMonth == nil || *yr.BillingMonth != 1 {
-		t.Fatalf("yearly default month: %+v", yr)
+
+	// 200.01 a year: eleven months get 1666 cents, December keeps the rest.
+	odd, _, err := st.CreateSubscription(u.ID, SubscriptionPatch{
+		Title: strptr("Odd"), AmountCents: intptr(20001), Interval: strptr("yearly")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if odd.MonthCents(1) != 1666 || odd.MonthCents(12) != 20001-1666*11 {
+		t.Fatalf("remainder: %d %d", odd.MonthCents(1), odd.MonthCents(12))
+	}
+
+	var due, month sql.NullInt64
+	if err := st.DB().QueryRow(`SELECT due_day, billing_month FROM subscriptions WHERE id = ?`, yearly.ID).
+		Scan(&due, &month); err != nil {
+		t.Fatal(err)
+	}
+	if due.Valid || month.Valid {
+		t.Fatalf("new row wrote legacy columns: due=%v month=%v", due, month)
+	}
+	if _, err := st.DB().Exec(`UPDATE subscriptions SET due_day = 10, billing_month = 3 WHERE id = ?`, yearly.ID); err != nil {
+		t.Fatal(err)
+	}
+	renamed := "Domain renamed"
+	updated, fails, err := st.UpdateSubscription(u.ID, yearly.ID, SubscriptionPatch{Title: &renamed})
+	if err != nil || len(fails) > 0 || updated.Title != renamed {
+		t.Fatalf("rename: %+v %v %v", updated, fails, err)
+	}
+	if err := st.DB().QueryRow(`SELECT due_day, billing_month FROM subscriptions WHERE id = ?`, yearly.ID).
+		Scan(&due, &month); err != nil {
+		t.Fatal(err)
+	}
+	if !due.Valid || due.Int64 != 10 || !month.Valid || month.Int64 != 3 {
+		t.Fatalf("update wiped legacy columns: due=%v month=%v", due, month)
+	}
+	if !updated.AppliesIn(2026, 8) {
+		t.Fatal("stored billing month must not gate leftover")
 	}
 }
 

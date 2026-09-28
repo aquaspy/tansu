@@ -53,6 +53,8 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   amount_cents INTEGER NOT NULL,
   currency TEXT NOT NULL DEFAULT 'BRL',
   interval TEXT NOT NULL DEFAULT 'monthly',
+  -- Legacy reminder columns. Kept so existing rows are not rewritten.
+  -- The app does not read or write them; reminders live on payment days.
   due_day INTEGER,
   billing_month INTEGER,
   active INTEGER NOT NULL DEFAULT 1,

@@ -456,8 +456,6 @@ func subscriptionBody(args map[string]any) map[string]any {
 	if s, ok := nonemptyString(args, "interval"); ok {
 		out["interval"] = normalizeInterval(s)
 	}
-	putDay(args, out, "due_day")
-	putDay(args, out, "billing_month")
 	putBool(args, out, "active")
 	if s, ok := nonemptyString(args, "notes"); ok {
 		out["notes"] = joinExtra(s, args, "tags")

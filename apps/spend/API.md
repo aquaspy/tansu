@@ -75,8 +75,12 @@ curl -X DELETE -H "Authorization: Bearer $KURA_TOKEN" \
 ## Subscriptions
 
 A subscription: `title`, `amount`/`amount_cents`, `currency`,
-`interval` (`monthly`/`yearly`, default `monthly`), optional `due_day` (1–31),
-`billing_month` (1–12, for yearly), `active`, `notes`.
+`interval` (`monthly`/`yearly`, default `monthly`), `active`, `notes`.
+There is no day of month and no billing month. An active subscription
+counts toward leftover every month: a monthly amount in full, a yearly
+amount as one twelfth (December keeps the remainder so the year adds up).
+`due_day` and `billing_month` on a write are ignored. The date of a bill
+is a payment day, not a field on the subscription.
 
 ```bash
 curl -H "Authorization: Bearer $KURA_TOKEN" \
@@ -100,6 +104,9 @@ curl -X DELETE -H "Authorization: Bearer $KURA_TOKEN" \
 
 Reminders only — they never change the leftover. A payment day: `title`,
 `due_day` (1–31, required), `active`, `notes`. Log an expense when you pay.
+When Spend has `KURA_CALENDAR_URL` and `KURA_SYNC_SECRET`, each create,
+update, delete, or deactivation is mirrored onto Tansu Calendar as a
+read-only monthly marker. Subscriptions are not.
 
 ```bash
 curl -H "Authorization: Bearer $KURA_TOKEN" "$KURA_URL/api/v1/payment_days"
@@ -151,7 +158,7 @@ Authenticate every request with: Authorization: Bearer <token>
 - Expenses: GET /api/v1/expenses?month=YYYY-MM&category=<name>;
   POST /api/v1/expenses with {"expense":{"title","amount_cents","currency","spent_on":"YYYY-MM-DD","category"}};
   PATCH /api/v1/expenses/:id; DELETE /api/v1/expenses/:id
-- Subscriptions: same shape under /api/v1/subscriptions with {"subscription":{...,"interval":"monthly|yearly","active"}}
+- Subscriptions: same shape under /api/v1/subscriptions with {"subscription":{"title","amount_cents","currency","interval":"monthly|yearly","active","notes"}}. No due_day or billing_month. Yearly amounts count as one twelfth each month.
 - Payment days: same shape under /api/v1/payment_days with {"payment_day":{"title","due_day"}}
 Prefer amount_cents (integer) over amount. Categories: food, transport, home,
 health, leisure, other. On 422, read the "errors" array and fix the input.

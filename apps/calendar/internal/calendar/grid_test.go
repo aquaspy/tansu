@@ -142,6 +142,40 @@ func TestGridSpanningEventOnBothDays(t *testing.T) {
 	}
 }
 
+func TestGridPaymentDayClampsAndMarks(t *testing.T) {
+	st := openTest(t)
+	u, _ := st.CreateUser("ada@example.com", "digest")
+	if _, errs, err := st.UpsertSyncedPaymentDay(u.ID, "spend:1", store.PaymentDayInput{
+		Title: "Card", DueDay: 31, Notes: "limit",
+	}); err != nil || len(errs) > 0 {
+		t.Fatalf("upsert: %v %+v", err, errs)
+	}
+	month := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
+	day := time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC)
+	g, err := BuildGrid(st, u.ID, nil, month, day, month)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cell := g.SelectedCell()
+	if cell.Empty() || len(cell.PaymentDays) != 1 || cell.PaymentDays[0].Title != "Card" {
+		t.Fatalf("feb 28: %+v", cell.PaymentDays)
+	}
+	marks, _ := cell.Marks(func(holidays.Holiday) string { return "" })
+	if len(marks) != 1 || marks[0].Kind != "payment" || marks[0].Label != "Card" {
+		t.Fatalf("marks: %+v", marks)
+	}
+	// The 27th is not the clamped day.
+	var earlier *Cell
+	for _, c := range g.Cells {
+		if c.Date.Day() == 27 && c.Date.Month() == time.February {
+			earlier = c
+		}
+	}
+	if earlier == nil || len(earlier.PaymentDays) != 0 {
+		t.Fatal("payment day leaked onto the 27th")
+	}
+}
+
 func TestGridFeb29Birthday(t *testing.T) {
 	st := openTest(t)
 	u, _ := st.CreateUser("ada@example.com", "digest")

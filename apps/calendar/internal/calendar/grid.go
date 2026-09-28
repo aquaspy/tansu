@@ -9,7 +9,7 @@ import (
 	"github.com/aquasp/kuracalendar/internal/store"
 )
 
-// Mark is one month-cell pill: its kind (holiday/birthday/event) and label.
+// Mark is one month-cell pill: its kind (holiday/birthday/payment/event/ics) and label.
 type Mark struct {
 	Kind  string
 	Label string
@@ -24,6 +24,7 @@ type Cell struct {
 	Events       []*store.Event
 	ICSEvents    []*store.ICSEvent
 	Birthdays    []*store.Birthday
+	PaymentDays  []*store.PaymentDay
 	Holidays     []holidays.Holiday
 	TagCountries bool // >1 pack selected: suffix " · BR"
 }
@@ -45,6 +46,9 @@ func (c *Cell) Marks(holidayName func(h holidays.Holiday) string) ([]Mark, int) 
 	}
 	for _, b := range c.Birthdays {
 		list = append(list, Mark{Kind: "birthday", Label: withEmoji(b.Emoji, b.Name)})
+	}
+	for _, d := range c.PaymentDays {
+		list = append(list, Mark{Kind: "payment", Label: d.Title})
 	}
 	for _, e := range c.Events {
 		list = append(list, Mark{Kind: "event", Label: withEmoji(e.Emoji, e.Title)})
@@ -71,7 +75,8 @@ func withEmoji(emoji, label string) string {
 }
 
 func (c *Cell) Empty() bool {
-	return len(c.Events) == 0 && len(c.ICSEvents) == 0 && len(c.Birthdays) == 0 && len(c.Holidays) == 0
+	return len(c.Events) == 0 && len(c.ICSEvents) == 0 && len(c.Birthdays) == 0 &&
+		len(c.PaymentDays) == 0 && len(c.Holidays) == 0
 }
 
 // Grid is one rendered month, mirroring CalendarGrid.
@@ -167,6 +172,10 @@ func BuildGrid(st *store.Store, userID int64, codes []string, month, selected, t
 	if err != nil {
 		return nil, err
 	}
+	paymentDays, err := st.ListPaymentDays(userID)
+	if err != nil {
+		return nil, err
+	}
 
 	holidaysByDate := map[string][]holidays.Holiday{}
 	for _, h := range holidays.InRange(codes, start, end) {
@@ -183,6 +192,12 @@ func BuildGrid(st *store.Store, userID int64, codes []string, month, selected, t
 				dayBirthdays = append(dayBirthdays, b)
 			}
 		}
+		var dayPayments []*store.PaymentDay
+		for _, pay := range paymentDays {
+			if pay.ObservedOn(d) {
+				dayPayments = append(dayPayments, pay)
+			}
+		}
 		key := d.Format("2006-01-02")
 		cells = append(cells, &Cell{
 			Date:         d,
@@ -192,6 +207,7 @@ func BuildGrid(st *store.Store, userID int64, codes []string, month, selected, t
 			Events:       eventsByDate[key],
 			ICSEvents:    icsByDate[key],
 			Birthdays:    dayBirthdays,
+			PaymentDays:  dayPayments,
 			Holidays:     holidaysByDate[key],
 			TagCountries: tag,
 		})

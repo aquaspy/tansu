@@ -100,7 +100,9 @@ Single-event endpoints wrap the same object as `{"event": {...}}`.
 
 ## Birthdays
 
-Birthdays are created in Tansu People and synced here. `POST /api/v1/birthdays`
+Birthdays are created in Tansu People and synced here. Payment days are
+created in Tansu Spend and show up as read-only month markers; this API
+does not create or edit them. `POST /api/v1/birthdays`
 returns `422` with `{"error":"birthdays_retired"}`. Existing rows (including
 ones People syncs) can still be listed, updated, and deleted. A birthday:
 `name` (required), `month` (1–12), `day` (1–31, must exist in that month),

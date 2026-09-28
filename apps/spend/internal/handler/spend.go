@@ -174,13 +174,11 @@ func (s *Server) handleSubscriptionsCreate(w http.ResponseWriter, r *http.Reques
 	}
 	user := UserOf(r)
 	p := store.SubscriptionPatch{
-		Title:        formPtr(r, "subscription[title]"),
-		Amount:       formPtr(r, "subscription[amount]"),
-		Currency:     formPtr(r, "subscription[currency]"),
-		Interval:     formPtr(r, "subscription[interval]"),
-		DueDay:       formPtr(r, "subscription[due_day]"),
-		BillingMonth: formPtr(r, "subscription[billing_month]"),
-		Notes:        formPtr(r, "subscription[notes]"),
+		Title:    formPtr(r, "subscription[title]"),
+		Amount:   formPtr(r, "subscription[amount]"),
+		Currency: formPtr(r, "subscription[currency]"),
+		Interval: formPtr(r, "subscription[interval]"),
+		Notes:    formPtr(r, "subscription[notes]"),
 	}
 	if _, fails, err := s.Store.CreateSubscription(user.ID, p); err != nil {
 		http.Error(w, "spend unavailable", http.StatusInternalServerError)
@@ -203,13 +201,11 @@ func (s *Server) handleSubscriptionsUpdate(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	p := store.SubscriptionPatch{
-		Title:        formPtr(r, "subscription[title]"),
-		Amount:       formPtr(r, "subscription[amount]"),
-		Currency:     formPtr(r, "subscription[currency]"),
-		Interval:     formPtr(r, "subscription[interval]"),
-		DueDay:       formPtr(r, "subscription[due_day]"),
-		BillingMonth: formPtr(r, "subscription[billing_month]"),
-		Notes:        formPtr(r, "subscription[notes]"),
+		Title:    formPtr(r, "subscription[title]"),
+		Amount:   formPtr(r, "subscription[amount]"),
+		Currency: formPtr(r, "subscription[currency]"),
+		Interval: formPtr(r, "subscription[interval]"),
+		Notes:    formPtr(r, "subscription[notes]"),
 	}
 	if _, fails, err := s.Store.UpdateSubscription(user.ID, id, p); err != nil {
 		http.Error(w, "spend unavailable", http.StatusInternalServerError)
@@ -250,11 +246,14 @@ func (s *Server) handlePaymentDaysCreate(w http.ResponseWriter, r *http.Request)
 		DueDay: formPtr(r, "payment_day[due_day]"),
 		Notes:  formPtr(r, "payment_day[notes]"),
 	}
-	if _, fails, err := s.Store.CreatePaymentDay(user.ID, p); err != nil {
+	day, fails, err := s.Store.CreatePaymentDay(user.ID, p)
+	if err != nil {
 		http.Error(w, "spend unavailable", http.StatusInternalServerError)
 		return
 	} else if len(fails) > 0 {
 		flashAlert(s, r, joinMessages(validationMessages(LocaleOf(r), "payment_day", fails)))
+	} else {
+		s.pushPaymentDay(user, day, false)
 	}
 	http.Redirect(w, r, monthPathFor(r), http.StatusSeeOther)
 }
@@ -275,11 +274,14 @@ func (s *Server) handlePaymentDaysUpdate(w http.ResponseWriter, r *http.Request)
 		DueDay: formPtr(r, "payment_day[due_day]"),
 		Notes:  formPtr(r, "payment_day[notes]"),
 	}
-	if _, fails, err := s.Store.UpdatePaymentDay(user.ID, id, p); err != nil {
+	day, fails, err := s.Store.UpdatePaymentDay(user.ID, id, p)
+	if err != nil {
 		http.Error(w, "spend unavailable", http.StatusInternalServerError)
 		return
 	} else if len(fails) > 0 {
 		flashAlert(s, r, joinMessages(validationMessages(LocaleOf(r), "payment_day", fails)))
+	} else {
+		s.pushPaymentDay(user, day, false)
 	}
 	http.Redirect(w, r, monthPathFor(r), http.StatusSeeOther)
 }
@@ -291,10 +293,12 @@ func (s *Server) handlePaymentDaysDestroy(w http.ResponseWriter, r *http.Request
 		s.notFound(w, r)
 		return
 	}
-	if _, err := s.Store.FindPaymentDay(user.ID, id); err != nil {
+	day, err := s.Store.FindPaymentDay(user.ID, id)
+	if err != nil {
 		s.notFound(w, r)
 		return
 	}
+	s.pushPaymentDay(user, day, true)
 	_ = s.Store.DeletePaymentDay(user.ID, id)
 	s.Store.ReclaimSpace()
 	if isHX(r) || r.Header.Get("X-Requested-With") == "fetch" {

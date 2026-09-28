@@ -24,6 +24,11 @@ type Config struct {
 	// KuraAssistantURL is the Assistant origin allowed to finish an app link.
 	// Empty disables /agent/connect.
 	KuraAssistantURL string
+
+	// CalendarURL + SyncSecret push payment days into Tansu Calendar.
+	// Both empty keeps Spend standalone. Subscriptions are not synced.
+	CalendarURL string
+	SyncSecret  string
 }
 
 func Load() Config {
@@ -38,7 +43,14 @@ func Load() Config {
 		KuraClientID:     envOr("KURA_CLIENT_ID", "kuraspend"),
 		KuraClientSecret: envOr("KURA_CLIENT_SECRET", ""),
 		KuraAssistantURL: strings.TrimRight(strings.TrimSpace(os.Getenv("KURA_ASSISTANT_URL")), "/"),
+		CalendarURL:      strings.TrimSuffix(envOr("KURA_CALENDAR_URL", ""), "/"),
+		SyncSecret:       envOr("KURA_SYNC_SECRET", ""),
 	}
+}
+
+// SyncEnabled reports whether payment-day push to Calendar is configured.
+func (c Config) SyncEnabled() bool {
+	return c.CalendarURL != "" && c.SyncSecret != ""
 }
 
 // AccountEnabled reports whether Kura Account SSO is configured.

@@ -118,11 +118,13 @@ KURA_CLIENT_SECRET=<matching-secret>
 Leave `KURA_ACCOUNT_URL` empty on any app to keep it standalone — its local
 login keeps working exactly as before, Account or no Account.
 
-Birthdays typed in People show up in Calendar when both apps share one
-secret. On People set `KURA_CALENDAR_URL=https://calendar.example.com` and
-`KURA_SYNC_SECRET` (16+ chars). Set the same `KURA_SYNC_SECRET` on Calendar.
-The Calendar user is the one with the same Account subject, or the same
-email if that app is still standalone. Theme, language, and the lock travel
+Birthdays typed in People, and payment days saved in Spend, show up in
+Calendar when the apps share one secret. On People and on Spend set
+`KURA_CALENDAR_URL=https://calendar.example.com` and `KURA_SYNC_SECRET`
+(16+ chars). Set the same `KURA_SYNC_SECRET` on Calendar. Subscriptions
+stay in Spend; they are not copied onto the calendar. The Calendar user
+is the one with the same Account subject, or the same email if that app
+is still standalone. Theme, language, and the lock travel
 with the browser across the suite: on a shared parent domain
 (`notes.example.com` and `calendar.example.com`) and, on one machine,
 across ports of `127.0.0.1`.
