@@ -85,56 +85,30 @@ templ Shell(p Page, d MailData) {
 				} else {
 					<a class="btn-new" href="/accounts">{ p.T("mail.connect") }</a>
 				}
-				<form action="/" method="get" class="search-form">
+				<form
+					action="/"
+					method="get"
+					class="search-form"
+					data-controller="search"
+					data-search-active={ searchActive(d.Query) }
+					hx-get="/"
+					hx-target="#mail-list"
+					hx-swap="outerHTML"
+					hx-push-url="true"
+					hx-params="account,folder"
+					hx-trigger="search-clear"
+					hx-sync="this:replace"
+				>
 					if d.AccountID > 0 {
 						<input type="hidden" name="account" value={ idStr(d.AccountID) }/>
 					}
 					if d.Folder != "" {
 						<input type="hidden" name="folder" value={ d.Folder }/>
 					}
-					<input type="search" name="q" value={ d.Query } placeholder={ p.T("mail.search") } class="search" autocomplete="off"/>
+					<input type="search" name="q" value={ d.Query } placeholder={ p.T("mail.search") } class="search" enterkeyhint="search" autocomplete="off"/>
 				</form>
 			</div>
-			<div class="note-list">
-				if d.Empty {
-					<div class="empty-list empty-connect">
-						<p>{ p.T("mail.empty_accounts") }</p>
-						<p>{ p.T("mail.empty_connect") }</p>
-						<a class="btn-new" href="/accounts">{ p.T("mail.connect") }</a>
-					</div>
-				} else if d.Problem != "" {
-					<p class="empty-list is-error" role="alert">{ listProblem(p, d) }</p>
-				} else if len(d.Messages) == 0 {
-					if d.Query != "" {
-						<p class="empty-list">{ p.T("mail.empty_search") }</p>
-					} else {
-						<p class="empty-list">{ p.T("mail.empty_list") }</p>
-					}
-				}
-				for _, m := range d.Messages {
-					<a class={ messageClass(m) } href={ templ.SafeURL(m.Href) }>
-						<span class="note-item-link">
-							<strong>{ orUntitled(p, m.Subject) }</strong>
-							<span>{ m.From }</span>
-							<span>{ m.When }</span>
-						</span>
-					</a>
-				}
-				if d.Capped {
-					<p class="empty-list">{ p.T("mail.search_capped") }</p>
-				}
-				if d.Pages > 1 {
-					<p class="pager">
-						if d.PrevHref != "" {
-							<a href={ templ.SafeURL(d.PrevHref) }>{ p.T("mail.prev") }</a>
-						}
-						<span>{ fmtPages(d.Page, d.Pages) }</span>
-						if d.NextHref != "" {
-							<a href={ templ.SafeURL(d.NextHref) }>{ p.T("mail.next") }</a>
-						}
-					</p>
-				}
-			</div>
+			@MailList(p, d)
 		</section>
 		<section class="col-editor">
 			if d.Compose != nil {
@@ -156,6 +130,55 @@ templ Shell(p Page, d MailData) {
 			<a class="fab" href={ templ.SafeURL(d.ComposeHref) } aria-label={ p.T("mail.compose") }>
 				<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>
 			</a>
+		}
+	</div>
+}
+
+// MailList is the message column. Search clear swaps this fragment.
+templ MailList(p Page, d MailData) {
+	<div id="mail-list" class="note-list">
+		if d.Empty {
+			<div class="empty-list empty-connect">
+				<p>{ p.T("mail.empty_accounts") }</p>
+				<p>{ p.T("mail.empty_connect") }</p>
+				<a class="btn-new" href="/accounts">{ p.T("mail.connect") }</a>
+			</div>
+		} else if d.Problem != "" {
+			<p class="empty-list is-error" role="alert">{ listProblem(p, d) }</p>
+		} else if len(d.Messages) == 0 {
+			if d.Query != "" {
+				<p class="empty-list">{ p.T("mail.empty_search") }</p>
+			} else {
+				<p class="empty-list">{ p.T("mail.empty_list") }</p>
+			}
+		}
+		for _, m := range d.Messages {
+			<a class={ messageClass(m) } href={ templ.SafeURL(m.Href) }>
+				<span class="note-item-link">
+					<strong>{ orUntitled(p, m.Subject) }</strong>
+					<span>
+						if !m.Seen {
+							<em class="unread-badge">{ p.T("mail.unread") }</em>
+						}
+						{ m.From }
+					</span>
+					<span>{ m.When }</span>
+				</span>
+			</a>
+		}
+		if d.Capped {
+			<p class="empty-list">{ p.T("mail.search_capped") }</p>
+		}
+		if d.Pages > 1 {
+			<p class="pager">
+				if d.PrevHref != "" {
+					<a href={ templ.SafeURL(d.PrevHref) }>{ p.T("mail.prev") }</a>
+				}
+				<span>{ fmtPages(d.Page, d.Pages) }</span>
+				if d.NextHref != "" {
+					<a href={ templ.SafeURL(d.NextHref) }>{ p.T("mail.next") }</a>
+				}
+			</p>
 		}
 	</div>
 }
@@ -193,6 +216,19 @@ templ ReadPane(p Page, d MailData) {
 		<strong class="mail-subject">{ orUntitled(p, d.Open.Subject) }</strong>
 		<span class="bar-spacer"></span>
 		<a class="btn-dialog" href={ templ.SafeURL(d.Open.ReplyHref) }>{ p.T("mail.reply") }</a>
+		<form action="/unread" method="post">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<input type="hidden" name="account" value={ idStr(d.Open.AccountID) }/>
+			<input type="hidden" name="folder" value={ d.Open.Folder }/>
+			<input type="hidden" name="uid" value={ uidStr(d.Open.UID) }/>
+			if d.Query != "" {
+				<input type="hidden" name="q" value={ d.Query }/>
+			}
+			if d.Page > 1 {
+				<input type="hidden" name="page" value={ fmt.Sprint(d.Page) }/>
+			}
+			<button type="submit" class="btn-dialog">{ p.T("mail.mark_unread") }</button>
+		</form>
 		<form action="/trash" method="post">
 			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
 			<input type="hidden" name="account" value={ idStr(d.Open.AccountID) }/>

@@ -186,7 +186,7 @@ func (s *Server) handleAPIMessages(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAPIMessage(w http.ResponseWriter, r *http.Request) {
-	_, creds, ok := s.apiCreds(w, r)
+	box, creds, ok := s.apiCreds(w, r)
 	if !ok {
 		return
 	}
@@ -196,7 +196,7 @@ func (s *Server) handleAPIMessage(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), mailOpTimeout)
 	defer cancel()
-	msg, err := s.Mail.Read(ctx, creds, r.URL.Query().Get("folder"), uid)
+	msg, err := s.Mail.Read(ctx, box.ID, creds, r.URL.Query().Get("folder"), uid)
 	if err != nil {
 		if errors.Is(err, mail.ErrNotFound) {
 			writeAPIError(w, http.StatusNotFound, "not_found")

@@ -450,6 +450,7 @@ func (s *Server) Routes() *chi.Mux {
 	app.Get("/read", s.handleMailRead)
 	app.Post("/trash", s.handleMailTrash)
 	app.Post("/delete", s.handleMailDelete)
+	app.Post("/unread", s.handleMailUnread)
 	app.Get("/compose", s.handleCompose)
 	app.Post("/compose", s.handleComposeSend)
 	app.Get("/attachment", s.handleAttachment)

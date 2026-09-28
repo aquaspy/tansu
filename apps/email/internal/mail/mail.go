@@ -180,6 +180,12 @@ func (s *Service) release() {
 	}
 }
 
+func (s *Service) markCachedSeen(accountID int64, folder string, uid uint32, seen bool) {
+	if s != nil && s.cache != nil {
+		s.cache.markSeen(accountID, folder, uid, seen)
+	}
+}
+
 func (s *Service) invalidate(accountID int64) {
 	if s != nil && s.cache != nil {
 		s.cache.drop(accountID)
@@ -212,6 +218,8 @@ func (s *Service) Folders(ctx context.Context, c Creds) ([]Folder, error) {
 
 // List returns one page of headers. An empty query fetches that page by
 // sequence number. A query is an IMAP SEARCH, then one header FETCH.
+// That FETCH includes FLAGS, so \Seen is known without SEARCH UNSEEN or a
+// second round trip.
 func (s *Service) List(ctx context.Context, accountID int64, c Creds, folder, query string, page int) (Page, error) {
 	page = clampPage(page)
 	folder = defaultFolder(folder)
@@ -227,19 +235,37 @@ func (s *Service) List(ctx context.Context, accountID int64, c Creds, folder, qu
 	return s.listCached(sess.cl, accountID, folder, query, page)
 }
 
-// Read fetches one message body.
-func (s *Service) Read(ctx context.Context, c Creds, folder string, uid uint32) (*Message, error) {
+// Read fetches one message with BODY.PEEK, then marks it \Seen when it was
+// unread. The body is fetched once. accountID updates the header cache;
+// zero leaves the cache alone.
+func (s *Service) Read(ctx context.Context, accountID int64, c Creds, folder string, uid uint32) (*Message, error) {
 	sess, err := s.Open(ctx, c)
 	if err != nil {
 		return nil, err
 	}
 	defer sess.Close()
-	return readOn(sess.cl, defaultFolder(folder), uid)
+	return sess.Read(accountID, folder, uid)
+}
+
+// SetSeen adds or removes \Seen with one silent STORE. It does not fetch
+// the message.
+func (s *Service) SetSeen(ctx context.Context, accountID int64, c Creds, folder string, uid uint32, seen bool) error {
+	folder = defaultFolder(folder)
+	sess, err := s.Open(ctx, c)
+	if err != nil {
+		return err
+	}
+	defer sess.Close()
+	if err := setSeenOn(sess.cl, folder, uid, seen); err != nil {
+		return err
+	}
+	s.markCachedSeen(accountID, folder, uid, seen)
+	return nil
 }
 
 // Attachment returns one part's bytes.
 func (s *Service) Attachment(ctx context.Context, c Creds, folder string, uid uint32, index int) (name, mime string, body []byte, err error) {
-	msg, err := s.Read(ctx, c, folder, uid)
+	msg, err := s.Read(ctx, 0, c, folder, uid)
 	if err != nil {
 		return "", "", nil, err
 	}

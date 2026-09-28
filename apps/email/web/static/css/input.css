@@ -659,6 +659,7 @@ a.folder-item { font-size: 0.9rem; font-weight: 550; }
 
 .editor-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.2rem;
   align-items: center;
   padding: 0.5rem 0.9rem;
@@ -1127,6 +1128,19 @@ a.folder-item { font-size: 0.9rem; font-weight: 550; }
 }
 .note-item.is-unread strong { font-weight: 700; }
 .note-item.is-unread .note-item-link { box-shadow: inset 3px 0 0 var(--accent); }
+.note-item .unread-badge {
+  display: inline-block;
+  margin-right: 0.4rem;
+  padding: 0.02rem 0.38rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-style: normal;
+  font-weight: 700;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  vertical-align: 0.05em;
+}
 .pager {
   display: flex;
   gap: 0.8rem;

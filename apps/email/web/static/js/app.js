@@ -260,6 +260,59 @@
     },
   };
 
+  controllers.search = {
+    connect(el) {
+      if (state(el).searchBound) return;
+      state(el).searchBound = true;
+      const input = el.querySelector("input[name='q']");
+      if (!input) return;
+      let timer = null;
+      const folderURL = () => {
+        const params = new URLSearchParams();
+        const account = el.querySelector("input[name='account']")?.value;
+        const folder = el.querySelector("input[name='folder']")?.value;
+        if (account) params.set("account", account);
+        if (folder) params.set("folder", folder);
+        const qs = params.toString();
+        return qs ? "/?" + qs : "/";
+      };
+      const runClear = () => {
+        if (el.dataset.searchActive !== "true" || input.value.trim() !== "") return;
+        if (document.querySelector(".mail-read")) {
+          window.location.assign(folderURL());
+          return;
+        }
+        if (window.htmx) {
+          window.htmx.trigger(el, "search-clear");
+          return;
+        }
+        window.location.assign(folderURL());
+      };
+      const scheduleClear = () => {
+        clearTimeout(timer);
+        if (el.dataset.searchActive !== "true" || input.value.trim() !== "") return;
+        timer = setTimeout(runClear, 250);
+      };
+      input.addEventListener("input", () => {
+        clearTimeout(timer);
+        if (input.value.trim() !== "") {
+          window.htmx?.trigger(el, "htmx:abort");
+          return;
+        }
+        scheduleClear();
+      });
+      input.addEventListener("search", () => {
+        if (input.value.trim() === "") scheduleClear();
+      });
+      el.addEventListener("submit", () => clearTimeout(timer));
+      el.addEventListener("htmx:afterRequest", (event) => {
+        if (event.detail?.successful && input.value.trim() === "") {
+          el.dataset.searchActive = "false";
+        }
+      });
+    },
+  };
+
   controllers.offline = {
     connect() {
       const paint = () => {

@@ -232,6 +232,11 @@ func TestAPIMailboxRoundTrip(t *testing.T) {
 	if len(msgs) != 2 || out["total"] != float64(2) {
 		t.Fatalf("page: %+v", out)
 	}
+	first := msgs[0].(map[string]any)
+	second := msgs[1].(map[string]any)
+	if first["seen"] != true || second["seen"] != false || second["subject"] != "Quarterly update" {
+		t.Fatalf("flags: %+v %+v", first, second)
+	}
 	code, _, out = f.apiCall(http.MethodGet, "/api/v1/accounts/"+id+"/messages?folder=INBOX&q=hello", raw, "")
 	if code != http.StatusOK || len(out["messages"].([]any)) != 1 {
 		t.Fatalf("search: %d %+v", code, out)
@@ -261,14 +266,59 @@ func TestAPIMailboxRoundTrip(t *testing.T) {
 	if code != http.StatusOK || !strings.Contains(body, "Inbox") || !strings.Contains(body, "Hello") {
 		t.Fatalf("web list: %d", code)
 	}
+	if !strings.Contains(body, "is-unread") || !strings.Contains(body, "unread-badge") || !strings.Contains(body, ">Unread<") || !strings.Contains(body, "Quarterly update") {
+		t.Fatalf("unread badge missing")
+	}
+	if !strings.Contains(body, `data-search-active="false"`) || !strings.Contains(body, `hx-trigger="search-clear"`) || !strings.Contains(body, `hx-params="account,folder"`) {
+		t.Fatalf("search clear form missing")
+	}
+	code, body, _ = f.get("/?account="+id+"&folder=INBOX&q=hello", nil)
+	if code != http.StatusOK || !strings.Contains(body, `data-search-active="true"`) || !strings.Contains(body, "Hello") {
+		t.Fatalf("active search: %d", code)
+	}
+	code, body, _ = f.get("/?account="+id+"&folder=INBOX", map[string]string{"HX-Request": "true"})
+	if code != http.StatusOK || strings.Contains(body, "<!DOCTYPE") || !strings.Contains(body, `id="mail-list"`) || !strings.Contains(body, "Quarterly update") || strings.Contains(body, "No messages match this search") {
+		t.Fatalf("hx inbox fragment: %d %s", code, body)
+	}
+	code, body, _ = f.get("/?account="+id, map[string]string{"Accept-Language": "pt"})
+	if code != http.StatusOK || !strings.Contains(body, "Não lida") || !strings.Contains(body, `placeholder="Buscar"`) {
+		t.Fatalf("pt unread: %d", code)
+	}
 	code, body, _ = f.get("/?account="+id+"&folder=INBOX&q=text:missing", nil)
 	if code != http.StatusOK || !strings.Contains(body, "No messages match this search") || strings.Contains(body, "Nothing in this folder") || strings.Contains(body, "Search did not finish") {
 		t.Fatalf("empty search looked like a failure or an empty folder: %d", code)
 	}
 	code, body, _ = f.get("/read?account="+id+"&folder=INBOX&uid=11", nil)
-	if code != http.StatusOK || !strings.Contains(body, "Hello from Ada") {
+	if code != http.StatusOK || !strings.Contains(body, "Hello from Ada") || !strings.Contains(body, "Mark unread") {
 		t.Fatalf("web read: %d", code)
 	}
+	code, body, _ = f.get("/read?account="+id+"&folder=INBOX&uid=10", nil)
+	if code != http.StatusOK || !strings.Contains(body, "Unread note") {
+		t.Fatalf("web read unread: %d", code)
+	}
+	if !containsUint(imap.SeenStore, 10) {
+		t.Fatalf("seen store: %v", imap.SeenStore)
+	}
+	code, _, hdr := f.post("/unread", url.Values{"account": {id}, "folder": {"INBOX"}, "uid": {"11"}})
+	if code != http.StatusSeeOther || !strings.Contains(hdr.Get("Location"), "account="+id) {
+		t.Fatalf("mark unread: %d %s", code, hdr.Get("Location"))
+	}
+	if !containsUint(imap.UnseenStore, 11) {
+		t.Fatalf("unseen store: %v", imap.UnseenStore)
+	}
+	code, body, _ = f.get("/?account="+id+"&folder=INBOX", nil)
+	if code != http.StatusOK || !strings.Contains(body, "is-unread") || !strings.Contains(body, "Marked as unread") {
+		t.Fatalf("after unread: %d", code)
+	}
+}
+
+func containsUint(ids []uint32, want uint32) bool {
+	for _, id := range ids {
+		if id == want {
+			return true
+		}
+	}
+	return false
 }
 
 func TestUnavailableSearchIsNotAnEmptyFolder(t *testing.T) {
