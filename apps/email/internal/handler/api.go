@@ -156,7 +156,7 @@ func (s *Server) handleAPIFolders(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), mailOpTimeout)
 	defer cancel()
 	folders, err := s.Mail.Folders(ctx, creds)
 	if err != nil {
@@ -175,7 +175,7 @@ func (s *Server) handleAPIMessages(w http.ResponseWriter, r *http.Request) {
 	if n, err := strconv.Atoi(r.URL.Query().Get("page")); err == nil && n > 0 {
 		page = n
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), mailOpTimeout)
 	defer cancel()
 	list, err := s.Mail.List(ctx, box.ID, creds, r.URL.Query().Get("folder"), r.URL.Query().Get("q"), page)
 	if err != nil {
@@ -194,7 +194,7 @@ func (s *Server) handleAPIMessage(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), mailOpTimeout)
 	defer cancel()
 	msg, err := s.Mail.Read(ctx, creds, r.URL.Query().Get("folder"), uid)
 	if err != nil {
@@ -225,7 +225,7 @@ func (s *Server) apiMove(w http.ResponseWriter, r *http.Request, trash bool) {
 	if !ok {
 		return
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), mailOpTimeout)
 	defer cancel()
 	var err error
 	if trash {
@@ -258,7 +258,7 @@ func (s *Server) handleAPIAttachment(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, http.StatusBadRequest, "bad_request")
 		return
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), mailOpTimeout)
 	defer cancel()
 	name, mime, body, err := s.Mail.Attachment(ctx, creds, r.URL.Query().Get("folder"), uid, part)
 	if err != nil {
@@ -302,7 +302,7 @@ func (s *Server) handleAPISend(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, http.StatusBadRequest, "bad_request")
 		return
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), mailOpTimeout)
 	defer cancel()
 	if err := s.Mail.Send(ctx, box.ID, creds, msg); err != nil {
 		writeAPIErrors(w, http.StatusBadGateway, []string{secret.Scrub(err, creds.Password)})

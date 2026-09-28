@@ -16,6 +16,11 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// mailOpTimeout bounds one IMAP/SMTP round trip from the browser.
+// Command timeouts inside the client are shorter; cancelling this context
+// closes the socket instead of leaving a read running.
+const mailOpTimeout = 32 * time.Second
+
 func (s *Server) handleMailIndex(w http.ResponseWriter, r *http.Request) {
 	s.renderMail(w, r, false, false)
 }
@@ -48,6 +53,9 @@ func (s *Server) renderMail(w http.ResponseWriter, r *http.Request, reading, com
 	d.Page = 1
 	if n, err := strconv.Atoi(r.URL.Query().Get("page")); err == nil && n > 0 {
 		d.Page = n
+		if d.Page > 200 {
+			d.Page = 200
+		}
 	}
 	d.ComposeHref = views.ComposeHref(accountID, d.Folder, 0)
 	d.ListHref = views.MailHref(accountID, d.Folder, d.Query, d.Page)
@@ -59,14 +67,24 @@ func (s *Server) renderMail(w http.ResponseWriter, r *http.Request, reading, com
 	_, creds, err := s.openBox(user.ID, accountID)
 	if err != nil {
 		p.Alert = i18n.T(l, "mail.secrets_missing")
+		d.Problem = "secrets"
 		render(w, r, http.StatusOK, views.Layout(p, views.NoHead(), views.Shell(p, d)))
 		return
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), mailOpTimeout)
 	defer cancel()
-	folders, ferr := s.Mail.Folders(ctx, creds)
+	sess, err := s.Mail.Open(ctx, creds)
+	if err != nil {
+		p.Alert = i18n.T(l, "mail.unavailable")
+		d.Problem = "unavailable"
+		render(w, r, http.StatusOK, views.Layout(p, views.NoHead(), views.Shell(p, d)))
+		return
+	}
+	defer sess.Close()
+	folders, ferr := sess.Folders()
 	if ferr != nil {
 		p.Alert = i18n.T(l, "mail.unavailable")
+		d.Problem = "unavailable"
 	}
 	if d.Folder == "" {
 		d.Folder = inboxName(folders)
@@ -78,10 +96,11 @@ func (s *Server) renderMail(w http.ResponseWriter, r *http.Request, reading, com
 			Href:   views.MailHref(accountID, f.Name, d.Query, 1),
 		})
 	}
-	if ferr == nil && !composing {
-		page, err := s.Mail.List(ctx, accountID, creds, d.Folder, d.Query, d.Page)
+	if ferr == nil {
+		page, err := sess.List(accountID, d.Folder, d.Query, d.Page)
 		if err != nil {
 			p.Alert = i18n.T(l, "mail.unavailable")
+			d.Problem = "unavailable"
 		} else {
 			d.Total = page.Total
 			d.Pages = pageCount(page.Total)
@@ -91,6 +110,7 @@ func (s *Server) renderMail(w http.ResponseWriter, r *http.Request, reading, com
 			if d.Page < d.Pages {
 				d.NextHref = views.MailHref(accountID, d.Folder, d.Query, d.Page+1)
 			}
+			d.Capped = page.Capped
 			var openUID uint32
 			if reading {
 				openUID, _ = parseUID(r.URL.Query().Get("uid"))
@@ -107,8 +127,8 @@ func (s *Server) renderMail(w http.ResponseWriter, r *http.Request, reading, com
 	}
 	if reading {
 		uid, ok := parseUID(r.URL.Query().Get("uid"))
-		if ok && ferr == nil {
-			msg, err := s.Mail.Read(ctx, creds, d.Folder, uid)
+		if ok && ferr == nil && d.Problem == "" {
+			msg, err := sess.Read(d.Folder, uid)
 			if err != nil {
 				p.Alert = i18n.T(l, "mail.unavailable")
 			} else {
@@ -124,8 +144,8 @@ func (s *Server) renderMail(w http.ResponseWriter, r *http.Request, reading, com
 	}
 	if composing {
 		c := &views.Composer{}
-		if uid, ok := parseUID(r.URL.Query().Get("uid")); ok {
-			if msg, err := s.Mail.Read(ctx, creds, d.Folder, uid); err == nil {
+		if uid, ok := parseUID(r.URL.Query().Get("uid")); ok && ferr == nil && d.Problem == "" {
+			if msg, err := sess.Read(d.Folder, uid); err == nil {
 				out := quoteOutgoing(msg)
 				c.To = strings.Join(out.To, ", ")
 				c.Subject = out.Subject
@@ -165,7 +185,7 @@ func (s *Server) moveWeb(w http.ResponseWriter, r *http.Request, trash bool) {
 		http.Redirect(w, r, views.MailHref(id, folder, "", 1), http.StatusSeeOther)
 		return
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), mailOpTimeout)
 	defer cancel()
 	if trash {
 		err = s.Mail.Trash(ctx, id, creds, folder, uid)
@@ -201,7 +221,7 @@ func (s *Server) handleComposeSend(w http.ResponseWriter, r *http.Request) {
 		Subject: r.FormValue("subject"), Body: r.FormValue("body"),
 		InReplyTo: r.FormValue("in_reply_to"), References: r.FormValue("references"),
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), mailOpTimeout)
 	defer cancel()
 	if err := s.Mail.Send(ctx, id, creds, msg); err != nil {
 		flashAlert(s, r, secret.Scrub(err, creds.Password))
@@ -226,7 +246,7 @@ func (s *Server) handleAttachment(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), mailOpTimeout)
 	defer cancel()
 	name, mimeType, body, err := s.Mail.Attachment(ctx, creds, r.URL.Query().Get("folder"), uid, part)
 	if err != nil {

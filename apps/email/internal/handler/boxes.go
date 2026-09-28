@@ -192,7 +192,7 @@ func (s *Server) saveNewMailbox(userID int64, in store.MailboxInput) (*store.Mai
 }
 
 func (s *Server) probe(userID int64, box *store.Mailbox, password string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), mailOpTimeout)
 	defer cancel()
 	creds := mail.Creds{
 		IMAPHost: box.IMAPHost, IMAPPort: box.IMAPPort, IMAPTLS: box.IMAPTLS,

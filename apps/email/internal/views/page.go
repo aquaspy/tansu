@@ -109,19 +109,22 @@ type Composer struct {
 
 // MailData drives the three-column shell.
 type MailData struct {
-	Accounts    []MailboxRow
-	AccountID   int64
-	Folder      string
-	Query       string
-	Page        int
-	Pages       int
-	Total       int
-	Folders     []FolderRow
-	Messages    []MessageRow
-	Open        *OpenMessage
-	Compose     *Composer
-	AutoLock    bool
-	Empty       bool
+	Accounts  []MailboxRow
+	AccountID int64
+	Folder    string
+	Query     string
+	Page      int
+	Pages     int
+	Total     int
+	Folders   []FolderRow
+	Messages  []MessageRow
+	Open      *OpenMessage
+	Compose   *Composer
+	AutoLock  bool
+	Empty     bool
+	// Problem is "", "unavailable", or "secrets". The list must not look empty.
+	Problem     string
+	Capped      bool
 	PrevHref    string
 	NextHref    string
 	ComposeHref string
@@ -194,6 +197,16 @@ func FormatWhen(l i18n.Locale, t time.Time) string {
 		return ""
 	}
 	return i18n.TimeShort(l, t)
+}
+
+func listProblem(p Page, d MailData) string {
+	if d.Problem == "secrets" {
+		return p.T("mail.secrets_missing")
+	}
+	if d.Query != "" {
+		return p.T("mail.search_failed")
+	}
+	return p.T("mail.list_failed")
 }
 
 func shellClass(d MailData) string {

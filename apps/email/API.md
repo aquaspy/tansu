@@ -73,9 +73,12 @@ Folder and message paths take the mailbox id. UIDs are per folder. Pass
 
 `GET /api/v1/accounts/{id}/messages?folder=INBOX&q=&page=1`
 
-Search is sent to IMAP. Empty `q` is every message. `from:ada`,
-`subject:hello`, and `since:2026-09-01` use those criteria; anything else
-is a `TEXT` search. Page size is 30, newest UID first.
+Search is sent to IMAP. Empty `q` loads one page of headers by sequence
+number (newest first) and does not download every UID. `from:ada`,
+`subject:hello`, and `since:2026-09-01` use those criteria. Other words
+match From, To, Cc, or Subject. `text:` and `body:` scan the whole message
+and can be slow. Page size is 30. At most 1000 newest matches are paged;
+`capped` is true when the server had more.
 
 ```json
 {

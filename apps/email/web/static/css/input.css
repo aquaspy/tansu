@@ -442,19 +442,26 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
   height: 2rem;
   padding: 0 0.75rem 0 0.5rem;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
-  background: var(--accent-soft);
-  color: var(--ink);
+  border: 1.5px solid var(--accent);
+  background: var(--surface);
+  color: var(--accent-2);
   text-decoration: none;
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 650;
   letter-spacing: 0.005em;
   white-space: nowrap;
+  box-shadow: var(--shadow-sm);
 }
-.account-link svg { width: 0.95rem; height: 0.95rem; color: var(--accent-2); flex: none; }
+.account-link svg { width: 0.95rem; height: 0.95rem; color: var(--accent); flex: none; }
 .account-link:hover {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.account-link:hover svg { color: var(--accent-ink); }
+.account-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .brand .account-link { width: 100%; justify-content: center; }
 .folder-list {
@@ -594,6 +601,21 @@ a.folder-item { font-size: 0.9rem; font-weight: 550; }
 .note-delete { opacity: 0; width: 1.9rem; height: 1.9rem; }
 .note-item:hover .note-delete, .note-delete:focus-visible { opacity: 0.8; }
 .empty-list { padding: 0.9rem 0.7rem; font-size: 0.88rem; }
+.empty-list.is-error {
+  color: var(--danger);
+  font-weight: 650;
+  background: var(--danger-soft);
+  border-radius: 12px;
+  margin: 0.35rem 0.15rem;
+}
+.empty-connect {
+  display: grid;
+  gap: 0.65rem;
+  justify-items: start;
+}
+.empty-connect .btn-new { width: auto; padding-inline: 1rem; }
+.empty-editor.is-error { color: var(--danger); font-weight: 650; }
+.empty-editor .btn-new { width: auto; margin-top: 0.85rem; padding-inline: 1rem; }
 
 /* ---- editor column ---- */
 

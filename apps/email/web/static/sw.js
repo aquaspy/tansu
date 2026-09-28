@@ -1,7 +1,7 @@
-const CACHE = "kuraemail-v1";
+const CACHE = "kuraemail-v2";
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(["/icon.svg", "/css/app.css"])));
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(["/icon.svg", "/icon.png", "/css/app.css"])));
   self.skipWaiting();
 });
 
@@ -29,7 +29,7 @@ self.addEventListener("fetch", (event) => {
   event.respondWith((async () => {
     try {
       const fresh = await fetch(request);
-      if (fresh.ok && (url.pathname.startsWith("/css/") || url.pathname.startsWith("/js/") || url.pathname === "/icon.svg")) {
+      if (fresh.ok && (url.pathname.startsWith("/css/") || url.pathname.startsWith("/js/") || url.pathname === "/icon.svg" || url.pathname === "/icon.png")) {
         const cache = await caches.open(CACHE);
         cache.put(request, fresh.clone());
       }

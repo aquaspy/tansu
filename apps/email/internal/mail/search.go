@@ -9,11 +9,13 @@ import (
 )
 
 // searchCriteria turns a box query into an IMAP SEARCH. Empty is ALL.
-// from:, subject:, and since:YYYY-MM-DD are sent as those keys; anything
-// else is TEXT so the server does the work.
+// from:, subject:, and since:YYYY-MM-DD are those keys. text: and body:
+// scan the whole message (slow on large mailboxes). Anything else matches
+// From, To, Cc, or Subject, which typical servers can answer without
+// reading every body.
 func searchCriteria(query string) *imap.SearchCriteria {
 	c := imap.NewSearchCriteria()
-	q := strings.TrimSpace(query)
+	q := trimQuery(query)
 	if q == "" {
 		return c
 	}
@@ -29,9 +31,43 @@ func searchCriteria(query string) *imap.SearchCriteria {
 			c.Since = t
 			return c
 		}
-		c.Text = []string{q}
+		return headerOr(q)
+	case strings.HasPrefix(lower, "text:"), strings.HasPrefix(lower, "body:"):
+		raw := strings.TrimSpace(q[strings.IndexByte(q, ':')+1:])
+		if raw == "" {
+			return c
+		}
+		c.Text = []string{raw}
 	default:
-		c.Text = []string{q}
+		return headerOr(q)
 	}
 	return c
+}
+
+// headerOr is OR OR OR FROM q TO q CC q SUBJECT q.
+func headerOr(q string) *imap.SearchCriteria {
+	fromTo := &imap.SearchCriteria{Or: [][2]*imap.SearchCriteria{{headerIs("From", q), headerIs("To", q)}}}
+	withCc := &imap.SearchCriteria{Or: [][2]*imap.SearchCriteria{{fromTo, headerIs("Cc", q)}}}
+	return &imap.SearchCriteria{Or: [][2]*imap.SearchCriteria{{withCc, headerIs("Subject", q)}}}
+}
+
+func headerIs(name, value string) *imap.SearchCriteria {
+	c := imap.NewSearchCriteria()
+	c.Header = textproto.MIMEHeader{name: {value}}
+	return c
+}
+
+func trimQuery(q string) string {
+	q = strings.TrimSpace(q)
+	q = strings.Map(func(r rune) rune {
+		if r < 32 || r == 127 {
+			return -1
+		}
+		return r
+	}, q)
+	rs := []rune(q)
+	if len(rs) > maxQueryRunes {
+		q = string(rs[:maxQueryRunes])
+	}
+	return q
 }
