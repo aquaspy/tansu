@@ -140,6 +140,21 @@ for a in account notes assistant calendar spend people email; do
 done
 ```
 
+Compose creates each new named volume as root. The image runs as `app`
+(uid 1000), and SQLite then exits with `unable to open database file (14)`
+until `/data` is owned by that user. In the app directory, once for that volume:
+
+```sh
+docker compose run --rm --user root --entrypoint chown web -R 1000:1000 /data
+docker compose up -d
+```
+
+`.env` `BIND` is the host address Compose publishes (`127.0.0.1:3000` and
+the rest of the table above). The published host port forwards to container
+port 80, so the process inside listens on `0.0.0.0:80`. The image sets that
+default; `env_file: .env` overrides it. A hosted override sets
+`BIND: 0.0.0.0:80` under `environment`.
+
 **6. Front it with Caddy** (automatic HTTPS for all seven hosts):
 
 ```
