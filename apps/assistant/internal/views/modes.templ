@@ -1,65 +1,162 @@
 package views
 
 // ModeSwitcher is Assistente · Conversa · Anônimo. Switching starts a new thread.
-templ ModeSwitcher(p Page, mode string) {
-	<div class="mode-switch" role="radiogroup" aria-label={ p.T("mode.label") }>
-		@modeChoice(p, "assistant", mode)
-		@modeChoice(p, "chat", mode)
-		if mode == "anonymous" {
-			<button type="button" class="mode-option is-on" aria-pressed="true" title={ p.T("mode.anonymous_tip") }>{ p.T("mode.anonymous") }</button>
-		} else {
-			<a class="mode-option" href="/anonymous?new=1" title={ p.T("mode.anonymous_tip") }>{ p.T("mode.anonymous") }</a>
-		}
+// list renders the same control as a vertical menu (threads that already have messages).
+templ ModeSwitcher(p Page, mode string, list bool) {
+	<div class={ modeSwitchClass(list) } role="group" aria-label={ p.T("mode.label") }>
+		@modeChoice(p, "assistant", mode, list)
+		@modeChoice(p, "chat", mode, list)
+		@modeAnonChoice(p, mode, list)
 	</div>
 }
 
-templ modeChoice(p Page, mode, current string) {
+templ modeChoice(p Page, mode, current string, list bool) {
 	if mode == current {
-		<button type="button" class="mode-option is-on" aria-pressed="true" title={ modeTip(p, mode) }>{ p.T("mode." + mode) }</button>
+		<button type="button" class="mode-option is-on" aria-current="true" title={ modeTip(p, mode) }>
+			<span>{ p.T("mode." + mode) }</span>
+			if list {
+				@modeCheck()
+			}
+		</button>
 	} else {
 		<form action="/conversations/" method="post" class="mode-form">
 			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
 			<input type="hidden" name="mode" value={ mode }/>
-			<button type="submit" class="mode-option" aria-pressed="false" title={ modeTip(p, mode) }>{ p.T("mode." + mode) }</button>
+			<button type="submit" class="mode-option" title={ modeTip(p, mode) }>
+				<span>{ p.T("mode." + mode) }</span>
+			</button>
 		</form>
 	}
+}
+
+templ modeAnonChoice(p Page, current string, list bool) {
+	if current == "anonymous" {
+		<button type="button" class="mode-option is-on" aria-current="true" title={ p.T("mode.anonymous_tip") }>
+			<span>{ p.T("mode.anonymous") }</span>
+			if list {
+				@modeCheck()
+			}
+		</button>
+	} else {
+		<a class="mode-option" href="/anonymous?new=1" title={ p.T("mode.anonymous_tip") }>
+			<span>{ p.T("mode.anonymous") }</span>
+		</a>
+	}
+}
+
+templ modeCheck() {
+	<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+}
+
+templ modeIcon(mode string) {
+	if mode == "chat" {
+		<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.8 3.6h10.4a1 1 0 0 1 1 1v5.2a1 1 0 0 1-1 1H8.1L5.2 13.1V10.8H2.8a1 1 0 0 1-1-1V4.6a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path></svg>
+	} else if mode == "anonymous" {
+		<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.2 8.1S4.3 4.8 8 4.8s5.8 3.3 5.8 3.3-2.1 3.3-5.8 3.3S2.2 8.1 2.2 8.1Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path><circle cx="8" cy="8.1" r="1.5" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M3.4 12.6 12.6 3.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+	} else {
+		<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.2" y="2.2" width="4.6" height="4.6" rx="0.8" fill="none" stroke="currentColor" stroke-width="1.3"></rect><rect x="9.2" y="2.2" width="4.6" height="4.6" rx="0.8" fill="none" stroke="currentColor" stroke-width="1.3"></rect><rect x="2.2" y="9.2" width="4.6" height="4.6" rx="0.8" fill="none" stroke="currentColor" stroke-width="1.3"></rect><rect x="9.2" y="9.2" width="4.6" height="4.6" rx="0.8" fill="none" stroke="currentColor" stroke-width="1.3"></rect></svg>
+	}
+}
+
+// ModeMenu is the small editor-bar label. Opening it starts a new chat in another mode.
+// dormant hides it until the thread has messages (saved chats). Anônimo stays visible.
+templ ModeMenu(p Page, mode string, dormant bool) {
+	<details class="mode-menu" data-controller="disclosure" data-thread-chrome hidden?={ dormant }>
+		<summary class="mode-tag" aria-label={ p.T("mode." + mode) }>
+			@modeIcon(mode)
+			<span class="mode-tag-label">{ p.T("mode." + mode) }</span>
+			<svg class="mode-tag-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 6.5 8 10l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+		</summary>
+		<div class="mode-panel">
+			<p class="mode-panel-label">{ p.T("mode.new_in") }</p>
+			@ModeSwitcher(p, mode, true)
+		</div>
+	</details>
+}
+
+// ModeHero is the empty-thread intro: switcher, heading, and mode-specific extras.
+templ ModeHero(p Page, mode string, badges []AppBadge, collapsed bool) {
+	<div class="mode-hero" data-anon-target="hero" hidden?={ collapsed }>
+		@ModeSwitcher(p, mode, false)
+		<h1 class="mode-hero-title">{ heroTitle(p, mode) }</h1>
+		<p class="mode-hero-lede">{ heroLede(p, mode) }</p>
+		if mode == "assistant" {
+			@AppStatus(p, badges)
+			@ExampleCards(p)
+			<button type="button" class="link-btn" data-action="examples#open">{ p.T("chat.more_examples") }</button>
+		}
+		if mode == "anonymous" {
+			<p class="mode-hero-note">{ p.T("mode.not_saved") } · { p.T("mode.not_saved_detail") }</p>
+			@AnonClearToggle(p)
+		}
+	</div>
 }
 
 func modeTip(p Page, mode string) string {
 	return p.T("mode." + mode + "_tip")
 }
 
-templ AppBadges(badges []AppBadge) {
-	if len(badges) > 0 {
-		<ul class="app-badges">
-			for _, b := range badges {
-				<li class={ "app-badge is-" + b.State } title={ b.Title }>{ b.Label }</li>
-			}
-		</ul>
+templ AppStatus(p Page, badges []AppBadge) {
+	if AppStatusKind(badges) == "ok" {
+		<span class="app-status is-ok" title={ appStatusTitle(p, badges) } aria-label={ appStatusLabel(p, badges) }>
+			<span class="app-status-dot" aria-hidden="true"></span>
+			<span class="app-status-text">{ appStatusLabel(p, badges) }</span>
+		</span>
+	} else {
+		<a href="/apps" class={ "app-status is-" + AppStatusKind(badges) } title={ appStatusTitle(p, badges) } aria-label={ appStatusLabel(p, badges) }>
+			<span class="app-status-dot" aria-hidden="true"></span>
+			<span class="app-status-text">{ appStatusLabel(p, badges) }</span>
+		</a>
 	}
 }
 
-templ ExampleBoard(p Page) {
-	<div class="examples" data-controller="examples">
-		<p class="examples-hint">{ p.T("chat.examples_hint") }</p>
+templ ExampleCards(p Page) {
+	<div class="example-grid">
 		for _, g := range ExampleGroups(p.L) {
-			<section class="example-group">
-				<h2>{ g.Label }</h2>
-				<div class="example-chips">
-					for _, item := range g.Items {
-						<button type="button" class="example-chip" data-action="examples#fill" data-examples-text-param={ item }>{ item }</button>
-					}
-				</div>
-			</section>
+			if len(g.Items) > 0 {
+				@exampleCard(g.Label, g.Items[0])
+			}
 		}
 	</div>
 }
 
-templ ExampleDrawer(p Page) {
-	<details class="can-do">
-		<summary>{ p.T("chat.what_can_i_do") }</summary>
-		@ExampleBoard(p)
-	</details>
+templ exampleCard(label, item string) {
+	<button type="button" class="example-chip example-card" data-action="examples#fill" data-examples-text-param={ item }>
+		if label != "" {
+			<span class="example-app">{ label }</span>
+		}
+		<span class="example-text">{ item }</span>
+	</button>
+}
+
+templ ExampleSheet(p Page) {
+	<dialog class="confirm-dialog examples-dialog" data-examples-target="dialog" data-action="click->examples#backdrop" aria-labelledby="examples-heading">
+		<p class="share-heading" id="examples-heading">{ p.T("chat.what_can_i_do") }</p>
+		<p class="examples-hint">{ p.T("chat.examples_hint") }</p>
+		<div class="examples examples-list">
+			for _, g := range ExampleGroups(p.L) {
+				<section class="example-group">
+					<p class="example-app">{ g.Label }</p>
+					for _, item := range g.Items {
+						@exampleCard("", item)
+					}
+				</section>
+			}
+		</div>
+		<form method="dialog" class="confirm-actions">
+			<button type="submit" class="btn-dialog">{ p.T("app.close") }</button>
+		</form>
+	</dialog>
+}
+
+templ AnonClearToggle(p Page) {
+	<label class="voice-option anon-close" title={ p.T("mode.clear_on_close_tip") }>
+		<input type="checkbox" data-anon-target="close" data-action="change->anon#close"/>
+		<span class="voice-pill">
+			<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 5.2v3.1l2.1 1.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+			<span>{ p.T("mode.clear_on_close") }</span>
+		</span>
+	</label>
 }
 
 templ ModelField(p Page, id string, models []string, current string, tiers map[string]string, prices map[string]string) {
@@ -138,6 +235,7 @@ templ AnonThread(p Page, d ShellData) {
 		data-controller="anon"
 		data-anon-failed-value={ p.T("js.anon_failed") }
 		data-anon-untitled-value={ p.T("chat.untitled") }
+		data-anon-thinking-value={ p.T("chat.thinking") }
 	>
 		<div class="editor-bar">
 			<a href="/conversations/" class="icon-btn back" aria-label={ p.T("app.cancel") }>
@@ -152,16 +250,26 @@ templ AnonThread(p Page, d ShellData) {
 				data-anon-target="title"
 				data-action="input->anon#title"
 			/>
+			@ModeMenu(p, "anonymous", false)
 			<span class="bar-spacer"></span>
+			<details class="mode-menu anon-history" data-controller="disclosure" data-anon-target="history" hidden>
+				<summary class="icon-btn" title={ p.T("mode.local_menu") } aria-label={ p.T("mode.local_menu") }>
+					<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 5.2v3.1l2.1 1.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+				</summary>
+				<div class="mode-panel">
+					<p class="mode-panel-label">{ p.T("mode.local_menu") }</p>
+					<div class="anon-local" data-anon-target="local"></div>
+					<div class="mode-panel-foot">
+						@AnonClearToggle(p)
+					</div>
+				</div>
+			</details>
 			<button type="button" class="icon-btn danger" data-action="anon#clear" title={ p.T("mode.clear") } aria-label={ p.T("mode.clear") }>
 				<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 5h9M6.2 5V3.8A1.2 1.2 0 0 1 7.4 2.6h1.2A1.2 1.2 0 0 1 9.8 3.8V5m-5.1 0 .5 7.2A1.3 1.3 0 0 0 6.5 13.4h3a1.3 1.3 0 0 0 1.3-1.2L11.3 5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
 			</button>
 		</div>
-		<div class="anon-local-wrap">
-			<p class="anon-local-label">{ p.T("mode.local") }</p>
-			<div class="anon-local" data-anon-target="local"></div>
-		</div>
-		<div class="transcript" id="anon-transcript" data-anon-target="transcript">
+		<div class={ transcriptClass(d.Anon == nil || len(d.Anon.Messages) == 0) } id="anon-transcript" data-anon-target="transcript">
+			@ModeHero(p, "anonymous", nil, d.Anon != nil && len(d.Anon.Messages) > 0)
 			if d.Anon != nil {
 				for _, m := range d.Anon.Messages {
 					@AnonArticle(m)
@@ -169,15 +277,6 @@ templ AnonThread(p Page, d ShellData) {
 			}
 		</div>
 		<div class="composer-dock">
-			@ModeSwitcher(p, "anonymous")
-			<div class="anon-banner">
-				<span class="anon-pill">{ p.T("mode.not_saved") }</span>
-				<p>{ p.T("mode.not_saved_detail") }</p>
-				<label class="anon-close" title={ p.T("mode.clear_on_close_tip") }>
-					<input type="checkbox" data-anon-target="close" data-action="change->anon#close"/>
-					<span>{ p.T("mode.clear_on_close") }</span>
-				</label>
-			</div>
 			if d.Anon != nil {
 				@AnonComposer(p, d.Anon)
 			}
@@ -227,7 +326,7 @@ templ AnonComposer(p Page, a *AnonPage) {
 				name="content"
 				rows="1"
 				maxlength="16384"
-				placeholder={ p.T("chat.placeholder") }
+				placeholder={ p.T("chat.placeholder_anon") }
 				autofocus?={ len(a.Messages) == 0 }
 				enterkeyhint="send"
 				data-composer-target="input"

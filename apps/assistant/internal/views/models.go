@@ -1,8 +1,10 @@
 package views
 
 import (
+	"strconv"
 	"strings"
 
+	"github.com/aquasp/kurachat/internal/i18n"
 	"github.com/aquasp/kurachat/internal/store"
 )
 
@@ -76,10 +78,10 @@ type ConversationDetail struct {
 	DeepOn        bool              // sticky deep-search toggle (false when disabled)
 	SearchAvail   bool              // SEARCH_ENABLED: toggles hidden when false
 	ShowControls  bool              // model and effort pickers
-	Badges        []AppBadge        // Assistente connection chips
+	Badges        []AppBadge        // Assistente connection status
 }
 
-// AppBadge is one sibling in the Assistente status row.
+// AppBadge is one linked sibling app in the Assistente status line.
 type AppBadge struct {
 	Label string
 	State string // ok or down
@@ -167,6 +169,138 @@ func BoolFlag(b bool) string {
 		return "1"
 	}
 	return "0"
+}
+
+func transcriptClass(empty bool) string {
+	if empty {
+		return "transcript is-empty"
+	}
+	return "transcript"
+}
+
+func modeSwitchClass(list bool) string {
+	if list {
+		return "mode-switch is-list"
+	}
+	return "mode-switch"
+}
+
+func heroTitle(p Page, mode string) string {
+	switch mode {
+	case "chat":
+		return p.T("mode.hero_chat")
+	case "anonymous":
+		return p.T("mode.hero_anonymous")
+	default:
+		return p.T("mode.hero_assistant")
+	}
+}
+
+func heroLede(p Page, mode string) string {
+	switch mode {
+	case "chat":
+		return p.T("mode.chat_lede")
+	case "anonymous":
+		return p.T("mode.anonymous_lede")
+	default:
+		return p.T("mode.assistant_lede")
+	}
+}
+
+// AppStatusKind is "none" (nothing linked), "ok", or "down".
+func AppStatusKind(badges []AppBadge) string {
+	if len(badges) == 0 {
+		return "none"
+	}
+	for _, b := range badges {
+		if b.State != "ok" {
+			return "down"
+		}
+	}
+	return "ok"
+}
+
+func downBadges(badges []AppBadge) []AppBadge {
+	out := make([]AppBadge, 0)
+	for _, b := range badges {
+		if b.State != "ok" {
+			out = append(out, b)
+		}
+	}
+	return out
+}
+
+func joinLabels(l i18n.Locale, labels []string) string {
+	n := len(labels)
+	if n == 0 {
+		return ""
+	}
+	if n == 1 {
+		return labels[0]
+	}
+	conj := " and "
+	if l == i18n.PT {
+		conj = " e "
+	}
+	if n == 2 {
+		return labels[0] + conj + labels[1]
+	}
+	return strings.Join(labels[:n-1], ", ") + conj + labels[n-1]
+}
+
+func appStatusOKTitle(p Page, badges []AppBadge) string {
+	labels := make([]string, len(badges))
+	for i, b := range badges {
+		labels[i] = b.Label
+	}
+	tail := "connected"
+	if p.L == i18n.PT {
+		tail = "conectados"
+	}
+	return joinLabels(p.L, labels) + " " + tail
+}
+
+func appStatusDownText(p Page, badges []AppBadge) string {
+	down := downBadges(badges)
+	if len(down) == 1 {
+		return p.T("chat.badge_down", "app", down[0].Label)
+	}
+	return p.T("chat.apps_down_many", "n", strconv.Itoa(len(down)))
+}
+
+func appStatusDownTitle(badges []AppBadge) string {
+	down := downBadges(badges)
+	parts := make([]string, len(down))
+	for i, b := range down {
+		parts[i] = b.Title
+	}
+	return strings.Join(parts, " · ")
+}
+
+func appStatusLabel(p Page, badges []AppBadge) string {
+	switch AppStatusKind(badges) {
+	case "none":
+		return p.T("chat.apps_none")
+	case "ok":
+		return p.T("chat.apps_ok")
+	default:
+		return appStatusDownText(p, badges)
+	}
+}
+
+func appStatusTitle(p Page, badges []AppBadge) string {
+	switch AppStatusKind(badges) {
+	case "none":
+		return p.T("chat.apps_none")
+	case "ok":
+		return appStatusOKTitle(p, badges)
+	default:
+		title := appStatusDownTitle(badges)
+		if title == "" {
+			return appStatusLabel(p, badges)
+		}
+		return title
+	}
 }
 
 // MsgClass builds the article class: "msg msg-user is-done" etc.

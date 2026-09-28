@@ -334,6 +334,16 @@
   };
 
   // ---- transcript ---------------------------------------------------------
+  function revealModeChrome(el) {
+    if (!el || !el.querySelector("article.msg:not(#msg-echo)")) return;
+    const hero = el.querySelector(".mode-hero");
+    if (hero) hero.hidden = true;
+    el.classList.remove("is-empty");
+    el.closest(".thread-col")?.querySelectorAll("[data-thread-chrome]").forEach((node) => {
+      node.hidden = false;
+    });
+  }
+
   controllers.transcript = {
     connect(el) {
       const st = state(el);
@@ -346,9 +356,11 @@
       };
       window.visualViewport?.addEventListener("resize", onViewport);
       el.scrollTop = el.scrollHeight;
+      revealModeChrome(el);
       new MutationObserver(() => {
         // Swap in the real echoed pair; drop the optimistic preview.
         if (el.querySelector("article.msg")) document.getElementById("msg-echo")?.remove();
+        revealModeChrome(el);
         if (st.stick) el.scrollTop = el.scrollHeight;
       }).observe(el, { childList: true, subtree: true });
     },
@@ -1196,12 +1208,44 @@
 
   // ---- prompt examples ----------------------------------------------------
   controllers.examples = {
-    fill({ params }) {
+    open({ scope }) {
+      target(scope, "examples", "dialog")?.showModal();
+    },
+    close({ scope }) {
+      target(scope, "examples", "dialog")?.close();
+    },
+    backdrop({ event, scope }) {
+      const box = target(scope, "examples", "dialog");
+      if (event.target === box) box?.close();
+    },
+    fill({ element, params }) {
       const input = document.querySelector('.composer textarea[name="content"]');
       if (!input || !params?.text) return;
       input.value = params.text;
       input.dispatchEvent(new Event("input", { bubbles: true }));
       input.focus();
+      element?.closest("dialog")?.close();
+    },
+  };
+
+  // Closes the "new chat in…" and anonymous history menus.
+  controllers.disclosure = {
+    connect() {
+      if (controllers.disclosure.bound) return;
+      controllers.disclosure.bound = true;
+      document.addEventListener("click", (event) => {
+        document.querySelectorAll("details.mode-menu[open]").forEach((item) => {
+          if (!item.contains(event.target)) item.removeAttribute("open");
+        });
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        document.querySelectorAll("details.mode-menu[open]").forEach((item) => {
+          const back = item.contains(document.activeElement);
+          item.removeAttribute("open");
+          if (back) item.querySelector("summary")?.focus();
+        });
+      });
     },
   };
 
@@ -1287,28 +1331,62 @@
     return data.threads.find((thread) => thread.id === data.active) || null;
   }
 
+  function anonCheckSVG() {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 16 16");
+    svg.setAttribute("aria-hidden", "true");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", "M3.5 8.5 6.5 11.5 12.5 4.5");
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", "currentColor");
+    path.setAttribute("stroke-width", "1.6");
+    path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("stroke-linejoin", "round");
+    svg.appendChild(path);
+    return svg;
+  }
+
+  function anonLocalButton(root, thread, active) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "model-option";
+    if (thread.id === active) {
+      button.classList.add("is-on");
+      button.setAttribute("aria-current", "true");
+    }
+    const name = document.createElement("span");
+    name.className = "model-option-name";
+    name.textContent = thread.title || root.dataset.anonUntitledValue || "";
+    button.append(name, anonCheckSVG());
+    button.dataset.action = "anon#open";
+    button.dataset.anonIdParam = thread.id;
+    return button;
+  }
+
   function anonRenderLocal(root, data) {
     const box = target(root, "anon", "local");
-    if (!box) return;
-    box.replaceChildren();
-    data.threads.forEach((thread) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = `anon-thread${thread.id === data.active ? " is-on" : ""}`;
-      button.textContent = thread.title || root.dataset.anonUntitledValue || "";
-      button.dataset.action = "anon#open";
-      button.dataset.anonIdParam = thread.id;
-      box.appendChild(button);
-    });
+    if (box) box.replaceChildren(...data.threads.map((thread) => anonLocalButton(root, thread, data.active)));
+    const history = target(root, "anon", "history");
+    if (history) {
+      const show = data.threads.length > 1;
+      history.hidden = !show;
+      if (!show) history.removeAttribute("open");
+    }
   }
 
   function anonRender(root, data) {
     const thread = anonActive(data);
     const box = target(root, "anon", "transcript");
     const title = target(root, "anon", "title");
+    const hero = target(root, "anon", "hero");
+    const empty = !thread || thread.messages.length === 0;
     if (box && thread) {
-      box.replaceChildren(...thread.messages.map(anonArticle));
+      const articles = thread.messages.map(anonArticle);
+      if (hero) box.replaceChildren(hero, ...articles);
+      else box.replaceChildren(...articles);
     }
+    if (hero) hero.hidden = !empty;
+    if (box) box.classList.toggle("is-empty", empty);
     if (title && thread && document.activeElement !== title) title.value = thread.title || "";
     anonRenderLocal(root, data);
   }
@@ -1316,8 +1394,9 @@
   controllers.anon = {
     connect(root) {
       const pref = anonPref();
-      const close = target(root, "anon", "close");
-      if (close) close.checked = pref.clearOnClose;
+      targets(root, "anon", "close").forEach((box) => {
+        box.checked = pref.clearOnClose;
+      });
       const params = new URLSearchParams(location.search);
       let data = anonLoad(pref.clearOnClose);
       if (params.get("new") === "1") {
@@ -1361,13 +1440,14 @@
       }
       anonRender(root, data);
     },
-    open({ scope, params }) {
+    open({ scope, element, params }) {
       if (!params?.id) return;
       const pref = anonPref();
       const data = anonLoad(pref.clearOnClose);
       if (!data.threads.some((thread) => thread.id === params.id)) return;
       data.active = params.id;
       anonSave(pref.clearOnClose, data);
+      element?.closest("details.mode-menu")?.removeAttribute("open");
       anonRender(scope, data);
     },
     title({ scope }) {
@@ -1380,9 +1460,11 @@
       anonSave(pref.clearOnClose, data);
       anonRenderLocal(scope, data);
     },
-    close({ scope }) {
-      const box = target(scope, "anon", "close");
-      const next = !!box?.checked;
+    close({ scope, element }) {
+      const next = !!(element?.checked ?? target(scope, "anon", "close")?.checked);
+      targets(scope, "anon", "close").forEach((box) => {
+        box.checked = next;
+      });
       const prev = anonPref().clearOnClose;
       const data = anonLoad(prev);
       anonSetPref(next);
@@ -1420,10 +1502,10 @@
       anonRender(scope, data);
       const pending = document.createElement("article");
       pending.className = "msg msg-assistant is-streaming";
-      pending.innerHTML = `<div class="msg-body"></div><p class="msg-status">${scope.dataset.anonUntitledValue ? "" : ""}</p>`;
+      pending.innerHTML = `<div class="msg-body"></div><p class="msg-status"></p>`;
       const body = pending.querySelector(".msg-body");
       const status = pending.querySelector(".msg-status");
-      if (status) status.textContent = "…";
+      if (status) status.textContent = scope.dataset.anonThinkingValue || "";
       target(scope, "anon", "transcript")?.appendChild(pending);
       const token = document.querySelector('meta[name="csrf-token"]')?.content || "";
       const payload = {
