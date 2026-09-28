@@ -92,6 +92,36 @@ CREATE TABLE IF NOT EXISTS sessions (
   last_seen_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS index_sessions_on_user_id ON sessions(user_id);
+CREATE TABLE IF NOT EXISTS ics_feeds (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  url TEXT NOT NULL,
+  paused INTEGER NOT NULL DEFAULT 0,
+  last_fetched_at TEXT,
+  last_error TEXT NOT NULL DEFAULT '',
+  event_count INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS index_ics_feeds_on_user_id ON ics_feeds(user_id);
+CREATE TABLE IF NOT EXISTS ics_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  feed_id INTEGER NOT NULL REFERENCES ics_feeds(id) ON DELETE CASCADE,
+  uid TEXT NOT NULL,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL DEFAULT '',
+  all_day INTEGER NOT NULL DEFAULT 1,
+  starts_on TEXT NOT NULL,
+  ends_on TEXT NOT NULL,
+  starts_at TEXT,
+  ends_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE(feed_id, uid)
+);
+CREATE INDEX IF NOT EXISTS index_ics_events_on_user_span ON ics_events(user_id, starts_on, ends_on);
 `
 
 type Store struct {

@@ -20,7 +20,7 @@ Calendar software tends to become infrastructure: invite RSVPs, free/busy, timez
 TansuCalendar is the second kind.
 
 - **Days you mark.** Simple events with times when you need them, including a yearly repeat. Birthdays are kept in Tansu People and show up here when the two apps share `KURA_SYNC_SECRET`.
-- **Holidays as packs, not plugins.** Flip on Brazil, the United States, Slovenia, and/or Czechia. Enough for a life that spans places — not a marketplace of calendar feeds.
+- **Holidays as packs, not plugins.** Flip on Brazil, the United States, Slovenia, and/or Czechia. Enough for a life that spans places — not a marketplace of calendar feeds. A public `.ics` link is the one exception, and it stays read-only.
 - **Your data stays a file.** Export JSON when you want a copy. Import adds; it does not overwrite your life by accident.
 - **No protocol cosplay.** If you need CalDAV and shared free/busy, use something built for that. This app is for *you*, on a VPS you trust.
 - **Same Tansu shell.** Auth, idle lock (per device), PWA offline month views, Compose on localhost.
@@ -35,12 +35,13 @@ Sister apps: [TansuNotes](../notes), [Tansu Assistant](../assistant), [TansuSpen
 - Month (and day) views with events and People-synced birthdays
 - Recurring events (daily, weekly, monthly, yearly, optional end date) and emoji on events and birthdays
 - Holiday packs: **BR**, **US**, **SI**, **CZ**
+- Read-only ICS feeds: paste an HTTPS link, see those events on the month, refresh or remove the feed
 - JSON export / import (import adds rows; it does not replace)
 - API tokens + JSON API for AI agents (see API.md)
 - Offline: reopen months you already opened; edits wait until you are back
 - Long-lived sessions with an optional idle lock (**per device**, not synced in the account DB); sign-out wipes the offline cache
 
-**What you do not get (on purpose):** CalDAV, shared calendars, invites, E2E encryption, outbound email password reset, or a bundled reverse proxy. You bring your own Caddy or nginx.
+**What you do not get (on purpose):** CalDAV, editing events that came from an ICS feed, two-way sync, Google sign-in, shared calendars, invites, E2E encryption, outbound email password reset, or a bundled reverse proxy. You bring your own Caddy or nginx.
 
 ---
 
@@ -159,6 +160,24 @@ Sign out **and** wait for the cache wipe. Until then, another person who opens t
 **Export** downloads JSON of events and birthdays.
 
 **Import** accepts that same JSON (a Rails-era export works too). It **adds** rows; it does not replace existing ones. Birthday rows in the file become yearly all-day events. Cap is 500 events + 500 birthdays per import; rows that fail validation are skipped and not counted.
+
+---
+
+## Subscribed calendars (ICS)
+
+**More → ICS feeds.** Paste an HTTPS link to a public `.ics` calendar (a Google or Apple public feed, or a rota that already publishes one). Tansu fetches it when you add it, when you press Refresh, and about every 15 minutes. Events show on the month with a dashed **ICS** mark and the feed’s name. Open one and it is read-only: there is no edit or delete on that event. Pause stops the refresh and leaves the events in place. Remove deletes the feed and its events.
+
+The link often contains a secret. It is stored so the server can refetch it. It is not written to logs, and the list shows only the hostname.
+
+Limits, on purpose: 8 feeds per account, 800 events per feed, roughly the past month through the next 14 months. These rows live in their own table, so they do not consume the 2,000 native events.
+
+Left out on purpose:
+
+- CalDAV and any write-back to the remote calendar
+- Editing or deleting a single subscribed event
+- Google OAuth or other account linking
+- Full RRULE. Daily, weekly, monthly, and yearly rules with an interval, count, until, and EXDATE are expanded. BYDAY and the other BY* parts keep only the first date. Feeds that already list each shift as its own event (common for rotas) need none of this.
+- Exporting ICS. JSON export stays the native events and birthdays.
 
 ---
 

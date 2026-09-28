@@ -140,7 +140,7 @@ func CellClass(c *calendar.Cell) string {
 	if c.Selected {
 		class += " is-selected"
 	}
-	if len(c.Events) > 0 || len(c.Birthdays) > 0 || len(c.Holidays) > 0 {
+	if len(c.Events) > 0 || len(c.ICSEvents) > 0 || len(c.Birthdays) > 0 || len(c.Holidays) > 0 {
 		class += " has-items"
 	}
 	return class
@@ -298,6 +298,57 @@ func SortedDayEvents(c *calendar.Cell) []*store.Event {
 		}
 	}
 	return out
+}
+
+// SortedDayICS mirrors SortedDayEvents for subscribed rows.
+func SortedDayICS(c *calendar.Cell) []*store.ICSEvent {
+	out := append([]*store.ICSEvent(nil), c.ICSEvents...)
+	for i := 1; i < len(out); i++ {
+		for j := i; j > 0 && lessICS(out[j], out[j-1]); j-- {
+			out[j], out[j-1] = out[j-1], out[j]
+		}
+	}
+	return out
+}
+
+func lessICS(a, b *store.ICSEvent) bool {
+	aa, bb := 1, 1
+	if a.AllDay {
+		aa = 0
+	}
+	if b.AllDay {
+		bb = 0
+	}
+	if aa != bb {
+		return aa < bb
+	}
+	if a.StartsAt != b.StartsAt {
+		return a.StartsAt < b.StartsAt
+	}
+	return a.ID < b.ID
+}
+
+// ICSWhen is the read-only detail line: the day (or span) plus the clock.
+func ICSWhen(p Page, e *store.ICSEvent) string {
+	start, ok := store.ParseDate(e.StartsOn)
+	when := e.StartsOn
+	if ok {
+		when = i18n.DayLabel(p.L, start)
+	}
+	if e.EndsOn != "" && e.EndsOn != e.StartsOn {
+		if end, ok := store.ParseDate(e.EndsOn); ok {
+			when += " – " + i18n.DayLabel(p.L, end)
+		} else {
+			when += " – " + e.EndsOn
+		}
+	}
+	if e.AllDay {
+		return when + " · " + p.T("app.all_day")
+	}
+	if label := e.TimeLabel(); label != "" {
+		return when + " · " + label
+	}
+	return when
 }
 
 func lessEvent(a, b *store.Event) bool {

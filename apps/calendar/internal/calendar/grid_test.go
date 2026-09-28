@@ -204,3 +204,61 @@ func TestMarksFirstThreePlusOverflow(t *testing.T) {
 		t.Fatal("two packs should tag countries")
 	}
 }
+
+func TestGridICSEventsAreSeparate(t *testing.T) {
+	st := openTest(t)
+	u, _ := st.CreateUser("ada@example.com", "digest")
+	if _, errs, err := st.CreateEvent(u.ID, store.EventInput{
+		Title: "Dentist", AllDay: true, StartsOn: "2026-09-28", EndsOn: "2026-09-28",
+	}); err != nil || len(errs) > 0 {
+		t.Fatalf("native: %v %+v", err, errs)
+	}
+	feed, err := st.CreateICSFeed(u.ID, "Work rota", "https://feeds.example/secret/cal.ics")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := st.ReplaceICSEvents(u.ID, feed.ID, []store.ICSEventInput{
+		{UID: "shift", Title: "Morning shift", Body: "Floor", AllDay: true, StartsOn: "2026-09-28", EndsOn: "2026-09-29"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	month := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	day := time.Date(2026, 9, 28, 0, 0, 0, 0, time.UTC)
+	g, err := BuildGrid(st, u.ID, nil, month, day, month)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cell := g.SelectedCell()
+	if cell.Empty() || len(cell.Events) != 1 || len(cell.ICSEvents) != 1 {
+		t.Fatalf("cell events=%d ics=%d", len(cell.Events), len(cell.ICSEvents))
+	}
+	if cell.ICSEvents[0].FeedName != "Work rota" || cell.ICSEvents[0].Title != "Morning shift" {
+		t.Fatalf("ics = %+v", cell.ICSEvents[0])
+	}
+	// Spans the next day too. Native events stay a different slice.
+	var next *Cell
+	for _, c := range g.Cells {
+		if c.Date.Format("2006-01-02") == "2026-09-29" {
+			next = c
+		}
+	}
+	if next == nil || len(next.ICSEvents) != 1 || len(next.Events) != 0 {
+		t.Fatalf("next = %+v", next)
+	}
+	marks, _ := cell.Marks(func(holidays.Holiday) string { return "" })
+	var sawEvent, sawICS bool
+	for _, m := range marks {
+		if m.Kind == "event" && m.Label == "Dentist" {
+			sawEvent = true
+		}
+		if m.Kind == "ics" && m.Label == "Morning shift" {
+			sawICS = true
+		}
+	}
+	if !sawEvent || !sawICS {
+		t.Fatalf("marks = %+v", marks)
+	}
+	if st.CountEvents(u.ID) != 1 {
+		t.Fatal("ics event counted against the native cap")
+	}
+}

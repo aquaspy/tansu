@@ -33,6 +33,9 @@ type Server struct {
 	Limiter *RateLimiter
 	DataDir string
 	WebDir  string
+	// FetchICS overrides the network fetch. Tests set it. Production leaves
+	// it nil, which downloads over HTTPS from public addresses only.
+	FetchICS func(ctx context.Context, rawURL string) ([]byte, error)
 }
 
 func NewServer(cfg config.Config, st *store.Store) *Server {
@@ -464,6 +467,12 @@ func (s *Server) Routes() *chi.Mux {
 		r.Get("/export", s.handleExport)
 		r.Post("/import", s.handleImport)
 		r.Post("/holidays", s.handleUpdateHolidays)
+
+		r.Get("/feeds", s.handleFeedsIndex)
+		r.Post("/feeds", s.handleFeedsCreate)
+		r.Post("/feeds/{id}/refresh", s.handleFeedsRefresh)
+		r.Post("/feeds/{id}/pause", s.handleFeedsPause)
+		r.Post("/feeds/{id}/delete", s.handleFeedsDestroy)
 
 		r.Post("/events", s.handleEventsCreate)
 		r.Patch("/events/{id}", s.handleEventsUpdate)
