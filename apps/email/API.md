@@ -76,9 +76,11 @@ Folder and message paths take the mailbox id. UIDs are per folder. Pass
 Search is sent to IMAP. Empty `q` loads one page of headers by sequence
 number (newest first) and does not download every UID. `from:ada`,
 `subject:hello`, and `since:2026-09-01` use those criteria. Other words
-match From, To, Cc, or Subject. `text:` and `body:` scan the whole message
-and can be slow. Page size is 30. At most 1000 newest matches are paged;
-`capped` is true when the server had more.
+match From, To, Cc, or Subject. `text:` and `body:` search the newest 200
+messages, not the whole mailbox: a full body scan does not finish on a
+large Dovecot inbox. Page size is 30. At most 1000 newest matches are paged.
+`capped` is true when the result is that newest slice, or when a body
+search did not cover the whole mailbox.
 
 ```json
 {

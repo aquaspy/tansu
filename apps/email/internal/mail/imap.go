@@ -13,6 +13,8 @@ import (
 
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
+	"github.com/emersion/go-imap/commands"
+	"github.com/emersion/go-imap/responses"
 )
 
 const logoutTimeout = 2 * time.Second
@@ -317,7 +319,7 @@ func listOn(cl *client.Client, folder, query string, page int) (Page, error) {
 	if query == "" {
 		return listRecent(cl, mbox, folder, page)
 	}
-	return listSearch(cl, folder, query, page)
+	return listSearch(cl, mbox, folder, query, page)
 }
 
 // listRecent fetches one page of headers by sequence number. The highest
@@ -350,16 +352,17 @@ func listRecent(cl *client.Client, mbox *imap.MailboxStatus, folder string, page
 	return out, nil
 }
 
-func listSearch(cl *client.Client, folder, query string, page int) (Page, error) {
-	uids, err := cl.UidSearch(searchCriteria(query))
+func listSearch(cl *client.Client, mbox *imap.MailboxStatus, folder, query string, page int) (Page, error) {
+	crit := searchCriteria(query)
+	windowed, err := limitBodyWindow(cl, mbox, crit)
 	if err != nil {
 		return Page{}, err
 	}
-	sort.Slice(uids, func(i, j int) bool { return uids[i] > uids[j] })
-	capped := len(uids) > maxSearchHits
-	if capped {
-		uids = uids[:maxSearchHits]
+	uids, more, err := uidSearch(cl, crit)
+	if err != nil {
+		return Page{}, err
 	}
+	capped := windowed || more
 	total := len(uids)
 	start := (page - 1) * PageSize
 	if start > total {
@@ -392,6 +395,145 @@ func listSearch(cl *client.Client, folder, query string, page int) (Page, error)
 	}
 	out.Messages = ordered
 	return out, nil
+}
+
+// limitBodyWindow pins text: and body: to the newest bodySearchSpan messages.
+// The start UID is fetched from the oldest of those sequences, so an expunge
+// gap does not slide the window past mail that is still in the box. Header
+// searches are not limited: Dovecot answers those without reading bodies.
+func limitBodyWindow(cl *client.Client, mbox *imap.MailboxStatus, crit *imap.SearchCriteria) (bool, error) {
+	if crit == nil || (len(crit.Text) == 0 && len(crit.Body) == 0) {
+		return false, nil
+	}
+	if mbox == nil || mbox.Messages <= bodySearchSpan {
+		return false, nil
+	}
+	seq := mbox.Messages - bodySearchSpan + 1
+	uid, err := fetchOneUID(cl, seq)
+	if err != nil || uid <= 1 {
+		if mbox.UidNext > bodySearchSpan+1 {
+			return limitBodyScan(crit, mbox.UidNext-bodySearchSpan), nil
+		}
+		if err != nil {
+			return false, err
+		}
+		return false, nil
+	}
+	return limitBodyScan(crit, uid), nil
+}
+
+func fetchOneUID(cl *client.Client, seq uint32) (uint32, error) {
+	set := new(imap.SeqSet)
+	set.AddNum(seq)
+	ch := make(chan *imap.Message, 1)
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- cl.Fetch(set, []imap.FetchItem{imap.FetchUid}, ch)
+	}()
+	var uid uint32
+	for msg := range ch {
+		if msg != nil && msg.SeqNum == seq && msg.Uid != 0 {
+			uid = msg.Uid
+		}
+	}
+	if err := <-errCh; err != nil {
+		return 0, err
+	}
+	if uid == 0 {
+		return 0, fmt.Errorf("imap: no uid for sequence %d", seq)
+	}
+	return uid, nil
+}
+
+// uidSearch runs UID SEARCH. When the server advertises ESEARCH, the result
+// is RETURN (ALL), a sequence-set, instead of one number per hit. go-imap's
+// UidSearch always asks for the expanded list and always sends CHARSET UTF-8.
+// ASCII criteria omit CHARSET; Dovecot accepts that and it avoids a charset
+// retry. The returned UIDs are newest first, at most maxSearchHits.
+func uidSearch(cl *client.Client, criteria *imap.SearchCriteria) ([]uint32, bool, error) {
+	esearch, err := cl.Support("ESEARCH")
+	if err != nil {
+		return nil, false, err
+	}
+	set, status, err := runUIDSearch(cl, criteria, esearch, searchCharset(criteria))
+	if err != nil {
+		return nil, false, err
+	}
+	if esearch && status != nil && status.Type == imap.StatusRespBad {
+		set, status, err = runUIDSearch(cl, criteria, false, searchCharset(criteria))
+		if err != nil {
+			return nil, false, err
+		}
+	}
+	if status != nil {
+		if err := status.Err(); err != nil {
+			return nil, false, err
+		}
+	}
+	uids, more := newestUIDs(set, maxSearchHits)
+	return uids, more, nil
+}
+
+type uidSearchCmd struct {
+	esearch  bool
+	charset  string
+	criteria *imap.SearchCriteria
+}
+
+func (c uidSearchCmd) Command() *imap.Command {
+	inner := &imap.Command{Name: "SEARCH"}
+	if c.esearch {
+		inner.Arguments = append(inner.Arguments, imap.RawString("RETURN"), []interface{}{imap.RawString("ALL")})
+	}
+	if c.charset != "" {
+		inner.Arguments = append(inner.Arguments, imap.RawString("CHARSET"), imap.RawString(c.charset))
+	}
+	if c.criteria == nil {
+		inner.Arguments = append(inner.Arguments, imap.RawString("ALL"))
+	} else {
+		inner.Arguments = append(inner.Arguments, c.criteria.Format()...)
+	}
+	return (&commands.Uid{Cmd: inner}).Command()
+}
+
+type uidSearchResp struct {
+	set *imap.SeqSet
+}
+
+func (r *uidSearchResp) Handle(resp imap.Resp) error {
+	name, fields, ok := imap.ParseNamedResp(resp)
+	if !ok {
+		return responses.ErrUnhandled
+	}
+	var (
+		set *imap.SeqSet
+		err error
+	)
+	switch name {
+	case "SEARCH":
+		set, err = seqSetFromIDs(fields)
+	case "ESEARCH":
+		set, err = seqSetFromEsearch(fields)
+	default:
+		return responses.ErrUnhandled
+	}
+	if err != nil {
+		return err
+	}
+	r.set = set
+	return nil
+}
+
+func runUIDSearch(cl *client.Client, criteria *imap.SearchCriteria, esearch bool, charset string) (*imap.SeqSet, *imap.StatusResp, error) {
+	res := &uidSearchResp{}
+	status, err := cl.Execute(uidSearchCmd{esearch: esearch, charset: charset, criteria: criteria}, res)
+	if err != nil {
+		return nil, status, err
+	}
+	if res.set == nil {
+		res.set = new(imap.SeqSet)
+	}
+	return res.set, status, nil
 }
 
 func headerFetchSection() *imap.BodySectionName {

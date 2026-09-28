@@ -15,6 +15,11 @@ const (
 	maxPage = 200
 	// maxSearchHits is how many newest matches a search will page through.
 	maxSearchHits = 1000
+	// bodySearchSpan is how many of the newest messages a text: or body:
+	// search may read. Dovecot scans message files for TEXT. On a Mailcow
+	// inbox of about 21k messages that scan did not answer within 45s, while
+	// the newest couple of hundred answered in about two seconds.
+	bodySearchSpan = 200
 	// maxQueryRunes caps a search string before it is sent to IMAP.
 	maxQueryRunes = 200
 	// maxFolders caps LIST results kept for the sidebar.
@@ -102,7 +107,9 @@ type Page struct {
 	PageSize int      `json:"page_size"`
 	Folder   string   `json:"folder"`
 	Query    string   `json:"query,omitempty"`
-	// Capped is true when Total is the newest maxSearchHits, not every match.
+	// Capped is true when Total is not every match: either the newest
+	// maxSearchHits, or a text:/body: scan of the newest bodySearchSpan
+	// messages.
 	Capped bool `json:"capped,omitempty"`
 }
 

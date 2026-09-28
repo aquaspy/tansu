@@ -16,7 +16,7 @@ It is part of the **Tansu** family: the same calm shell as [Tansu Notes](../note
 - Several mailboxes on one Tansu user (IMAP host, port, TLS, SMTP host, port, TLS, username, password, From address)
 - A connection test on save, with `last_ok` / `last_error`
 - Inbox, Sent, Trash, and the other folders `LIST` returns
-- Paginated message lists (headers only, newest page) and server-side search (`from:`, `subject:`, `since:YYYY-MM-DD`, header words, or `text:` / `body:` for a full-message scan)
+- Paginated message lists (headers only, newest page) and server-side search (`from:`, `subject:`, `since:YYYY-MM-DD`, header words, or `text:` / `body:` over the newest messages)
 - Read, reply, send, move to Trash, delete
 - Attachments downloaded when opened
 - API tokens for Assistant (see [API.md](API.md))
