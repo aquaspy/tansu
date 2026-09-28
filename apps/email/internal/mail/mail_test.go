@@ -2,8 +2,11 @@ package mail
 
 import (
 	"context"
+	"net"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aquasp/kuraemail/internal/mailtest"
 )
@@ -94,8 +97,15 @@ func TestSearchCriteria(t *testing.T) {
 		t.Fatal("since")
 	}
 	c = searchCriteria("packing list")
-	if len(c.Text) != 1 {
+	if len(c.Or) != 1 || len(c.Text) != 0 {
+		t.Fatal("bare query should search headers")
+	}
+	c = searchCriteria("text:packing list")
+	if len(c.Text) != 1 || c.Text[0] != "packing list" {
 		t.Fatal(c.Text)
+	}
+	if n := len([]rune(trimQuery(strings.Repeat("a", 250)))); n != maxQueryRunes {
+		t.Fatalf("query len %d", n)
 	}
 }
 
@@ -112,6 +122,117 @@ func TestBuildDoesNotEmbedPassword(t *testing.T) {
 	msg, err := parseRFC822(raw)
 	if err != nil || !strings.Contains(msg.Text, "Hello") {
 		t.Fatal(msg, err)
+	}
+}
+
+func TestSilentServerRespectsContext(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			time.Sleep(30 * time.Second)
+			c.Close()
+		}
+	}()
+	host, portStr, _ := net.SplitHostPort(ln.Addr().String())
+	port, _ := strconv.Atoi(portStr)
+	svc := NewService()
+	svc.DialTimeout = 30 * time.Second
+	svc.CommandTimeout = 30 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	_, err = svc.Folders(ctx, Creds{IMAPHost: host, IMAPPort: port, IMAPTLS: "none", Username: "a", Password: "b"})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if time.Since(start) > 2*time.Second {
+		t.Fatalf("hung for %s: %v", time.Since(start), err)
+	}
+}
+
+func TestSearchTimeoutIsAnError(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	go serveHangSearch(ln)
+	host, portStr, _ := net.SplitHostPort(ln.Addr().String())
+	port, _ := strconv.Atoi(portStr)
+	svc := NewService()
+	svc.DialTimeout = time.Second
+	svc.CommandTimeout = 400 * time.Millisecond
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	c := Creds{IMAPHost: host, IMAPPort: port, IMAPTLS: "none", Username: "a", Password: "b"}
+	page, err := svc.List(ctx, 1, c, "INBOX", "", 1)
+	if err != nil || page.Total < 1 || len(page.Messages) == 0 {
+		t.Fatalf("unfiltered list should not SEARCH: %+v %v", page, err)
+	}
+	start := time.Now()
+	_, err = svc.List(ctx, 1, c, "INBOX", "grok", 1)
+	if err == nil {
+		t.Fatal("expected search error")
+	}
+	if time.Since(start) > 3*time.Second {
+		t.Fatalf("search hung for %s", time.Since(start))
+	}
+}
+
+func serveHangSearch(ln net.Listener) {
+	for {
+		c, err := ln.Accept()
+		if err != nil {
+			return
+		}
+		go func(c net.Conn) {
+			defer c.Close()
+			_, _ = c.Write([]byte("* OK ready\r\n"))
+			buf := make([]byte, 4096)
+			var acc strings.Builder
+			for {
+				_ = c.SetReadDeadline(time.Now().Add(2 * time.Second))
+				n, err := c.Read(buf)
+				if n > 0 {
+					acc.Write(buf[:n])
+				}
+				for {
+					s := acc.String()
+					i := strings.Index(s, "\n")
+					if i < 0 {
+						break
+					}
+					line := s[:i]
+					acc.Reset()
+					acc.WriteString(s[i+1:])
+					if strings.Contains(strings.ToUpper(line), " SEARCH") {
+						return
+					}
+					tag, _, _ := strings.Cut(line, " ")
+					upper := strings.ToUpper(line)
+					switch {
+					case strings.Contains(upper, "EXAMINE"), strings.Contains(upper, "SELECT"):
+						_, _ = c.Write([]byte("* 1 EXISTS\r\n* 0 RECENT\r\n" + tag + " OK [READ-ONLY] SELECT\r\n"))
+					case strings.Contains(upper, "FETCH"):
+						body := "From: Ada <ada@example.com>\r\nSubject: Hello\r\n\r\n"
+						_, _ = c.Write([]byte("* 1 FETCH (UID 11 FLAGS (\\Seen) BODY[HEADER] {" + strconv.Itoa(len(body)) + "}\r\n" + body + ")\r\n" + tag + " OK FETCH\r\n"))
+					default:
+						_, _ = c.Write([]byte(tag + " OK done\r\n"))
+					}
+				}
+				if err != nil {
+					return
+				}
+			}
+		}(c)
 	}
 }
 

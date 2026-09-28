@@ -83,6 +83,9 @@ func (s *IMAP) handle(c net.Conn) {
 			name := strings.Trim(arg, "\"")
 			selected = name
 			fmt.Fprintf(w, "* 2 EXISTS\r\n* 0 RECENT\r\n* OK [UIDVALIDITY 1]\r\n* OK [UIDNEXT 12]\r\n%s OK [READ-WRITE] SELECT\r\n", tag)
+		case "FETCH":
+			s.writeMessages(w, arg, []string{"2", "1"}, []string{"11", "10"})
+			fmt.Fprintf(w, "%s OK FETCH\r\n", tag)
 		case "UID":
 			s.uid(w, r, tag, arg, selected)
 		case "LOGOUT":
@@ -95,6 +98,20 @@ func (s *IMAP) handle(c net.Conn) {
 			fmt.Fprintf(w, "%s OK done\r\n", tag)
 		}
 		w.Flush()
+	}
+}
+
+func (s *IMAP) writeMessages(w io.Writer, rest string, seqs, uids []string) {
+	header := "From: Ada <ada@example.com>\r\nTo: Bob <bob@example.com>\r\nSubject: Hello\r\nDate: Mon, 28 Sep 2026 12:00:00 +0000\r\nMessage-Id: <m1@example.com>\r\n\r\n"
+	body := header + "Hello from Ada.\r\n"
+	payload := header
+	section := fetchSection(rest)
+	if section == "BODY[]" {
+		payload = body
+	}
+	for i := range uids {
+		seq := seqs[i]
+		fmt.Fprintf(w, "* %s FETCH (UID %s FLAGS (\\Seen) %s {%d}\r\n%s)\r\n", seq, uids[i], section, len(payload), payload)
 	}
 }
 
@@ -129,20 +146,13 @@ func (s *IMAP) uid(w io.Writer, r *bufio.Reader, tag, arg, selected string) {
 		}
 		fmt.Fprintf(w, "* SEARCH 11 10\r\n%s OK SEARCH\r\n", tag)
 	case "FETCH":
-		header := "From: Ada <ada@example.com>\r\nTo: Bob <bob@example.com>\r\nSubject: Hello\r\nDate: Mon, 28 Sep 2026 12:00:00 +0000\r\nMessage-Id: <m1@example.com>\r\n\r\n"
-		body := header + "Hello from Ada.\r\n"
-		payload := header
-		section := fetchSection(rest)
-		if section == "BODY[]" {
-			payload = body
-		}
 		uids := []string{"11"}
+		seqs := []string{"1"}
 		if strings.Contains(rest, "10") {
 			uids = []string{"11", "10"}
+			seqs = []string{"2", "1"}
 		}
-		for i, uid := range uids {
-			fmt.Fprintf(w, "* %d FETCH (UID %s FLAGS (\\Seen) %s {%d}\r\n%s)\r\n", i+1, uid, section, len(payload), payload)
-		}
+		s.writeMessages(w, rest, seqs, uids)
 		fmt.Fprintf(w, "%s OK FETCH\r\n", tag)
 	case "MOVE":
 		s.mu.Lock()

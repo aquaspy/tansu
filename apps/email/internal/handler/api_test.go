@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aquasp/kuraemail/internal/config"
 	"github.com/aquasp/kuraemail/internal/mailtest"
@@ -158,6 +160,13 @@ func TestSignupShell(t *testing.T) {
 	if code != http.StatusOK || !strings.Contains(body, "Tansu Email") || !strings.Contains(body, "No mailbox yet") {
 		t.Fatalf("home: %d missing shell", code)
 	}
+	if !strings.Contains(body, "Connect mailbox") || !strings.Contains(body, "btn-new") || !strings.Contains(body, "/icon.png") {
+		t.Fatal("missing connect mailbox call to action or wordmark")
+	}
+	code, body, _ = f.get("/", map[string]string{"Accept-Language": "pt-BR"})
+	if code != http.StatusOK || !strings.Contains(body, "Conectar caixa") || !strings.Contains(body, "Nenhuma caixa ainda") {
+		t.Fatalf("pt home: %d", code)
+	}
 }
 
 func TestAPIMailboxRoundTrip(t *testing.T) {
@@ -252,9 +261,82 @@ func TestAPIMailboxRoundTrip(t *testing.T) {
 	if code != http.StatusOK || !strings.Contains(body, "Inbox") || !strings.Contains(body, "Hello") {
 		t.Fatalf("web list: %d", code)
 	}
+	code, body, _ = f.get("/?account="+id+"&folder=INBOX&q=text:missing", nil)
+	if code != http.StatusOK || !strings.Contains(body, "No messages match this search") || strings.Contains(body, "Nothing in this folder") || strings.Contains(body, "Search did not finish") {
+		t.Fatalf("empty search looked like a failure or an empty folder: %d", code)
+	}
 	code, body, _ = f.get("/read?account="+id+"&folder=INBOX&uid=11", nil)
 	if code != http.StatusOK || !strings.Contains(body, "Hello from Ada") {
 		t.Fatalf("web read: %d", code)
+	}
+}
+
+func TestUnavailableSearchIsNotAnEmptyFolder(t *testing.T) {
+	st, err := store.Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	key, err := decodeTestKey(testSecretsKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { ln.Close() })
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			time.Sleep(30 * time.Second)
+			c.Close()
+		}
+	}()
+	host, portStr, _ := net.SplitHostPort(ln.Addr().String())
+	port, _ := strconv.Atoi(portStr)
+	cfg := config.Config{DataDir: t.TempDir(), SignupEnabled: true, SecretsKey: key, KuraAccountURL: "https://account.example"}
+	srv := NewServer(cfg, st)
+	srv.WebDir = t.TempDir()
+	srv.Mail.DialTimeout = 300 * time.Millisecond
+	srv.Mail.CommandTimeout = 300 * time.Millisecond
+	ts := httptest.NewServer(srv.Routes())
+	t.Cleanup(ts.Close)
+	jar, _ := cookiejar.New(nil)
+	client := &http.Client{Jar: jar, CheckRedirect: func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}}
+	f := &flow{t: t, server: ts, client: client, store: st}
+	_, _, _ = f.get("/login", nil)
+	u := f.seedUser("you@example.com", "password1")
+	_, raw, err := st.CreateToken(u.ID, "agent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload := `{
+		"display_name":"Me","from_address":"me@example.com","username":"me","password":"s3cret-mail",
+		"imap_host":"` + host + `","imap_port":` + strconv.Itoa(port) + `,"imap_tls":"none",
+		"smtp_host":"127.0.0.1","smtp_port":1,"smtp_tls":"none"
+	}`
+	code, body, out := f.apiCall(http.MethodPost, "/api/v1/accounts", raw, payload)
+	if code != http.StatusCreated {
+		t.Fatalf("create: %d %s", code, body)
+	}
+	id := strconv.FormatFloat(out["account"].(map[string]any)["id"].(float64), 'f', 0, 64)
+	f.login("you@example.com", "password1")
+	code, body, _ = f.get("/?account="+id+"&q=grok", nil)
+	if code != http.StatusOK || !strings.Contains(body, "Search did not finish") || strings.Contains(body, "Nothing in this folder") {
+		t.Fatalf("search error page: %d has empty=%v", code, strings.Contains(body, "Nothing in this folder"))
+	}
+	if !strings.Contains(body, "Tansu Account") || !strings.Contains(body, "account.example") {
+		t.Fatal("account link missing")
+	}
+	code, body, _ = f.get("/?account="+id, map[string]string{"Accept-Language": "pt"})
+	if code != http.StatusOK || !strings.Contains(body, "Não foi possível carregar esta pasta") || strings.Contains(body, "Nada nesta pasta") {
+		t.Fatalf("pt list error: %d", code)
 	}
 }
 

@@ -8,7 +8,28 @@ import (
 	"time"
 )
 
-const PageSize = 30
+const (
+	// PageSize is how many headers one list page fetches.
+	PageSize = 30
+	// maxPage stops a huge page query from walking an entire mailbox.
+	maxPage = 200
+	// maxSearchHits is how many newest matches a search will page through.
+	maxSearchHits = 1000
+	// maxQueryRunes caps a search string before it is sent to IMAP.
+	maxQueryRunes = 200
+	// maxFolders caps LIST results kept for the sidebar.
+	maxFolders = 400
+	// maxCacheEntries bounds the short header-page cache.
+	maxCacheEntries = 64
+	// imapSlots bounds concurrent IMAP sessions for this process.
+	imapSlots = 6
+)
+
+// Dial and command budgets. A zero value on Service uses these.
+var (
+	defaultDialTimeout    = 10 * time.Second
+	defaultCommandTimeout = 25 * time.Second
+)
 
 // Creds is one mailbox's connection. Password is plaintext in memory only.
 type Creds struct {
@@ -40,6 +61,7 @@ type Header struct {
 	Date      time.Time `json:"date"`
 	Seen      bool      `json:"seen"`
 	MessageID string    `json:"message_id,omitempty"`
+	seq       uint32
 }
 
 // Attachment is metadata for one MIME part. Bytes are fetched separately.
@@ -80,6 +102,8 @@ type Page struct {
 	PageSize int      `json:"page_size"`
 	Folder   string   `json:"folder"`
 	Query    string   `json:"query,omitempty"`
+	// Capped is true when Total is the newest maxSearchHits, not every match.
+	Capped bool `json:"capped,omitempty"`
 }
 
 // Preview is a send that has not touched SMTP.
@@ -98,12 +122,55 @@ var (
 )
 
 // Service is the on-demand mail client plus a short header-page cache.
+// DialTimeout and CommandTimeout override the defaults when set (tests).
 type Service struct {
-	cache *listCache
+	cache          *listCache
+	sem            chan struct{}
+	DialTimeout    time.Duration
+	CommandTimeout time.Duration
 }
 
 func NewService() *Service {
-	return &Service{cache: newListCache(20 * time.Second)}
+	return &Service{
+		cache: newListCache(20 * time.Second),
+		sem:   make(chan struct{}, imapSlots),
+	}
+}
+
+func (s *Service) dialTimeout() time.Duration {
+	if s != nil && s.DialTimeout > 0 {
+		return s.DialTimeout
+	}
+	return defaultDialTimeout
+}
+
+func (s *Service) commandTimeout() time.Duration {
+	if s != nil && s.CommandTimeout > 0 {
+		return s.CommandTimeout
+	}
+	return defaultCommandTimeout
+}
+
+func (s *Service) acquire(ctx context.Context) error {
+	if s == nil || s.sem == nil {
+		return nil
+	}
+	select {
+	case s.sem <- struct{}{}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (s *Service) release() {
+	if s == nil || s.sem == nil {
+		return
+	}
+	select {
+	case <-s.sem:
+	default:
+	}
 }
 
 func (s *Service) invalidate(accountID int64) {
@@ -114,7 +181,13 @@ func (s *Service) invalidate(accountID int64) {
 
 // Test logs into IMAP and authenticates to SMTP. It does not send mail.
 func (s *Service) Test(ctx context.Context, c Creds) error {
-	if err := testIMAP(ctx, c); err != nil {
+	sess, err := s.Open(ctx, c)
+	if err != nil {
+		return err
+	}
+	_, err = sess.Folders()
+	sess.Close()
+	if err != nil {
 		return err
 	}
 	return testSMTP(ctx, c)
@@ -122,34 +195,44 @@ func (s *Service) Test(ctx context.Context, c Creds) error {
 
 // Folders returns LIST results worth showing.
 func (s *Service) Folders(ctx context.Context, c Creds) ([]Folder, error) {
-	return listFolders(ctx, c)
+	sess, err := s.Open(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	defer sess.Close()
+	return sess.Folders()
 }
 
-// List returns one page of headers. query is delegated to the server.
+// List returns one page of headers. An empty query fetches that page by
+// sequence number. A query is an IMAP SEARCH, then one header FETCH.
 func (s *Service) List(ctx context.Context, accountID int64, c Creds, folder, query string, page int) (Page, error) {
-	if page < 1 {
-		page = 1
-	}
+	page = clampPage(page)
 	folder = defaultFolder(folder)
+	query = trimQuery(query)
 	if p, ok := s.cache.get(accountID, folder, query, page); ok {
 		return p, nil
 	}
-	p, err := listMessages(ctx, c, folder, query, page)
+	sess, err := s.Open(ctx, c)
 	if err != nil {
 		return Page{}, err
 	}
-	s.cache.put(accountID, folder, query, page, p)
-	return p, nil
+	defer sess.Close()
+	return s.listCached(sess.cl, accountID, folder, query, page)
 }
 
 // Read fetches one message body.
 func (s *Service) Read(ctx context.Context, c Creds, folder string, uid uint32) (*Message, error) {
-	return fetchMessage(ctx, c, defaultFolder(folder), uid)
+	sess, err := s.Open(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	defer sess.Close()
+	return readOn(sess.cl, defaultFolder(folder), uid)
 }
 
 // Attachment returns one part's bytes.
 func (s *Service) Attachment(ctx context.Context, c Creds, folder string, uid uint32, index int) (name, mime string, body []byte, err error) {
-	msg, err := fetchMessage(ctx, c, defaultFolder(folder), uid)
+	msg, err := s.Read(ctx, c, folder, uid)
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -164,13 +247,23 @@ func (s *Service) Attachment(ctx context.Context, c Creds, folder string, uid ui
 // are deleted.
 func (s *Service) Trash(ctx context.Context, accountID int64, c Creds, folder string, uid uint32) error {
 	defer s.invalidate(accountID)
-	return moveToTrash(ctx, c, defaultFolder(folder), uid)
+	sess, err := s.Open(ctx, c)
+	if err != nil {
+		return err
+	}
+	defer sess.Close()
+	return moveOn(sess.cl, defaultFolder(folder), uid)
 }
 
 // Delete expunges a message from its folder.
 func (s *Service) Delete(ctx context.Context, accountID int64, c Creds, folder string, uid uint32) error {
 	defer s.invalidate(accountID)
-	return deleteMessage(ctx, c, defaultFolder(folder), uid)
+	sess, err := s.Open(ctx, c)
+	if err != nil {
+		return err
+	}
+	defer sess.Close()
+	return deleteOn(sess.cl, defaultFolder(folder), uid)
 }
 
 // Preview checks a draft and returns what send would transmit.
@@ -206,4 +299,14 @@ func defaultFolder(name string) string {
 		return "INBOX"
 	}
 	return name
+}
+
+func clampPage(page int) int {
+	if page < 1 {
+		return 1
+	}
+	if page > maxPage {
+		return maxPage
+	}
+	return page
 }

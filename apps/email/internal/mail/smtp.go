@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -72,22 +73,26 @@ func dotStuff(raw []byte) []byte {
 }
 
 type smtpConn struct {
-	c net.Conn
-	r *lineReader
-	w net.Conn
+	c    net.Conn
+	r    *lineReader
+	w    net.Conn
+	stop func()
 }
 
 func dialSMTP(ctx context.Context, c Creds) (*smtpConn, error) {
 	addr := net.JoinHostPort(c.SMTPHost, fmt.Sprint(c.SMTPPort))
-	d := &net.Dialer{Timeout: dialTimeout}
+	d := &net.Dialer{Timeout: defaultDialTimeout}
 	raw, err := d.DialContext(ctx, "tcp", addr)
 	if err != nil {
 		return nil, err
 	}
-	_ = raw.SetDeadline(time.Now().Add(dialTimeout))
+	if err := raw.SetDeadline(connDeadline(ctx, defaultDialTimeout)); err != nil {
+		raw.Close()
+		return nil, err
+	}
 	conn := raw
 	if c.SMTPTLS != "starttls" && c.SMTPTLS != "none" {
-		tlsConn := tls.Client(raw, &tls.Config{ServerName: c.SMTPHost})
+		tlsConn := tls.Client(raw, &tls.Config{ServerName: c.SMTPHost, MinVersion: tls.VersionTLS12})
 		if err := tlsConn.HandshakeContext(ctx); err != nil {
 			raw.Close()
 			return nil, err
@@ -113,7 +118,7 @@ func dialSMTP(ctx context.Context, c Creds) (*smtpConn, error) {
 			sc.close()
 			return nil, err
 		}
-		tlsConn := tls.Client(conn, &tls.Config{ServerName: c.SMTPHost})
+		tlsConn := tls.Client(conn, &tls.Config{ServerName: c.SMTPHost, MinVersion: tls.VersionTLS12})
 		if err := tlsConn.HandshakeContext(ctx); err != nil {
 			sc.close()
 			return nil, err
@@ -121,11 +126,19 @@ func dialSMTP(ctx context.Context, c Creds) (*smtpConn, error) {
 		sc.c = tlsConn
 		sc.w = tlsConn
 		sc.r = newLineReader(tlsConn)
+		conn = tlsConn
 		if err := sc.cmdOK("EHLO tansu"); err != nil {
 			sc.close()
 			return nil, err
 		}
 	}
+	// The dial deadline covered the handshake. The rest of the session
+	// gets its own budget, and a cancelled request closes the socket.
+	if err := conn.SetDeadline(connDeadline(ctx, defaultCommandTimeout)); err != nil {
+		sc.close()
+		return nil, err
+	}
+	sc.stop = watchConn(ctx, conn)
 	return sc, nil
 }
 
@@ -194,8 +207,26 @@ func (s *smtpConn) close() {
 	if s == nil || s.c == nil {
 		return
 	}
+	if s.stop != nil {
+		s.stop()
+		s.stop = nil
+	}
+	_ = s.c.SetDeadline(time.Now().Add(logoutTimeout))
 	_, _ = fmt.Fprintf(s.w, "QUIT\r\n")
 	_ = s.c.Close()
+}
+
+func watchConn(ctx context.Context, conn net.Conn) func() {
+	done := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+			_ = conn.Close()
+		case <-done:
+		}
+	}()
+	var once sync.Once
+	return func() { once.Do(func() { close(done) }) }
 }
 
 type lineReader struct {
