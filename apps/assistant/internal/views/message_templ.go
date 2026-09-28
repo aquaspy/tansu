@@ -478,9 +478,9 @@ func ActionCards(p Page, m *MessageView, convID int64) templ.Component {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var26 string
-					templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(p.T("chat.confirm_delete"))
+					templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(confirmLabel(p, a))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/message.templ`, Line: 67, Col: 115}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/message.templ`, Line: 67, Col: 107}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 					if templ_7745c5c3_Err != nil {

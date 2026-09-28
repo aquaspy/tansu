@@ -1,5 +1,5 @@
 #!/bin/sh
-# Suite E2E: one Tansu Account + all six apps on scratch ports.
+# Suite E2E: one Tansu Account + all six sibling apps on scratch ports.
 # Builds from this repo into .e2e/ (gitignored). Nothing here touches
 # production ports or data.
 #
@@ -11,8 +11,8 @@ ACCT=http://127.0.0.1:3206
 SECRET=e2e6-secret-0123456789
 
 # app dir -> "binary:port" (dirs are new names, binary/client ids stay kura*)
-APPS="account:kuraaccount:3206 notes:kuranotes:3200 assistant:kurachat:3201 calendar:kuracalendar:3203 spend:kuraspend:3204 people:kurapeople:3205"
-CLIENTS="notes:kuranotes:3200 assistant:kurachat:3201 calendar:kuracalendar:3203 spend:kuraspend:3204 people:kurapeople:3205"
+APPS="account:kuraaccount:3206 notes:kuranotes:3200 assistant:kurachat:3201 email:kuraemail:3202 calendar:kuracalendar:3203 spend:kuraspend:3204 people:kurapeople:3205"
+CLIENTS="notes:kuranotes:3200 assistant:kurachat:3201 email:kuraemail:3202 calendar:kuracalendar:3203 spend:kuraspend:3204 people:kurapeople:3205"
 
 build_all() {
   mkdir -p "$WORK"
@@ -53,7 +53,7 @@ stop_all() {
   # Bracket trick: the pattern never matches this script's own cmdline.
   for pat in 'e2e/kuraaccoun[t] serve' 'e2e/kuranote[s] serve' 'e2e/kuracha[t] serve' \
              'e2e/kuracalenda[r] serve' 'e2e/kuraspen[d] serve' \
-             'e2e/kurapeopl[e] serve' 'e2e/kurahom[e] serve'; do
+             'e2e/kurapeopl[e] serve' 'e2e/kuraemai[l] serve' 'e2e/kurahom[e] serve'; do
     for pid in $(pgrep -f "$pat"); do kill "$pid" 2>/dev/null; done
   done
   echo stopped
@@ -121,8 +121,8 @@ run_test() {
   done
   curl -s -b $WORK/jarA $ACCT/ -o $WORK/hub.html -w "hub: %{http_code}\n"
   LIT=$(grep -o 'class="drawer lit"' $WORK/hub.html | wc -l)
-  echo "lit drawers: $LIT (want 5)"
-  [ "$LIT" = "5" ] || FAIL=1
+  echo "lit drawers: $LIT (want 6)"
+  [ "$LIT" = "6" ] || FAIL=1
   # Standalone regression, live: password signup on notes with a local user.
   rm -f $WORK/jar-local
   curl -s -c $WORK/jar-local http://127.0.0.1:3200/signup -o /dev/null
@@ -135,7 +135,7 @@ run_test() {
   BTN=$(curl -s http://127.0.0.1:3200/login | grep -c "login/kura" || true)
   echo "standalone signup: $S home: $H kura-button-present: $BTN"
   [ "$S" = "303" ] && [ "$H" = "200" ] && [ "$BTN" -ge 1 ] || FAIL=1
-  if [ "$FAIL" = "0" ]; then echo "E2E-5: ALL GREEN"; else echo "E2E-5: FAILURES"; fi
+  if [ "$FAIL" = "0" ]; then echo "E2E-6: ALL GREEN"; else echo "E2E-6: FAILURES"; fi
   return $FAIL
 }
 

@@ -1,0 +1,8 @@
+# Loaded automatically with docker-compose.yml.
+# Hosted Caddy on the VPS proxies email.gettansu.com to 127.0.0.1:3015
+# (calendar is 3013, spend is 3014). !override replaces the base port
+# list so Compose does not publish a second mapping.
+services:
+  web:
+    ports: !override
+      - "127.0.0.1:3015:80"

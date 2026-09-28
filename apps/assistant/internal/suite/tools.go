@@ -49,16 +49,31 @@ const (
 	SpendPaymentDayCreate   = "spend_payment_day_create"
 	SpendPaymentDayUpdate   = "spend_payment_day_update"
 	SpendPaymentDayDelete   = "spend_payment_day_delete"
+	MailAccounts            = "mail_accounts"
+	MailFolders             = "mail_folders"
+	MailList                = "mail_list"
+	MailSearch              = "mail_search"
+	MailRead                = "mail_read"
+	MailTrash               = "mail_trash"
+	MailDelete              = "mail_delete"
+	MailCompose             = "mail_compose"
+	MailSend                = "mail_send"
 )
 
-// IsDelete reports a tool that waits for the confirm button.
+// IsDelete reports a tool that removes or trashes a record and waits for confirm.
 func IsDelete(name string) bool {
 	switch name {
-	case NotesDelete, NotesFolderDelete, CalDelete, PeopleDelete, SpendDelete, SpendSubscriptionDelete, SpendPaymentDayDelete:
+	case NotesDelete, NotesFolderDelete, CalDelete, PeopleDelete, SpendDelete, SpendSubscriptionDelete, SpendPaymentDayDelete, MailTrash, MailDelete:
 		return true
 	}
 	return false
 }
+
+// IsSend reports the email tool that SMTP-sends only after confirm.
+func IsSend(name string) bool { return name == MailSend }
+
+// NeedsConfirm reports a tool the chat holds until the person approves it.
+func NeedsConfirm(name string) bool { return IsDelete(name) || IsSend(name) }
 
 // ToolsFor returns the function tools for the connected app names.
 func ToolsFor(apps []string) []openrouter.Tool {
@@ -260,8 +275,41 @@ func toolset(app string) []openrouter.Tool {
 			{Name: SpendPaymentDayUpdate, Description: "Update a payment day by id. Partial merge: send only fields that change.", Parameters: obj(updatePay, []string{"id"})},
 			{Name: SpendPaymentDayDelete, Description: "Ask to delete one payment day. It does not run until the person confirms.", Parameters: obj(map[string]any{"id": intProp("payment day id")}, []string{"id"})},
 		}
+	case "email":
+		return []openrouter.Tool{
+			{Name: MailAccounts, Description: "List connected mailboxes. Returns id, display name, from address, and last connection status. No passwords.", Parameters: obj(map[string]any{}, nil)},
+			{Name: MailFolders, Description: "List folders on one mailbox. special is inbox, sent, trash, drafts, junk, archive, or empty.", Parameters: obj(map[string]any{"account_id": intProp("mailbox id")}, []string{"account_id"})},
+			{Name: MailList, Description: "List one page of message headers in a folder. Bodies are not included. folder defaults to INBOX. page starts at 1.", Parameters: obj(map[string]any{"account_id": intProp("mailbox id"), "folder": strProp("folder name, default INBOX"), "page": intProp("page number, default 1")}, []string{"account_id"})},
+			{Name: MailSearch, Description: "Search one folder on the mail server. q empty lists the folder. from:ada, subject:hello, and since:YYYY-MM-DD use those criteria. Anything else is a text search.", Parameters: obj(map[string]any{"account_id": intProp("mailbox id"), "q": strProp("search text"), "folder": strProp("folder name, default INBOX"), "page": intProp("page number")}, []string{"account_id", "q"})},
+			{Name: MailRead, Description: "Read one message by UID in a folder, including text and attachment names. HTML is reduced to text.", Parameters: obj(map[string]any{"account_id": intProp("mailbox id"), "uid": intProp("IMAP UID"), "folder": strProp("folder name, default INBOX")}, []string{"account_id", "uid"})},
+			{Name: MailTrash, Description: "Ask to move one message to Trash. It does not run until the person confirms. If the message is already in Trash, it is deleted.", Parameters: obj(map[string]any{"account_id": intProp("mailbox id"), "uid": intProp("IMAP UID"), "folder": strProp("folder name")}, []string{"account_id", "uid"})},
+			{Name: MailDelete, Description: "Ask to delete one message from its folder. It does not run until the person confirms.", Parameters: obj(map[string]any{"account_id": intProp("mailbox id"), "uid": intProp("IMAP UID"), "folder": strProp("folder name")}, []string{"account_id", "uid"})},
+			{Name: MailCompose, Description: "Preview a new message or reply. It does not send. Show the preview to the person, then call mail_send only after they agree.", Parameters: obj(mailFields(), []string{"account_id", "to", "body"})},
+			{Name: MailSend, Description: "Ask to send a message over SMTP. It does not send until the person confirms. Call mail_compose first and show that preview.", Parameters: obj(mailFields(), []string{"account_id", "to", "body"})},
+		}
 	}
 	return nil
+}
+
+func mailFields() map[string]any {
+	return map[string]any{
+		"account_id":  intProp("mailbox id"),
+		"to":          addrListProp("recipient addresses"),
+		"cc":          addrListProp("cc addresses"),
+		"bcc":         addrListProp("bcc addresses"),
+		"subject":     strProp("subject line"),
+		"body":        strProp("plain text body"),
+		"in_reply_to": strProp("Message-Id being answered"),
+		"references":  strProp("References header"),
+	}
+}
+
+func addrListProp(desc string) map[string]any {
+	return map[string]any{
+		"type":        "array",
+		"description": desc,
+		"items":       map[string]any{"type": "string"},
+	}
 }
 
 // Outcome is what the model sees after a call.
@@ -276,10 +324,10 @@ type Outcome struct {
 	ID        int64
 }
 
-// Execute runs one non-delete tool, or an already-approved delete.
+// Execute runs one tool. Deletes and mail sends wait until approvedDelete is true.
 func Execute(ctx context.Context, c *Client, name string, args map[string]any, approvedDelete bool) Outcome {
 	app := appOf(name)
-	if IsDelete(name) && !approvedDelete {
+	if NeedsConfirm(name) && !approvedDelete {
 		return Outcome{Body: `{"error":"needs_confirm"}`, App: app}
 	}
 	args = unwrapArgs(name, args)
@@ -363,13 +411,15 @@ func appOf(name string) string {
 		return "people"
 	case strings.HasPrefix(name, "spend"):
 		return "spend"
+	case strings.HasPrefix(name, "mail"):
+		return "email"
 	}
 	return ""
 }
 
 func isListTool(name string) bool {
 	switch name {
-	case NotesSearch, NotesFolders, PeopleSearch, CalList, SpendList, SpendSubscriptionList, SpendPaymentDayList:
+	case NotesSearch, NotesFolders, PeopleSearch, CalList, SpendList, SpendSubscriptionList, SpendPaymentDayList, MailAccounts, MailFolders, MailList, MailSearch:
 		return true
 	}
 	return false
@@ -391,6 +441,12 @@ func listKey(name string) string {
 		return "subscriptions"
 	case SpendPaymentDayList:
 		return "payment_days"
+	case MailAccounts:
+		return "accounts"
+	case MailFolders:
+		return "mail_folders"
+	case MailList, MailSearch:
+		return "messages"
 	}
 	return ""
 }
@@ -411,6 +467,8 @@ func objectKey(name string) string {
 		return "event"
 	case strings.HasPrefix(name, "spend"):
 		return "expense"
+	case name == MailRead:
+		return "message"
 	}
 	return ""
 }
@@ -448,6 +506,12 @@ func titleFrom(payload, key string) string {
 		return ""
 	}
 	if s, _ := m["title"].(string); s != "" {
+		return s
+	}
+	if s, _ := m["subject"].(string); s != "" {
+		return s
+	}
+	if s, _ := m["display_name"].(string); s != "" {
 		return s
 	}
 	s, _ := m["name"].(string)
@@ -568,8 +632,116 @@ func route(name string, args map[string]any) (method, path string, body any, kin
 		return http.MethodPatch, "/api/v1/payment_days/" + strconv.FormatInt(id, 10), map[string]any{"payment_day": paymentDayBody(args)}, "payment_days", true
 	case SpendPaymentDayDelete:
 		return http.MethodDelete, "/api/v1/payment_days/" + strconv.FormatInt(id, 10), nil, "payment_days", true
+	case MailAccounts:
+		return http.MethodGet, "/api/v1/accounts", nil, "accounts", false
+	case MailFolders:
+		return http.MethodGet, mailPath(args, "/folders"), nil, "mail_folders", false
+	case MailList, MailSearch:
+		return http.MethodGet, withQuery(mailPath(args, "/messages"), mailQuery(args)), nil, "messages", false
+	case MailRead:
+		return http.MethodGet, withQuery(mailPath(args, "/messages/"+strconv.Itoa(intField(args, "uid"))), mailQuery(args)), nil, "message", false
+	case MailTrash:
+		return http.MethodPost, withQuery(mailPath(args, "/messages/"+strconv.Itoa(intField(args, "uid"))+"/trash"), mailQuery(args)), nil, "message", true
+	case MailDelete:
+		return http.MethodDelete, withQuery(mailPath(args, "/messages/"+strconv.Itoa(intField(args, "uid"))), mailQuery(args)), nil, "message", true
+	case MailCompose:
+		return http.MethodPost, mailPath(args, "/preview"), mailBody(args), "preview", false
+	case MailSend:
+		return http.MethodPost, mailPath(args, "/send"), mailBody(args), "send", true
 	}
 	return "", "", nil, "", false
+}
+
+func mailPath(args map[string]any, suffix string) string {
+	return "/api/v1/accounts/" + strconv.Itoa(intField(args, "account_id")) + suffix
+}
+
+func mailQuery(args map[string]any) url.Values {
+	q := url.Values{}
+	if s := strings.TrimSpace(strArg(args, "folder")); s != "" {
+		q.Set("folder", s)
+	}
+	if s := strings.TrimSpace(strArg(args, "q")); s != "" {
+		q.Set("q", s)
+	}
+	if p := intField(args, "page"); p > 0 {
+		q.Set("page", strconv.Itoa(p))
+	}
+	return q
+}
+
+func mailBody(args map[string]any) map[string]any {
+	out := map[string]any{}
+	if to := stringList(args["to"]); len(to) > 0 {
+		out["to"] = to
+	}
+	if cc := stringList(args["cc"]); len(cc) > 0 {
+		out["cc"] = cc
+	}
+	if bcc := stringList(args["bcc"]); len(bcc) > 0 {
+		out["bcc"] = bcc
+	}
+	if s := strings.TrimSpace(strArg(args, "subject")); s != "" {
+		out["subject"] = s
+	}
+	body := strings.TrimSpace(strArg(args, "body"))
+	if body == "" {
+		body = strings.TrimSpace(strArg(args, "text"))
+	}
+	if body != "" {
+		out["body"] = body
+	}
+	if s := strings.TrimSpace(strArg(args, "in_reply_to")); s != "" {
+		out["in_reply_to"] = s
+	}
+	if s := strings.TrimSpace(strArg(args, "references")); s != "" {
+		out["references"] = s
+	}
+	return out
+}
+
+func stringList(v any) []string {
+	switch t := v.(type) {
+	case []any:
+		var out []string
+		for _, item := range t {
+			if s := strings.TrimSpace(scalarString(item)); s != "" {
+				out = append(out, s)
+			}
+		}
+		return out
+	case []string:
+		return t
+	case string:
+		return splitLoose(t)
+	default:
+		return nil
+	}
+}
+
+func splitLoose(raw string) []string {
+	raw = strings.ReplaceAll(raw, ";", ",")
+	var out []string
+	for _, part := range strings.Split(raw, ",") {
+		if s := strings.TrimSpace(part); s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// SendPreviewText is the draft shown in chat while mail_send waits for confirm.
+func SendPreviewText(args map[string]any) string {
+	to := strings.Join(stringList(args["to"]), ", ")
+	subject := strings.TrimSpace(strArg(args, "subject"))
+	body := strings.TrimSpace(strArg(args, "body"))
+	if body == "" {
+		body = strings.TrimSpace(strArg(args, "text"))
+	}
+	if len([]rune(body)) > 2000 {
+		body = string([]rune(body)[:2000]) + "…"
+	}
+	return "To: " + to + "\nSubject: " + subject + "\n\n" + body
 }
 
 func withQuery(path string, q url.Values) string {

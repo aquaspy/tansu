@@ -268,11 +268,14 @@ func (s *Service) runAgent(ctx context.Context, conv *store.Conversation, assist
 				continue
 			}
 			c := toolCall{ID: b.id, Name: b.name, Args: b.args, Status: "started"}
-			if suite.IsDelete(b.name) {
+			if suite.NeedsConfirm(b.name) {
 				c.Status = "needs_confirm"
 				c.RecID = idOf(b.args)
 				calls = append(calls, c)
 				save()
+				if suite.IsSend(b.name) && strings.TrimSpace(prose) == "" {
+					prose = suite.SendPreviewText(b.args)
+				}
 				s.enterConfirm(conv, assistant, calls, prose, usage, locale)
 				return
 			}
@@ -319,6 +322,7 @@ func toolRules(locale i18n.Locale, loc *time.Location) string {
 	base += "Spend expenses use category (food, transport, home, health, leisure, other), currency (BRL, USD, EUR), and amount_cents (integer cents) or amount (a decimal such as 25.50). Subscriptions are recurring bills (interval monthly or yearly, active), not expenses. A yearly amount is the whole year; leftover counts one twelfth each month. There is no due day or billing month on a subscription. Payment days are reminders with due_day; they do not log an expense and they show on Calendar when Spend is linked. Do not also create a calendar event for one. Do not leave those in notes. There are no tags or splits.\n"
 	base += "Calendar events use starts_on, ends_on, all_day, starts_at, ends_at, repeat (none, daily, weekly, monthly, yearly), and repeat_until. A timed event needs all_day false. There is no location or attendee field; put a place or guests in body.\n"
 	base += "Notes have no tags and no separate title column. The first line of body is the title; pass title to rewrite that line and keep the rest. Put a note in folder. inbox means the inbox. notes_folders lists folders. Clearing a folder deletes every note in it and waits for confirm.\n"
+	base += "Email lists and searches the mail server. mail_compose only previews a message and does not send. mail_send, mail_trash, and mail_delete wait until the person confirms. Do not claim a message was sent unless mail_send in this turn returned ok true after that confirm.\n"
 	base += "On a tool result with error unauthorized and reconnect true, tell the person to open Connect apps and link that app again.\n"
 	base += "On unknown_outcome, search before creating another record.\n"
 	if locale == i18n.PT {
@@ -392,7 +396,12 @@ func (s *Service) actionCards(locale i18n.Locale, m *store.Message) []views.Acti
 		switch c.Status {
 		case "needs_confirm":
 			card.Confirm = true
-			card.Label = i18n.T(locale, "chat.confirm_delete") + " " + label
+			key := "chat.confirm_delete"
+			if suite.IsSend(c.Name) {
+				key = "chat.confirm_send"
+			}
+			card.ConfirmLabel = i18n.T(locale, key)
+			card.Label = card.ConfirmLabel + " " + label
 		case "cancelled":
 			card.Label = i18n.T(locale, "chat.action_cancelled")
 		case "unknown":
@@ -650,8 +659,12 @@ func suiteApp(name string) string {
 		return "calendar"
 	case strings.HasPrefix(name, "people"):
 		return "people"
-	default:
+	case strings.HasPrefix(name, "spend"):
 		return "spend"
+	case strings.HasPrefix(name, "mail"):
+		return "email"
+	default:
+		return ""
 	}
 }
 

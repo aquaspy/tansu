@@ -31,6 +31,10 @@ func ExampleGroups(l i18n.Locale) []ExampleGroup {
 		"Create a note in the Trip folder with a packing list",
 		"Find notes about the budget",
 	}
+	email := []string{
+		"What is in my inbox?",
+		"Draft a reply to Ada about Friday",
+	}
 	if l == i18n.PT {
 		people = []string{
 			"Cria a Ana, irmã, telefone 11 99999-0000",
@@ -48,12 +52,17 @@ func ExampleGroups(l i18n.Locale) []ExampleGroup {
 			"Cria uma nota na pasta Viagem com a lista de malas",
 			"Busca notas sobre o orçamento",
 		}
+		email = []string{
+			"O que tem na minha caixa de entrada?",
+			"Escreve uma resposta para a Ada sobre sexta",
+		}
 	}
 	return []ExampleGroup{
 		{App: "people", Label: i18n.T(l, "apps.people"), Items: people},
 		{App: "spend", Label: i18n.T(l, "apps.spend"), Items: spend},
 		{App: "calendar", Label: i18n.T(l, "apps.calendar"), Items: calendar},
 		{App: "notes", Label: i18n.T(l, "apps.notes"), Items: notes},
+		{App: "email", Label: i18n.T(l, "apps.email"), Items: email},
 	}
 }
 

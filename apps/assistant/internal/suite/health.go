@@ -18,8 +18,8 @@ const (
 	HealthUnconfigured = "unconfigured"
 )
 
-// AppOrder is the product order: People, Spend, Calendar, Notes.
-var AppOrder = []string{"people", "spend", "calendar", "notes"}
+// AppOrder is the product order: People, Spend, Calendar, Notes, Email.
+var AppOrder = []string{"people", "spend", "calendar", "notes", "email"}
 
 // Health is one app's runtime connection.
 type Health struct {
@@ -39,6 +39,8 @@ func ProbePath(app string) string {
 		return "/api/v1/events?from=2000-01-01&to=2000-01-01"
 	case "spend":
 		return "/api/v1/subscriptions"
+	case "email":
+		return "/api/v1/accounts"
 	default:
 		return ""
 	}

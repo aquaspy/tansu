@@ -61,6 +61,7 @@ type Config struct {
 	CalendarURL string
 	SpendURL    string
 	PeopleURL   string
+	EmailURL    string // production: https://email.gettansu.com (not mail.gettansu.com)
 	AppsKey     []byte
 	TimeZone    *time.Location
 	ToolModel   string
@@ -110,6 +111,7 @@ func Load() Config {
 		CalendarURL: strings.TrimRight(strings.TrimSpace(os.Getenv("KURA_CALENDAR_URL")), "/"),
 		SpendURL:    strings.TrimRight(strings.TrimSpace(os.Getenv("KURA_SPEND_URL")), "/"),
 		PeopleURL:   strings.TrimRight(strings.TrimSpace(os.Getenv("KURA_PEOPLE_URL")), "/"),
+		EmailURL:    strings.TrimRight(strings.TrimSpace(os.Getenv("KURA_EMAIL_URL")), "/"),
 		AppsKey:     decodeKey(os.Getenv("KURA_APPS_KEY")),
 		TimeZone:    loadZone(os.Getenv("KURA_TIMEZONE")),
 		ToolModel:   strings.TrimSpace(os.Getenv("KURA_TOOL_MODEL")),

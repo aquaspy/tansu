@@ -22,6 +22,7 @@ func suiteApps(cfg config.Config) []suite.App {
 		{"calendar", cfg.CalendarURL},
 		{"spend", cfg.SpendURL},
 		{"people", cfg.PeopleURL},
+		{"email", cfg.EmailURL},
 	} {
 		if pair.base != "" {
 			out = append(out, suite.App{Name: pair.name, Base: pair.base})

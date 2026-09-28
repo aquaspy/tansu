@@ -12,6 +12,7 @@ cloud you did not choose.
 | Tansu Calendar | `apps/calendar` | 3003 | `calendar.gettansu.com` |
 | Tansu Spend | `apps/spend` | 3004 | `spend.gettansu.com` |
 | Tansu People | `apps/people` | 3005 | `people.gettansu.com` |
+| Tansu Email | `apps/email` | 3015 | `email.gettansu.com` |
 
 The 3000 default is shared by Notes and Assistant — run one at a time, or
 override `BIND` (the E2E script below uses scratch ports for the full fleet).
@@ -28,8 +29,8 @@ Or with Docker — each app has a `docker-compose.yml`; see its README.
 
 ## Run the whole suite with single sign-on
 
-[`scripts/e2e.sh`](scripts/e2e.sh) builds all six apps, starts them on
-scratch ports (3200–3206), and walks one account signup through all five
+[`scripts/e2e.sh`](scripts/e2e.sh) builds all seven apps, starts them on
+scratch ports (3200–3206), and walks one account signup through all six
 app logins:
 
 ```sh
@@ -45,8 +46,8 @@ opaque tokens. Each app keeps working standalone — the Account only adds the
 
 ## Deploy the suite
 
-One VPS, Docker, and six DNS `A` records pointing at it
-(`account`, `notes`, `assistant`, `calendar`, `spend`, `people` under
+One VPS, Docker, and seven DNS `A` records pointing at it
+(`account`, `notes`, `assistant`, `calendar`, `spend`, `people`, `email` under
 your domain). Each app is its own Compose project with its own volume — there
 is no shared database and no orchestrator to learn.
 
@@ -56,7 +57,7 @@ so pick distinct `BIND`s:
 ```sh
 git clone https://github.com/aquaspy/tansu.git
 cd tansu
-for a in account notes assistant calendar spend people; do
+for a in account notes assistant calendar spend people email; do
   cp apps/$a/.env.example apps/$a/.env
 done
 ```
@@ -69,6 +70,7 @@ done
 | calendar | `127.0.0.1:3003` | `calendar.gettansu.com` |
 | spend | `127.0.0.1:3004` | `spend.gettansu.com` |
 | people | `127.0.0.1:3005` | `people.gettansu.com` |
+| email | `127.0.0.1:3015` | `email.gettansu.com` |
 
 Set `FORCE_SSL=true` in every `.env` (Caddy terminates HTTPS below).
 Keep Account `SIGNUP_ENABLED=true` until the first Account user exists, then
@@ -86,12 +88,12 @@ immediate, and the other apps are unchanged.
 except over your own HTTPS):
 
 ```sh
-for a in notes assistant calendar spend people; do
+for a in notes assistant calendar spend people email; do
   echo "$a: $(openssl rand -hex 24)"
 done
 ```
 
-**3. Register the five apps on the Account.** In `apps/account/.env`,
+**3. Register the six apps on the Account.** In `apps/account/.env`,
 `KURA_CLIENTS_JSON` is one JSON array — ids must match each app's
 `KURA_CLIENT_ID`, secrets the matching `KURA_CLIENT_SECRET`, and each
 `redirect_uris` entry must be exactly `https://<host>/login/kura/callback`:
@@ -102,7 +104,8 @@ done
   {"id": "kurachat", "secret": "<assistant-secret>", "name": "Tansu Assistant", "home": "https://assistant.gettansu.com/", "icon": "✨", "redirect_uris": ["https://assistant.gettansu.com/login/kura/callback"]},
   {"id": "kuracalendar", "secret": "<calendar-secret>", "name": "Tansu Calendar", "home": "https://calendar.gettansu.com/", "icon": "📅", "redirect_uris": ["https://calendar.gettansu.com/login/kura/callback"]},
   {"id": "kuraspend", "secret": "<spend-secret>", "name": "Tansu Spend", "home": "https://spend.gettansu.com/", "icon": "💸", "redirect_uris": ["https://spend.gettansu.com/login/kura/callback"]},
-  {"id": "kurapeople", "secret": "<people-secret>", "name": "Tansu People", "home": "https://people.gettansu.com/", "icon": "🧑", "redirect_uris": ["https://people.gettansu.com/login/kura/callback"]}
+  {"id": "kurapeople", "secret": "<people-secret>", "name": "Tansu People", "home": "https://people.gettansu.com/", "icon": "🧑", "redirect_uris": ["https://people.gettansu.com/login/kura/callback"]},
+  {"id": "kuraemail", "secret": "<email-secret>", "name": "Tansu Email", "home": "https://email.gettansu.com/", "icon": "✉️", "redirect_uris": ["https://email.gettansu.com/login/kura/callback"]}
 ]
 ```
 
@@ -132,12 +135,12 @@ across ports of `127.0.0.1`.
 **5. Boot everything, Account first:**
 
 ```sh
-for a in account notes assistant calendar spend people; do
+for a in account notes assistant calendar spend people email; do
   (cd apps/$a && docker compose up -d --build)
 done
 ```
 
-**6. Front it with Caddy** (automatic HTTPS for all six hosts):
+**6. Front it with Caddy** (automatic HTTPS for all seven hosts):
 
 ```
 account.gettansu.com {
@@ -158,6 +161,9 @@ spend.gettansu.com {
 people.gettansu.com {
   reverse_proxy 127.0.0.1:3005
 }
+email.gettansu.com {
+  reverse_proxy 127.0.0.1:3015
+}
 ```
 
 Then create the first Account user in the browser (or
@@ -174,7 +180,7 @@ cd tansu && git pull
 (cd apps/notes && docker compose up -d --build)
 ```
 
-**Backups** are the six volumes (one SQLite file each, plus Assistant
+**Backups** are the seven volumes (one SQLite file each, plus Assistant
 uploads). Any consistent copy works; per app:
 
 ```sh
@@ -182,7 +188,7 @@ uploads). Any consistent copy works; per app:
 ```
 
 Volumes: `kura_account_data`, `kura_notes_data`, `kura_chat_data`,
-`kura_calendar_data`, `kura_spend_data`, `kura_people_data`.
+`kura_calendar_data`, `kura_spend_data`, `kura_people_data`, `kura_email_data`.
 
 ## Layout
 

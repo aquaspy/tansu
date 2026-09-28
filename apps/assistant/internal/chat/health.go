@@ -24,7 +24,7 @@ type healthCache struct {
 	by map[int64]healthSnap
 }
 
-// AppHealth reports People, Spend, Calendar, and Notes for this user.
+// AppHealth reports People, Spend, Calendar, Notes, and Email for this user.
 // Only HealthOK apps may be offered as tools.
 func (s *Service) AppHealth(ctx context.Context, userID int64) []suite.Health {
 	if rows, ok := s.healthFresh(userID); ok {
