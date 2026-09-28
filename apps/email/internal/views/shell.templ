@@ -1,0 +1,256 @@
+package views
+
+import "fmt"
+
+templ Shell(p Page, d MailData) {
+	<form id="lock-now-form" action="/lock" method="post" hidden>
+		<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+		<button type="submit" id="lock-now" class="sr-only" tabindex="-1"></button>
+	</form>
+	if p.Notice != "" {
+		<p class="flash flash-notice" role="status">{ p.Notice }</p>
+	}
+	if p.Alert != "" {
+		<p class="flash flash-alert" role="alert">{ p.Alert }</p>
+	}
+	<div
+		class={ shellClass(d) }
+		data-controller="layout lock offline"
+		data-lock-enabled-value={ fmt.Sprint(d.AutoLock) }
+		data-lock-on-label-value={ p.T("app.auto_lock_on") }
+		data-lock-off-label-value={ p.T("app.auto_lock_off") }
+	>
+		<p class="offline-banner" data-offline-target="banner" hidden>{ p.T("app.offline") }</p>
+		<header class="mobile-top">
+			@Wordmark()
+			@AccountLink(p)
+			<button type="button" class="icon-btn" data-action="theme#cycle" data-theme-button title={ p.T("auth.theme") } aria-label={ p.T("auth.theme") }>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 3a5 5 0 0 0 0 10Z" fill="currentColor"></path></svg>
+			</button>
+			<button type="button" class="icon-btn" data-action="lock#lock" title={ p.T("app.lock") } aria-label={ p.T("app.lock") }>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.4" y="7.2" width="9.2" height="6.4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M5.3 7.2V5.4a2.7 2.7 0 0 1 5.4 0v1.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+			</button>
+			<button type="button" class="icon-btn" data-action="layout#toggleMenu" data-layout-target="menuButton" title={ p.T("app.more") } aria-label={ p.T("app.more") } aria-expanded="false">
+				<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="3.5" r="1.1" fill="currentColor"></circle><circle cx="8" cy="8" r="1.1" fill="currentColor"></circle><circle cx="8" cy="12.5" r="1.1" fill="currentColor"></circle></svg>
+			</button>
+			<div class="mobile-menu" data-layout-target="menu" hidden>
+				@LockButton(p)
+				@AutoLockButton(p, d.AutoLock)
+				@ChangePasswordButton(p)
+				@APITokensButton(p)
+				<a href="/accounts" class="btn-io">{ p.T("mail.accounts") }</a>
+				@LanguageSwitch(p)
+				@SignOut(p)
+			</div>
+		</header>
+		<aside class="col-folders">
+			<div class="brand">
+				@Wordmark()
+				@AccountLink(p)
+				if len(d.Accounts) > 0 {
+					<form action="/" method="get" class="account-switch">
+						<label class="sr-only" for="account">{ p.T("mail.account") }</label>
+						<select id="account" name="account" onchange="this.form.requestSubmit()">
+							for _, a := range d.Accounts {
+								<option value={ idStr(a.ID) } selected?={ a.Active }>{ a.Label }</option>
+							}
+						</select>
+					</form>
+				}
+			</div>
+			<nav class="folder-list">
+				<div class="folder-strip">
+					for _, f := range d.Folders {
+						<a class={ folderClass(f.Active) } href={ templ.SafeURL(f.Href) }>{ f.Label }</a>
+					}
+				</div>
+			</nav>
+			<div class="sidebar-foot desktop-only">
+				<a href="/accounts" class="btn-io">{ p.T("mail.accounts") }</a>
+				@LockButton(p)
+				@AutoLockButton(p, d.AutoLock)
+				@ChangePasswordButton(p)
+				@APITokensButton(p)
+				@LanguageSwitch(p)
+				@SignOut(p)
+			</div>
+		</aside>
+		<section class="col-list">
+			<div class="list-head">
+				if d.AccountID > 0 {
+					<a class="btn-new" href={ templ.SafeURL(d.ComposeHref) }>{ p.T("mail.compose") }</a>
+				}
+				<form action="/" method="get" class="search-form">
+					if d.AccountID > 0 {
+						<input type="hidden" name="account" value={ idStr(d.AccountID) }/>
+					}
+					if d.Folder != "" {
+						<input type="hidden" name="folder" value={ d.Folder }/>
+					}
+					<input type="search" name="q" value={ d.Query } placeholder={ p.T("mail.search") } class="search" autocomplete="off"/>
+				</form>
+			</div>
+			<div class="note-list">
+				if d.Empty {
+					<p class="empty-list">{ p.T("mail.empty_accounts") } <a href="/accounts">{ p.T("mail.connect") }</a></p>
+				} else if len(d.Messages) == 0 {
+					<p class="empty-list">{ p.T("mail.empty_list") }</p>
+				}
+				for _, m := range d.Messages {
+					<a class={ messageClass(m) } href={ templ.SafeURL(m.Href) }>
+						<span class="note-item-link">
+							<strong>{ orUntitled(p, m.Subject) }</strong>
+							<span>{ m.From }</span>
+							<span>{ m.When }</span>
+						</span>
+					</a>
+				}
+				if d.Pages > 1 {
+					<p class="pager">
+						if d.PrevHref != "" {
+							<a href={ templ.SafeURL(d.PrevHref) }>{ p.T("mail.prev") }</a>
+						}
+						<span>{ fmtPages(d.Page, d.Pages) }</span>
+						if d.NextHref != "" {
+							<a href={ templ.SafeURL(d.NextHref) }>{ p.T("mail.next") }</a>
+						}
+					</p>
+				}
+			</div>
+		</section>
+		<section class="col-editor">
+			if d.Compose != nil {
+				@ComposePane(p, d)
+			} else if d.Open != nil {
+				@ReadPane(p, d)
+			} else {
+				<div class="empty-editor">{ p.T("mail.empty_reader") }</div>
+			}
+		</section>
+		if d.AccountID > 0 {
+			<a class="fab" href={ templ.SafeURL(d.ComposeHref) } aria-label={ p.T("mail.compose") }>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path></svg>
+			</a>
+		}
+	</div>
+}
+
+func folderClass(active bool) string {
+	if active {
+		return "folder-item is-on"
+	}
+	return "folder-item"
+}
+
+func messageClass(m MessageRow) string {
+	cls := "note-item"
+	if m.Active {
+		cls += " is-on"
+	}
+	if !m.Seen {
+		cls += " is-unread"
+	}
+	return cls
+}
+
+func orUntitled(p Page, subject string) string {
+	if subject == "" {
+		return p.T("mail.no_subject")
+	}
+	return subject
+}
+
+templ ReadPane(p Page, d MailData) {
+	<div class="editor-bar">
+		<a class="icon-btn back" href={ templ.SafeURL(d.ListHref) } aria-label={ p.T("mail.back") }>
+			<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5 5.5 8 10 12.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+		</a>
+		<strong class="mail-subject">{ orUntitled(p, d.Open.Subject) }</strong>
+		<span class="bar-spacer"></span>
+		<a class="btn-dialog" href={ templ.SafeURL(d.Open.ReplyHref) }>{ p.T("mail.reply") }</a>
+		<form action="/trash" method="post">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<input type="hidden" name="account" value={ idStr(d.Open.AccountID) }/>
+			<input type="hidden" name="folder" value={ d.Open.Folder }/>
+			<input type="hidden" name="uid" value={ uidStr(d.Open.UID) }/>
+			<button type="submit" class="btn-dialog">{ p.T("mail.trash_action") }</button>
+		</form>
+		<form action="/delete" method="post" data-confirm={ p.T("mail.delete_confirm") } data-action="submit->confirm#ask">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<input type="hidden" name="account" value={ idStr(d.Open.AccountID) }/>
+			<input type="hidden" name="folder" value={ d.Open.Folder }/>
+			<input type="hidden" name="uid" value={ uidStr(d.Open.UID) }/>
+			<button type="submit" class="btn-dialog danger">{ p.T("mail.delete") }</button>
+		</form>
+	</div>
+	<article class="mail-read">
+		<p class="mail-meta"><span>{ p.T("mail.from") }</span> { d.Open.From }</p>
+		<p class="mail-meta"><span>{ p.T("mail.to") }</span> { d.Open.To }</p>
+		if d.Open.Cc != "" {
+			<p class="mail-meta"><span>{ p.T("mail.cc") }</span> { d.Open.Cc }</p>
+		}
+		if d.Open.When != "" {
+			<p class="mail-meta"><span>{ p.T("mail.date") }</span> { d.Open.When }</p>
+		}
+		if len(d.Open.Attachments) > 0 {
+			<ul class="attachments">
+				for _, a := range d.Open.Attachments {
+					<li><a href={ templ.SafeURL(attachmentHref(d.Open.AccountID, d.Open.Folder, d.Open.UID, a.Index)) }>{ a.Name }</a></li>
+				}
+			</ul>
+		}
+		<pre class="mail-body">{ d.Open.Text }</pre>
+	</article>
+}
+
+templ ComposePane(p Page, d MailData) {
+	<div class="editor-bar">
+		<a class="icon-btn back" href={ templ.SafeURL(d.ListHref) } aria-label={ p.T("mail.back") }>
+			<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5 5.5 8 10 12.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+		</a>
+		<strong class="mail-subject">{ p.T("mail.compose") }</strong>
+	</div>
+	<form action="/compose" method="post" class="compose-form">
+		<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+		<input type="hidden" name="account" value={ idStr(d.AccountID) }/>
+		<input type="hidden" name="in_reply_to" value={ d.Compose.InReplyTo }/>
+		<input type="hidden" name="references" value={ d.Compose.References }/>
+		<label>{ p.T("mail.to") } <input type="text" name="to" value={ d.Compose.To } required autocomplete="off"/></label>
+		<label>{ p.T("mail.cc") } <input type="text" name="cc" value={ d.Compose.Cc } autocomplete="off"/></label>
+		<label>{ p.T("mail.bcc") } <input type="text" name="bcc" value={ d.Compose.Bcc } autocomplete="off"/></label>
+		<label>{ p.T("mail.subject") } <input type="text" name="subject" value={ d.Compose.Subject }/></label>
+		<textarea name="body" rows="14" required>{ d.Compose.Body }</textarea>
+		<button type="submit" class="btn-primary">{ p.T("mail.send") }</button>
+	</form>
+}
+
+templ LockButton(p Page) {
+	<form action="/lock" method="post">
+		<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+		<button type="submit" class="btn-io">
+			<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.4" y="7.2" width="9.2" height="6.4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M5.3 7.2V5.4a2.7 2.7 0 0 1 5.4 0v1.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+			<span>{ p.T("app.lock") }</span>
+		</button>
+	</form>
+}
+
+templ AutoLockButton(p Page, enabled bool) {
+	<button type="button" class="btn-io" data-action="lock#togglePreference">
+		<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 5.2v3.1l2.1 1.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+		<span data-auto-lock-label>
+			if enabled {
+				{ p.T("app.auto_lock_off") }
+			} else {
+				{ p.T("app.auto_lock_on") }
+			}
+		</span>
+	</button>
+}
+
+templ ChangePasswordButton(p Page) {
+	<a href="/password/edit" class="btn-io">{ p.T("auth.change_password") }</a>
+}
+
+templ APITokensButton(p Page) {
+	<a href="/api_tokens/" class="btn-io">{ p.T("tokens.title") }</a>
+}

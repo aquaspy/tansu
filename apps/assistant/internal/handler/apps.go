@@ -19,7 +19,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-var suiteApps = []string{"notes", "calendar", "spend", "people"}
+var suiteApps = []string{"notes", "calendar", "spend", "people", "email"}
 
 func (s *Server) appBase(name string) string {
 	switch name {
@@ -31,6 +31,8 @@ func (s *Server) appBase(name string) string {
 		return s.Config.SpendURL
 	case "people":
 		return s.Config.PeopleURL
+	case "email":
+		return s.Config.EmailURL
 	}
 	return ""
 }

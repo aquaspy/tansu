@@ -1,0 +1,118 @@
+package views
+
+templ AccountsPage(p Page, f AccountForm) {
+	<section class="auth-card account-card">
+		if p.Notice != "" {
+			<p class="flash flash-notice" role="status">{ p.Notice }</p>
+		}
+		if p.Alert != "" {
+			<p class="flash flash-alert" role="alert">{ p.Alert }</p>
+		}
+		@Wordmark()
+		<h1>{ p.T("mail.accounts") }</h1>
+		<p class="lede">{ p.T("mail.accounts_lede") }</p>
+		if len(f.Rows) > 0 {
+			<ul class="token-list">
+				for _, row := range f.Rows {
+					<li class="token-row">
+						<div class="token-meta">
+							<strong>{ row.Label }</strong>
+							<span class="field-hint">{ row.From }</span>
+							if row.LastErr != "" {
+								<span class="field-hint">{ row.LastErr }</span>
+							} else if row.LastOK != "" {
+								<span class="field-hint">{ p.T("mail.last_ok") }: { row.LastOK }</span>
+							}
+						</div>
+						<a class="btn-dialog" href={ templ.SafeURL("/accounts/" + idStr(row.ID)) }>{ p.T("mail.edit") }</a>
+					</li>
+				}
+			</ul>
+		}
+		<h2 class="tokens-heading">
+			if f.Editing {
+				{ p.T("mail.edit") }
+			} else {
+				{ p.T("mail.connect") }
+			}
+		</h2>
+		<form action={ accountAction(f) } method="post" class="auth-form">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<label>
+				{ p.T("mail.display_name") }
+				<input type="text" name="display_name" value={ f.DisplayName } autocomplete="off"/>
+			</label>
+			<label>
+				{ p.T("mail.from") }
+				<input type="email" name="from_address" value={ f.From } required/>
+			</label>
+			<label>
+				{ p.T("mail.username") }
+				<input type="text" name="username" value={ f.Username } required autocomplete="off"/>
+			</label>
+			<label>
+				{ p.T("mail.password") }
+				<input type="password" name="password" autocomplete="new-password" placeholder={ passwordHint(p, f.Editing) }/>
+			</label>
+			<div class="split">
+				<label>
+					{ p.T("mail.imap_host") }
+					<input type="text" name="imap_host" value={ f.IMAPHost } required placeholder="imap.example.com"/>
+				</label>
+				<label>
+					{ p.T("mail.port") }
+					<input type="number" name="imap_port" value={ f.IMAPPort } min="1" max="65535" required/>
+				</label>
+			</div>
+			<label>
+				{ p.T("mail.security") }
+				<select name="imap_tls">
+					<option value="tls" selected?={ f.IMAPTLS == "" || f.IMAPTLS == "tls" }>TLS</option>
+					<option value="starttls" selected?={ f.IMAPTLS == "starttls" }>STARTTLS</option>
+					<option value="none" selected?={ f.IMAPTLS == "none" }>{ p.T("mail.tls_none") }</option>
+				</select>
+			</label>
+			<div class="split">
+				<label>
+					{ p.T("mail.smtp_host") }
+					<input type="text" name="smtp_host" value={ f.SMTPHost } required placeholder="smtp.example.com"/>
+				</label>
+				<label>
+					{ p.T("mail.port") }
+					<input type="number" name="smtp_port" value={ f.SMTPPort } min="1" max="65535" required/>
+				</label>
+			</div>
+			<label>
+				{ p.T("mail.security") }
+				<select name="smtp_tls">
+					<option value="tls" selected?={ f.SMTPTLS == "" || f.SMTPTLS == "tls" }>TLS</option>
+					<option value="starttls" selected?={ f.SMTPTLS == "starttls" }>STARTTLS</option>
+					<option value="none" selected?={ f.SMTPTLS == "none" }>{ p.T("mail.tls_none") }</option>
+				</select>
+			</label>
+			<input type="submit" class="btn-primary" value={ p.T("mail.save") }/>
+		</form>
+		if f.Editing {
+			<form action={ templ.SafeURL("/accounts/" + idStr(f.ID) + "/delete") } method="post">
+				<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+				<button type="submit" class="btn-dialog danger">{ p.T("mail.remove_account") }</button>
+			</form>
+		}
+		<p class="auth-foot"><a href="/">{ p.T("app.cancel") }</a></p>
+		@ThemeSwitch(p)
+	</section>
+}
+
+func accountAction(f AccountForm) templ.SafeURL {
+	if f.Editing {
+		return templ.SafeURL("/accounts/" + idStr(f.ID))
+	}
+	return templ.SafeURL("/accounts")
+}
+
+func passwordHint(p Page, editing bool) string {
+	if editing {
+		return p.T("mail.password_keep")
+	}
+	return ""
+}

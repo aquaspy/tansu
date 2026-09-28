@@ -31,7 +31,7 @@ func str(m map[string]any, k string) string {
 
 // ShapeList trims an index payload down to ids and short fields.
 // kind is the JSON array key: notes, people, events, expenses,
-// subscriptions, payment_days, or folders.
+// subscriptions, payment_days, folders, accounts, mail_folders, or messages.
 func ShapeList(kind string, payload []byte) ([]byte, error) {
 	var doc map[string]any
 	if err := json.Unmarshal(payload, &doc); err != nil {
@@ -101,6 +101,18 @@ func ShapeList(kind string, payload []byte) ([]byte, error) {
 			})
 		case "folders":
 			out = append(out, map[string]any{"name": str(m, "name"), "count": m["count"]})
+		case "accounts":
+			out = append(out, map[string]any{
+				"id": m["id"], "display_name": str(m, "display_name"), "from_address": str(m, "from_address"),
+				"username": str(m, "username"), "last_ok": m["last_ok"], "last_error": str(m, "last_error"),
+			})
+		case "mail_folders":
+			out = append(out, map[string]any{"name": str(m, "name"), "special": str(m, "special")})
+		case "messages":
+			out = append(out, map[string]any{
+				"uid": m["uid"], "from": str(m, "from"), "subject": str(m, "subject"),
+				"date": str(m, "date"), "seen": m["seen"],
+			})
 		}
 	}
 	body, err := json.Marshal(map[string]any{key: out, "truncated": truncated})
@@ -137,13 +149,14 @@ func ShapeOne(kind string, payload []byte) ([]byte, error) {
 		"expenses": "expense", "expense": "expense",
 		"subscriptions": "subscription", "subscription": "subscription",
 		"payment_days": "payment_day", "payment_day": "payment_day",
+		"message": "message",
 	}[kind]
 	m := asMap(doc[key])
 	if m == nil {
 		return payload, nil
 	}
 	truncated := false
-	for _, field := range []string{"body", "notes"} {
+	for _, field := range []string{"body", "notes", "text"} {
 		if s, ok := m[field].(string); ok {
 			clipped, cut := clip(s, readRunes)
 			m[field] = clipped

@@ -52,10 +52,18 @@ type AppRow struct {
 
 // ActionCard is one sibling action under an assistant message.
 type ActionCard struct {
-	CallID  string
-	Label   string
-	Href    string
-	Confirm bool
+	CallID       string
+	Label        string
+	Href         string
+	Confirm      bool
+	ConfirmLabel string
+}
+
+func confirmLabel(p Page, a ActionCard) string {
+	if a.ConfirmLabel != "" {
+		return a.ConfirmLabel
+	}
+	return p.T("chat.confirm_delete")
 }
 
 // ConversationDetail is the open chat in the editor column.

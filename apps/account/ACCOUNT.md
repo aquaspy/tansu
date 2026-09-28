@@ -145,8 +145,8 @@ Interop details the checklist glosses over, all verified live:
   `TestMigrateOldUsersSSO` proving an old file opens, stays readable,
   and enforces sub uniqueness.
 - Reference client: `KuraPeople/internal/handler/kura.go` (+ `kura_test.go`
-  with an `httptest` Account double). The other five apps are the same
-  file with the module path swapped.
+  with an `httptest` Account double). Notes, Assistant, Calendar, Spend,
+  and Email copy that file with the module path swapped.
 
 ## Roadmap order (when something earns its place)
 

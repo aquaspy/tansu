@@ -64,7 +64,7 @@ templ ActionCards(p Page, m *MessageView, convID int64) {
 						<form action={ templ.SafeURL(fmt.Sprintf("/conversations/%d/messages/%d/tool", convID, m.Msg.ID)) } method="post">
 							<input type="hidden" name="csrf_token" value={ p.CSRF }/>
 							<input type="hidden" name="call_id" value={ a.CallID }/>
-							<button type="submit" name="decision" value="approve" class="btn-dialog danger">{ p.T("chat.confirm_delete") }</button>
+							<button type="submit" name="decision" value="approve" class="btn-dialog danger">{ confirmLabel(p, a) }</button>
 							<button type="submit" name="decision" value="cancel" class="btn-dialog">{ p.T("app.cancel") }</button>
 						</form>
 					}
