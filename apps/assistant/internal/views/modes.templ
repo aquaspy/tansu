@@ -1,45 +1,81 @@
 package views
 
-// ModeSwitcher is Assistente · Conversa · Anônimo. Switching starts a new thread.
-// list renders the same control as a vertical menu (threads that already have messages).
-templ ModeSwitcher(p Page, mode string, list bool) {
-	<div class={ modeSwitchClass(list) } role="group" aria-label={ p.T("mode.label") }>
-		@modeChoice(p, "assistant", mode, list)
-		@modeChoice(p, "chat", mode, list)
-		@modeAnonChoice(p, mode, list)
+import "fmt"
+
+// ChatChrome is the thread header: personality picker and the Anônimo toggle.
+// showBack is the mobile return control when the title bar is hidden.
+templ ChatChrome(p Page, personality string, anonymous bool, draftID int64, empty, showBack bool, back string) {
+	<div class="chat-header">
+		if showBack {
+			<a href={ templ.SafeURL(back) } class="icon-btn back" aria-label={ p.T("app.cancel") }>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.2 3.2 5.4 8l4.8 4.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+			</a>
+		}
+		@PersonalityPicker(p, personality, anonymous, draftID, empty)
+		<span class="bar-spacer"></span>
+		@AnonToggle(p, anonymous)
 	</div>
+	if anonymous {
+		<p class="anon-banner" role="status">
+			<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 13.2 4v4.2c0 3-2.1 4.7-5.2 6-3.1-1.3-5.2-3-5.2-6V4Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path><path d="M5.6 8.1 7.2 9.7 10.5 6.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+			<span>{ p.T("mode.not_saved_banner") }</span>
+		</p>
+	}
 }
 
-templ modeChoice(p Page, mode, current string, list bool) {
+// PersonalityPicker is Assistente or Conversa. Anônimo is not a choice here.
+templ PersonalityPicker(p Page, current string, anonymous bool, draftID int64, empty bool) {
+	<details class="mode-menu personality-menu" data-controller="disclosure">
+		<summary class={ "personality-pill is-" + current } aria-haspopup="menu" aria-label={ p.T("mode.label") }>
+			<span class="personality-label">{ p.T("mode." + current) }</span>
+			<svg class="personality-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 6.5 8 10l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+		</summary>
+		<div class="mode-panel">
+			<div class="mode-switch is-list" role="menu" aria-label={ p.T("mode.label") }>
+				@personalityChoice(p, "assistant", current, anonymous, draftID, empty)
+				@personalityChoice(p, "chat", current, anonymous, draftID, empty)
+			</div>
+		</div>
+	</details>
+}
+
+templ personalityChoice(p Page, mode, current string, anonymous bool, draftID int64, empty bool) {
 	if mode == current {
-		<button type="button" class="mode-option is-on" aria-current="true" title={ modeTip(p, mode) }>
+		<button type="button" class="mode-option is-on" role="menuitem" aria-current="true" title={ modeTip(p, mode) }>
 			<span>{ p.T("mode." + mode) }</span>
-			if list {
-				@modeCheck()
-			}
+			@modeCheck()
 		</button>
 	} else {
 		<form action="/conversations/" method="post" class="mode-form">
 			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
 			<input type="hidden" name="mode" value={ mode }/>
-			<button type="submit" class="mode-option" title={ modeTip(p, mode) }>
+			if anonymous {
+				<input type="hidden" name="anon" value="1"/>
+			} else if empty && draftID > 0 {
+				<input type="hidden" name="draft_id" value={ fmt.Sprint(draftID) }/>
+			}
+			<button type="submit" class="mode-option" role="menuitem" title={ modeTip(p, mode) }>
 				<span>{ p.T("mode." + mode) }</span>
 			</button>
 		</form>
 	}
 }
 
-templ modeAnonChoice(p Page, current string, list bool) {
-	if current == "anonymous" {
-		<button type="button" class="mode-option is-on" aria-current="true" title={ p.T("mode.anonymous_tip") }>
-			<span>{ p.T("mode.anonymous") }</span>
-			if list {
-				@modeCheck()
-			}
-		</button>
+// AnonToggle turns persistence off (anonymous) or back on. It is not a personality.
+templ AnonToggle(p Page, on bool) {
+	if on {
+		<form action="/conversations/" method="post" class="anon-toggle-form">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<button type="submit" class="anon-pill is-on" aria-pressed="true" title={ p.T("mode.anonymous_tip") }>
+				<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 13.2 4v4.2c0 3-2.1 4.7-5.2 6-3.1-1.3-5.2-3-5.2-6V4Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path><path d="M5.6 8.1 7.2 9.7 10.5 6.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+				<span>{ p.T("mode.anonymous_on") }</span>
+			</button>
+		</form>
 	} else {
-		<a class="mode-option" href="/anonymous?new=1" title={ p.T("mode.anonymous_tip") }>
-			<span>{ p.T("mode.anonymous") }</span>
+		<a class="anon-toggle" href="/anonymous" aria-pressed="false" title={ p.T("mode.anonymous_tip") }>
+			<span class="anon-switch" aria-hidden="true"></span>
+			<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 13.2 4v4.2c0 3-2.1 4.7-5.2 6-3.1-1.3-5.2-3-5.2-6V4Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path></svg>
+			<span class="anon-toggle-label">{ p.T("mode.anonymous") }</span>
 		</a>
 	}
 }
@@ -48,48 +84,27 @@ templ modeCheck() {
 	<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
 }
 
-templ modeIcon(mode string) {
-	if mode == "chat" {
-		<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.8 3.6h10.4a1 1 0 0 1 1 1v5.2a1 1 0 0 1-1 1H8.1L5.2 13.1V10.8H2.8a1 1 0 0 1-1-1V4.6a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path></svg>
-	} else if mode == "anonymous" {
-		<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.2 8.1S4.3 4.8 8 4.8s5.8 3.3 5.8 3.3-2.1 3.3-5.8 3.3S2.2 8.1 2.2 8.1Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path><circle cx="8" cy="8.1" r="1.5" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M3.4 12.6 12.6 3.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
-	} else {
-		<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.2" y="2.2" width="4.6" height="4.6" rx="0.8" fill="none" stroke="currentColor" stroke-width="1.3"></rect><rect x="9.2" y="2.2" width="4.6" height="4.6" rx="0.8" fill="none" stroke="currentColor" stroke-width="1.3"></rect><rect x="2.2" y="9.2" width="4.6" height="4.6" rx="0.8" fill="none" stroke="currentColor" stroke-width="1.3"></rect><rect x="9.2" y="9.2" width="4.6" height="4.6" rx="0.8" fill="none" stroke="currentColor" stroke-width="1.3"></rect></svg>
-	}
-}
-
-// ModeMenu is the small editor-bar label. Opening it starts a new chat in another mode.
-// dormant hides it until the thread has messages (saved chats). Anônimo stays visible.
-templ ModeMenu(p Page, mode string, dormant bool) {
-	<details class="mode-menu" data-controller="disclosure" data-thread-chrome hidden?={ dormant }>
-		<summary class="mode-tag" aria-label={ p.T("mode." + mode) }>
-			@modeIcon(mode)
-			<span class="mode-tag-label">{ p.T("mode." + mode) }</span>
-			<svg class="mode-tag-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 6.5 8 10l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-		</summary>
-		<div class="mode-panel">
-			<p class="mode-panel-label">{ p.T("mode.new_in") }</p>
-			@ModeSwitcher(p, mode, true)
-		</div>
-	</details>
-}
-
-// ModeHero is the empty-thread intro: switcher, heading, and mode-specific extras.
-templ ModeHero(p Page, mode string, badges []AppBadge, collapsed bool) {
+// ModeHero is the quiet empty thread: a greeting or short hint, no suggestion cards.
+templ ModeHero(p Page, mode string, collapsed bool) {
 	<div class="mode-hero" data-anon-target="hero" hidden?={ collapsed }>
-		@ModeSwitcher(p, mode, false)
+		<svg class="mode-hero-mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 4.5c.4 4.2 1.6 7.2 4.2 9.2-2.8.6-5 2.2-6.4 5.3-.4-3.6-2-6.2-5.4-7.8 3.2-1.8 5.4-4.2 6.2-6.7.3 0 .8 0 1.4 0Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"></path><path d="M8 24.5h16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
 		<h1 class="mode-hero-title">{ heroTitle(p, mode) }</h1>
-		<p class="mode-hero-lede">{ heroLede(p, mode) }</p>
-		if mode == "assistant" {
-			@AppStatus(p, badges)
-			@ExampleCards(p)
-			<button type="button" class="link-btn" data-action="examples#open">{ p.T("chat.more_examples") }</button>
-		}
-		if mode == "anonymous" {
-			<p class="mode-hero-note">{ p.T("mode.not_saved") } · { p.T("mode.not_saved_detail") }</p>
-			@AnonClearToggle(p)
+		if heroLede(p, mode) != "" {
+			<p class="mode-hero-lede">{ heroLede(p, mode) }</p>
 		}
 	</div>
+}
+
+templ PersistStatus(p Page, anonymous bool) {
+	<p class="persist-status">
+		if anonymous {
+			<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 13.2 4v4.2c0 3-2.1 4.7-5.2 6-3.1-1.3-5.2-3-5.2-6V4Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"></path></svg>
+			<span>{ p.T("mode.anon_status") }</span>
+		} else {
+			<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.4" y="7.2" width="9.2" height="6.4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M5.3 7.2V5.4a2.7 2.7 0 0 1 5.4 0v1.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
+			<span>{ p.T("mode.saved_status") }</span>
+		}
+	</p>
 }
 
 func modeTip(p Page, mode string) string {
@@ -108,16 +123,6 @@ templ AppStatus(p Page, badges []AppBadge) {
 			<span class="app-status-text">{ appStatusLabel(p, badges) }</span>
 		</a>
 	}
-}
-
-templ ExampleCards(p Page) {
-	<div class="example-grid">
-		for _, g := range ExampleGroups(p.L) {
-			if len(g.Items) > 0 {
-				@exampleCard(g.Label, g.Items[0])
-			}
-		}
-	</div>
 }
 
 templ exampleCard(label, item string) {
@@ -237,10 +242,8 @@ templ AnonThread(p Page, d ShellData) {
 		data-anon-untitled-value={ p.T("chat.untitled") }
 		data-anon-thinking-value={ p.T("chat.thinking") }
 	>
-		<div class="editor-bar">
-			<a href="/conversations/" class="icon-btn back" aria-label={ p.T("app.cancel") }>
-				<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.2 3.2 5.4 8l4.8 4.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
-			</a>
+		@ChatChrome(p, personalityOf(d), true, 0, d.Anon == nil || len(d.Anon.Messages) == 0, true, "/conversations/")
+		<div class="editor-bar" data-anon-target="bar" hidden?={ d.Anon == nil || len(d.Anon.Messages) == 0 }>
 			<input
 				type="text"
 				class="folder-input"
@@ -250,7 +253,6 @@ templ AnonThread(p Page, d ShellData) {
 				data-anon-target="title"
 				data-action="input->anon#title"
 			/>
-			@ModeMenu(p, "anonymous", false)
 			<span class="bar-spacer"></span>
 			<details class="mode-menu anon-history" data-controller="disclosure" data-anon-target="history" hidden>
 				<summary class="icon-btn" title={ p.T("mode.local_menu") } aria-label={ p.T("mode.local_menu") }>
@@ -269,7 +271,7 @@ templ AnonThread(p Page, d ShellData) {
 			</button>
 		</div>
 		<div class={ transcriptClass(d.Anon == nil || len(d.Anon.Messages) == 0) } id="anon-transcript" data-anon-target="transcript">
-			@ModeHero(p, "anonymous", nil, d.Anon != nil && len(d.Anon.Messages) > 0)
+			@ModeHero(p, "anonymous", d.Anon != nil && len(d.Anon.Messages) > 0)
 			if d.Anon != nil {
 				for _, m := range d.Anon.Messages {
 					@AnonArticle(m)
@@ -280,6 +282,10 @@ templ AnonThread(p Page, d ShellData) {
 			if d.Anon != nil {
 				@AnonComposer(p, d.Anon)
 			}
+		</div>
+		<div class="persist-foot">
+			@PersistStatus(p, true)
+			@AnonClearToggle(p)
 		</div>
 		if d.Anon != nil && len(d.Anon.Messages) > 0 {
 			<script type="application/json" id="anon-seed">

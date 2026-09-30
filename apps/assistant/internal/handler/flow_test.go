@@ -10,6 +10,7 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -580,6 +581,7 @@ func TestWebParamIgnoredWhenDisabled(t *testing.T) {
 	mustNotContain(t, body, "model-picker")
 	mustNotContain(t, body, "effort-picker")
 	mustContain(t, body, "mode-switch")
+	mustContain(t, body, "personality-pill")
 	mustContain(t, body, "Assistente")
 }
 
@@ -939,8 +941,12 @@ func TestModeSwitchStartsANewThread(t *testing.T) {
 	chatURL := h.Get("Location")
 	body := mustGet(t, f, chatURL)
 	mustContain(t, body, "Conversa")
+	mustContain(t, body, "personality-pill is-chat")
+	mustContain(t, body, "anon-toggle")
+	mustNotContain(t, body, "anon-banner")
 	mustNotContain(t, body, "R$ 42.50")
 	mustNotContain(t, body, "example-chip")
+	mustNotContain(t, body, `value="anonymous"`)
 	conv, err := f.store.FindConversation(u.ID, 1)
 	if err != nil || conv.Mode != store.ModeChat {
 		t.Fatalf("mode = %+v err %v", conv, err)
@@ -955,10 +961,134 @@ func TestModeSwitchStartsANewThread(t *testing.T) {
 	}
 	body = mustGet(t, f, h.Get("Location"))
 	mustContain(t, body, "Assistente")
-	mustContain(t, body, "Log lunch for R$ 42.50 today under food")
-	mustContain(t, body, "example-chip")
+	mustContain(t, body, "personality-pill is-assistant")
+	mustNotContain(t, body, "example-chip")
+	mustNotContain(t, body, "Log lunch for R$ 42.50 today under food")
 	list := mustGet(t, f, "/conversations/")
 	mustNotContain(t, list, "anonymous")
+}
+
+func TestNewChatInheritsPersonality(t *testing.T) {
+	f := newFlow(t, nil)
+	u := f.seedUser("you@x.com", "secret-ok")
+	f.login("you@x.com", "secret-ok")
+	code, _, h := f.post("/conversations/", url.Values{"mode": {"chat"}}, nil)
+	if code != 303 {
+		t.Fatalf("create = %d", code)
+	}
+	chatURL := h.Get("Location")
+	hx := map[string]string{"HX-Request": "true"}
+	if code, _, _ := f.post(chatURL+"/messages", url.Values{"content": {"Oi"}}, hx); code != 200 {
+		t.Fatalf("message = %d", code)
+	}
+	// A newer Assistente thread must not win over the chat the user just opened.
+	asst, err := f.store.CreateConversation(u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.store.DB().Exec(`UPDATE conversations SET updated_at = '2099-01-01 00:00:00.000000' WHERE id = ?`, asst.ID); err != nil {
+		t.Fatal(err)
+	}
+	_ = mustGet(t, f, chatURL) // viewing Conversa selects it again
+	code, _, h = f.post("/conversations/", url.Values{}, nil)
+	if code != 303 || h.Get("Location") == chatURL {
+		t.Fatalf("new chat = %d %q", code, h.Get("Location"))
+	}
+	id := strings.TrimPrefix(h.Get("Location"), "/conversations/")
+	convID, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	conv, err := f.store.FindConversation(u.ID, convID)
+	if err != nil || conv.Mode != store.ModeChat {
+		t.Fatalf("inherited mode = %+v err %v", conv, err)
+	}
+	body := mustGet(t, f, h.Get("Location"))
+	mustContain(t, body, "personality-pill is-chat")
+	// Empty draft switches in place.
+	code, _, h = f.post("/conversations/", url.Values{"mode": {"assistant"}, "draft_id": {id}}, nil)
+	if code != 303 || h.Get("Location") != "/conversations/"+id {
+		t.Fatalf("in-place = %d %q", code, h.Get("Location"))
+	}
+	conv, _ = f.store.FindConversation(u.ID, convID)
+	if conv.Mode != store.ModeAssistant {
+		t.Fatalf("draft mode = %q", conv.Mode)
+	}
+}
+
+func TestWebDeepIndependentOfPersonality(t *testing.T) {
+	f := newFlow(t, enableSearch)
+	u := f.seedUser("you@x.com", "secret-ok")
+	f.login("you@x.com", "secret-ok")
+	code, _, h := f.post("/conversations/", url.Values{}, nil)
+	if code != 303 {
+		t.Fatalf("create = %d", code)
+	}
+	body := mustGet(t, f, h.Get("Location"))
+	mustContain(t, body, "search-picker")
+	mustContain(t, body, `name="web"`)
+	mustContain(t, body, `name="deep"`)
+	mustContain(t, body, "personality-pill is-assistant")
+	mustNotContain(t, body, "example-chip")
+	mustNotContain(t, body, "anon-banner")
+
+	code, _, h = f.post("/conversations/", url.Values{"mode": {"chat"}}, nil)
+	if code != 303 {
+		t.Fatalf("chat = %d", code)
+	}
+	chatURL := h.Get("Location")
+	body = mustGet(t, f, chatURL)
+	mustContain(t, body, "personality-pill is-chat")
+	mustContain(t, body, `name="web"`)
+	mustContain(t, body, `name="deep"`)
+	mustNotContain(t, body, `value="anonymous"`)
+
+	id := strings.TrimPrefix(chatURL, "/conversations/")
+	hx := map[string]string{"HX-Request": "true"}
+	if code, _, _ := f.methodCall(http.MethodPatch, chatURL+"/settings", url.Values{
+		"web_search": {"1"}, "deep_search": {"1"},
+	}, hx); code != 200 {
+		t.Fatalf("settings = %d", code)
+	}
+	convID, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	conv, err := f.store.FindConversation(u.ID, convID)
+	if err != nil || conv.Mode != store.ModeChat || !conv.WebSearch || !conv.DeepSearch {
+		t.Fatalf("settings = %+v err %v", conv, err)
+	}
+	if code, _, _ := f.post(chatURL+"/messages", url.Values{"content": {"Oi"}}, hx); code != 200 {
+		t.Fatalf("message = %d", code)
+	}
+	saved, err := f.store.FindConversation(u.ID, convID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, _ := f.store.CountConversations(u.ID)
+	page := mustGet(t, f, "/anonymous")
+	mustContain(t, page, "anon-banner")
+	mustContain(t, page, `name="web"`)
+	mustContain(t, page, `name="deep"`)
+	mustContain(t, page, "personality-pill is-chat")
+	code, _, h = f.post("/conversations/", url.Values{"mode": {"assistant"}, "anon": {"1"}}, nil)
+	if code != 303 || h.Get("Location") != "/anonymous" {
+		t.Fatalf("anon personality = %d %q", code, h.Get("Location"))
+	}
+	after, _ := f.store.CountConversations(u.ID)
+	if after != before {
+		t.Fatalf("personality while anonymous created a chat: %d -> %d", before, after)
+	}
+	page = mustGet(t, f, "/anonymous")
+	mustContain(t, page, "personality-pill is-assistant")
+	mustContain(t, page, "This chat will not be saved")
+	got, err := f.store.FindConversation(u.ID, convID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Mode != saved.Mode || got.WebSearch != saved.WebSearch || got.DeepSearch != saved.DeepSearch {
+		t.Fatalf("saved chat changed while anonymous: before %+v after %+v", saved, got)
+	}
 }
 
 func TestAnonymousIsNotAccountHistory(t *testing.T) {
@@ -967,9 +1097,12 @@ func TestAnonymousIsNotAccountHistory(t *testing.T) {
 	f.login("you@x.com", "secret-ok")
 	before, _ := f.store.CountConversations(u.ID)
 	page := mustGet(t, f, "/anonymous")
-	mustContain(t, page, "Not saved to your account")
-	mustContain(t, page, "Anônimo")
+	mustContain(t, page, "This chat will not be saved")
+	mustContain(t, page, "Anonymous on")
+	mustContain(t, page, "anon-banner")
+	mustContain(t, page, "personality-pill")
 	mustNotContain(t, page, "example-chip")
+	mustNotContain(t, page, `value="anonymous"`)
 	req, _ := http.NewRequest(http.MethodPost, f.server.URL+"/anonymous/complete", strings.NewReader(`{"content":"segredo anônimo"}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "text/event-stream")
