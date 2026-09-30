@@ -1,13 +1,17 @@
 #!/bin/sh
-# Copy design/tokens.css into each app and refresh the mobile.css marker
-# block at the bottom of that app's input.css. Docker builds only see the
-# app directory, so the copies are what Tailwind compiles.
+# Copy design/tokens.css and the wink icon into each app, and refresh the
+# mobile.css marker block at the bottom of that app's input.css. Docker
+# builds only see the app directory, so the copies are what ships.
 set -eu
 root=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 apps="account notes assistant calendar spend people email"
 for app in $apps; do
   css="$root/apps/$app/web/static/css"
+  static="$root/apps/$app/web/static"
   cp "$root/design/tokens.css" "$css/tokens.css"
+  cp "$root/design/icon.svg" "$static/icon.svg"
+  cp "$root/design/icon.png" "$static/icon.png"
+  cp "$root/design/apple-touch-icon.png" "$static/apple-touch-icon.png"
   input="$css/input.css"
   tmp=$(mktemp)
   awk '

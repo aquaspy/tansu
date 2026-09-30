@@ -1,29 +1,34 @@
 /* Source of truth for suite color, type, and space tokens.
    Copied to apps/<app>/web/static/css/tokens.css by scripts/sync-design-css.sh.
-   Edit this file, then run the script. Do not edit the copies. */
+   Edit this file, then run the script. Do not edit the copies.
+
+   Light hexes are the marketing landing (www.gettansu.com/css/styles.css),
+   measured 30 Sep 2026. --user-bubble is the pill lifted just enough to
+   sit beside a primary button; #f7fffb on it is 5.58:1.
+   Dark accent is the same forest, lighter, not the old neon teal. */
 
 :root, [data-theme="light"] {
-  --bg0: #f4f6f5;
-  --sidebar: #e9edeb;
-  --surface: #ffffff;
-  --input: #ffffff;
-  --line: #dde3e0;
-  --line-soft: #e8edeb;
-  --ink: #0f1512;
-  --muted: #5c6862;
-  --accent: #0e7490;
-  --accent-ink: #ffffff;
-  --accent-2: #0b647d;
-  --accent-soft: #e2f1f5;
+  --bg0: #f7f4ef;
+  --sidebar: #efeae2;
+  --surface: #fffdf9;
+  --input: #fffdf9;
+  --line: #e4ddd2;
+  --line-soft: #efe6da;
+  --ink: #1a1916;
+  --muted: #6b6358;
+  --accent: #1f6f5b;
+  --accent-ink: #f7fffb;
+  --accent-2: #0f3f34;
+  --accent-soft: #e4f1ec;
   --danger: #d92d20;
   --danger-soft: #fdeceb;
-  --user-bubble: #dceef3;
-  --code-bg: #0f1512;
-  --code-ink: #e9eef5;
-  --shadow: 0 16px 44px rgba(15, 25, 22, 0.1);
-  --shadow-sm: 0 4px 16px rgba(15, 25, 22, 0.08);
-  --auth-glow: #cde7ee;
-  --ring: rgba(14, 116, 144, 0.28);
+  --user-bubble: #267360;
+  --code-bg: #1a1916;
+  --code-ink: #f7f4ef;
+  --shadow: 0 16px 44px rgba(26, 25, 22, 0.1);
+  --shadow-sm: 0 4px 16px rgba(26, 25, 22, 0.08);
+  --auth-glow: #d5ebe3;
+  --ring: rgba(31, 111, 91, 0.28);
   color-scheme: light;
 }
 
@@ -36,45 +41,45 @@
   --line-soft: #1b2230;
   --ink: #e9eef5;
   --muted: #8b95a7;
-  --accent: #2dd4bf;
-  --accent-ink: #062a26;
-  --accent-2: #5eead4;
-  --accent-soft: #143b37;
+  --accent: #8fcead;
+  --accent-ink: #062117;
+  --accent-2: #c5e6d4;
+  --accent-soft: #1a3d32;
   --danger: #f97066;
   --danger-soft: #3a1d1a;
-  --user-bubble: #173f3a;
+  --user-bubble: #8fcead;
   --code-bg: #070a0f;
   --code-ink: #dbe4ee;
   --shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
   --shadow-sm: 0 6px 20px rgba(0, 0, 0, 0.35);
-  --auth-glow: #123b37;
-  --ring: rgba(45, 212, 191, 0.3);
+  --auth-glow: #12352c;
+  --ring: rgba(143, 206, 173, 0.32);
   color-scheme: dark;
 }
 
 @media (prefers-color-scheme: light) {
   [data-theme="system"] {
-    --bg0: #f4f6f5;
-    --sidebar: #e9edeb;
-    --surface: #ffffff;
-    --input: #ffffff;
-    --line: #dde3e0;
-    --line-soft: #e8edeb;
-    --ink: #0f1512;
-    --muted: #5c6862;
-    --accent: #0e7490;
-    --accent-ink: #ffffff;
-    --accent-2: #0b647d;
-    --accent-soft: #e2f1f5;
+    --bg0: #f7f4ef;
+    --sidebar: #efeae2;
+    --surface: #fffdf9;
+    --input: #fffdf9;
+    --line: #e4ddd2;
+    --line-soft: #efe6da;
+    --ink: #1a1916;
+    --muted: #6b6358;
+    --accent: #1f6f5b;
+    --accent-ink: #f7fffb;
+    --accent-2: #0f3f34;
+    --accent-soft: #e4f1ec;
     --danger: #d92d20;
     --danger-soft: #fdeceb;
-    --user-bubble: #dceef3;
-    --code-bg: #0f1512;
-    --code-ink: #e9eef5;
-    --shadow: 0 16px 44px rgba(15, 25, 22, 0.1);
-    --shadow-sm: 0 4px 16px rgba(15, 25, 22, 0.08);
-    --auth-glow: #cde7ee;
-    --ring: rgba(14, 116, 144, 0.28);
+    --user-bubble: #267360;
+    --code-bg: #1a1916;
+    --code-ink: #f7f4ef;
+    --shadow: 0 16px 44px rgba(26, 25, 22, 0.1);
+    --shadow-sm: 0 4px 16px rgba(26, 25, 22, 0.08);
+    --auth-glow: #d5ebe3;
+    --ring: rgba(31, 111, 91, 0.28);
     color-scheme: light;
   }
 }
@@ -89,19 +94,19 @@
     --line-soft: #1b2230;
     --ink: #e9eef5;
     --muted: #8b95a7;
-    --accent: #2dd4bf;
-    --accent-ink: #062a26;
-    --accent-2: #5eead4;
-    --accent-soft: #143b37;
+    --accent: #8fcead;
+    --accent-ink: #062117;
+    --accent-2: #c5e6d4;
+    --accent-soft: #1a3d32;
     --danger: #f97066;
     --danger-soft: #3a1d1a;
-    --user-bubble: #173f3a;
+    --user-bubble: #8fcead;
     --code-bg: #070a0f;
     --code-ink: #dbe4ee;
     --shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
     --shadow-sm: 0 6px 20px rgba(0, 0, 0, 0.35);
-    --auth-glow: #123b37;
-    --ring: rgba(45, 212, 191, 0.3);
+    --auth-glow: #12352c;
+    --ring: rgba(143, 206, 173, 0.32);
     color-scheme: dark;
   }
 }

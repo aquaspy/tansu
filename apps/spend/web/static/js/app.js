@@ -140,7 +140,7 @@
       el.setAttribute("aria-pressed", String(on));
     });
     const dark = theme === "dark" || (theme === "system" && themeMedia?.matches);
-    document.querySelector("meta[name='theme-color']")?.setAttribute("content", dark ? "#0a0d12" : "#e9edeb");
+    document.querySelector("meta[name='theme-color']")?.setAttribute("content", dark ? "#0a0d12" : "#efeae2");
   }
 
   controllers.theme = {

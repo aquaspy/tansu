@@ -247,11 +247,19 @@ var strings_ = map[Locale]map[string]string{
 		"hub.link_action": "Connect apps",
 
 		"hub.timezone_title":   "Timezone",
+		"hub.timezone_meta":    "Timezone · %{zone}",
 		"hub.timezone_lede":    "Times in the suite follow this IANA zone. Leave it blank to use UTC.",
 		"hub.timezone_label":   "IANA timezone",
 		"hub.timezone_save":    "Save timezone",
 		"hub.timezone_saved":   "Timezone saved.",
 		"hub.timezone_invalid": "Use an IANA name such as America/Sao_Paulo. Abbreviations and offsets are not accepted.",
+
+		"hub.app.notes":     "Notes",
+		"hub.app.assistant": "Assistant",
+		"hub.app.calendar":  "Calendar",
+		"hub.app.email":     "Email",
+		"hub.app.spend":     "Spend",
+		"hub.app.people":    "People",
 
 		"js.invalid_credentials": "Invalid email or password.",
 		"js.wrong_password":      "Wrong password.",
@@ -352,11 +360,19 @@ var strings_ = map[Locale]map[string]string{
 		"hub.link_action": "Conectar apps",
 
 		"hub.timezone_title":   "Fuso horário",
+		"hub.timezone_meta":    "Fuso horário · %{zone}",
 		"hub.timezone_lede":    "Os horários da suíte seguem este fuso IANA. Deixe em branco para usar UTC.",
 		"hub.timezone_label":   "Fuso IANA",
 		"hub.timezone_save":    "Salvar fuso",
 		"hub.timezone_saved":   "Fuso salvo.",
 		"hub.timezone_invalid": "Use um nome IANA, como America/Sao_Paulo. Abreviações e deslocamentos não valem.",
+
+		"hub.app.notes":     "Notas",
+		"hub.app.assistant": "Assistente",
+		"hub.app.calendar":  "Agenda",
+		"hub.app.email":     "Email",
+		"hub.app.spend":     "Gastos",
+		"hub.app.people":    "Pessoas",
 
 		"js.invalid_credentials": "Email ou senha inválidos.",
 		"js.wrong_password":      "Senha incorreta.",

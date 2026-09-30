@@ -211,8 +211,11 @@ Mobile UX audit from the September 2026 phone screenshots:
 [`docs/design-mobile-audit-2026-09.md`](docs/design-mobile-audit-2026-09.md).
 
 Shared color, type, and space tokens live in `design/tokens.css`.
-`scripts/sync-design-css.sh` copies them into each app and refreshes the
-mobile rules appended to `apps/<app>/web/static/css/input.css`.
+Light values follow the marketing landing (warm paper, forest `#1f6f5b`).
+`scripts/sync-design-css.sh` copies the tokens and the wink icon into each
+app and refreshes the mobile rules appended to
+`apps/<app>/web/static/css/input.css`. The header mark is the inline wink
+in `Wordmark` (`design/mark.svg`).
 
 `DEFAULT_LOCALE` (unset means `en`) applies only when the locale cookie is
 empty and `Accept-Language` names neither Portuguese nor English. An explicit

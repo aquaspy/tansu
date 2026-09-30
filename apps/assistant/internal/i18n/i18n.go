@@ -192,7 +192,7 @@ var strings_ = map[Locale]map[string]string{
 
 		"chat.new":                "New chat",
 		"chat.empty":              "Pick a chat or start a new one.",
-		"chat.empty_list":         "No chats yet.",
+		"chat.empty_list":         "Ask about your calendar, spend, or notes.",
 		"chat.placeholder":        "Message…",
 		"chat.placeholder_anon":   "Anonymous message…",
 		"chat.send":               "Send",
@@ -401,7 +401,7 @@ var strings_ = map[Locale]map[string]string{
 
 		"chat.new":                "Novo chat",
 		"chat.empty":              "Escolha um chat ou comece um novo.",
-		"chat.empty_list":         "Nenhum chat ainda.",
+		"chat.empty_list":         "Pergunte sobre a sua agenda, os seus gastos ou as suas notas.",
 		"chat.placeholder":        "Mensagem…",
 		"chat.placeholder_anon":   "Mensagem anônima…",
 		"chat.send":               "Enviar",

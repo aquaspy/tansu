@@ -54,18 +54,17 @@ body:has(.app-body) {
   letter-spacing: -0.01em;
   color: var(--ink);
 }
-.wordmark img {
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 0.45rem;
+.wordmark .mark {
+  width: 22px;
+  height: 22px;
   display: block;
   flex: none;
+  color: var(--accent-2);
 }
 .auth-card .wordmark, .share-card .wordmark { font-size: 1rem; }
-.auth-card .wordmark img, .share-card .wordmark img {
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 0.5rem;
+.auth-card .wordmark .mark, .share-card .wordmark .mark {
+  width: 24px;
+  height: 24px;
 }
 
 /* ---- auth ---- */
@@ -995,6 +994,31 @@ a.folder-item { font-size: 0.9rem; font-weight: 550; }
   border-radius: 999px;
   min-height: 2.75rem;
   font-weight: 650;
+}
+
+/* Wink mark. 22px in the header, 24px on auth cards. The square's own
+   rx is the radius; do not clip it with border-radius. */
+.wordmark .mark,
+.app-icon.app-mark .mark {
+  width: 22px;
+  height: 22px;
+  display: block;
+  flex: none;
+  color: var(--accent-2);
+}
+.auth-card .wordmark .mark,
+.share-card .wordmark .mark {
+  width: 24px;
+  height: 24px;
+}
+.app-icon.app-mark {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  font-size: 0;
+  line-height: 0;
+  color: var(--accent-2);
 }
 
 .cal-nav h1,

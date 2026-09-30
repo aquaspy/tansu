@@ -2,6 +2,15 @@ package i18n
 
 import "testing"
 
+func TestEmptyListCopy(t *testing.T) {
+	if got := T(EN, "chat.empty_list"); got != "Ask about your calendar, spend, or notes." {
+		t.Fatalf("en: %q", got)
+	}
+	if got := T(PT, "chat.empty_list"); got != "Pergunte sobre a sua agenda, os seus gastos ou as suas notas." {
+		t.Fatalf("pt: %q", got)
+	}
+}
+
 func TestFromCookieDefaultLocale(t *testing.T) {
 	t.Setenv("DEFAULT_LOCALE", "")
 	if got := FromCookie("", ""); got != EN {

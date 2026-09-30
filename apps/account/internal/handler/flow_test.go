@@ -188,7 +188,7 @@ func TestHubShowsAppsAndDrawers(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("hub: %d", code)
 	}
-	for _, want := range []string{"TansuPeople", "0 of 1 apps connected", "Not connected yet", "Connect", "http://127.0.0.1:3005/login/kura"} {
+	for _, want := range []string{"People", "0 of 1 apps connected", "Not connected yet", "Connect", "http://127.0.0.1:3005/login/kura", "M8 10.5h12"} {
 		mustContain(t, body, want)
 	}
 	// Link the app through a redemption, drawers light up.
@@ -472,4 +472,63 @@ func TestHubCalendarLinkSyncsZone(t *testing.T) {
 	f.login(u.Email, "secret-password")
 	_, body, _ := f.get("/", nil)
 	mustContain(t, body, "http://127.0.0.1:3004/login/kura?sync=1")
+	mustContain(t, body, "Calendar")
+	if strings.Contains(body, "📅") {
+		t.Fatal("first-party row still uses the calendar emoji")
+	}
+}
+
+func TestHubTimezoneOrderAndOtherClient(t *testing.T) {
+	f := newFlow(t, nil)
+	if err := f.store.SeedClients([]store.SeedClient{
+		{
+			ID: testClientID, Secret: testClientSecret,
+			Name: "TansuPeople", Home: "http://127.0.0.1:3005/", Icon: "🧑",
+			RedirectURIs: []string{testRedirect},
+		},
+		{
+			ID: "lab", Secret: testClientSecret,
+			Name: "Lab", Home: "http://127.0.0.1:3099/", Icon: "🧪",
+			RedirectURIs: []string{"http://127.0.0.1:3099/login/kura/callback"},
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	u := f.seedUser("ada@example.com", "secret-password")
+	f.login(u.Email, "secret-password")
+	_, body, _ := f.get("/", nil)
+	apps := strings.Index(body, `class="apps"`)
+	meta := strings.Index(body, `class="zone-meta"`)
+	if apps < 0 || meta < apps {
+		t.Fatalf("valid zone should follow the apps (apps=%d meta=%d)", apps, meta)
+	}
+	if strings.Contains(body, "zone-lead") {
+		t.Fatal("valid zone should stay collapsed")
+	}
+	mustContain(t, body, "Timezone · UTC")
+	mustContain(t, body, "People")
+	mustContain(t, body, "Lab")
+	mustContain(t, body, "🧪")
+	if strings.Contains(body, "🧑") {
+		t.Fatal("first-party row still uses the people emoji")
+	}
+
+	code, body, _ := f.post("/timezone", url.Values{"timezone": {"BRT"}}, nil)
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("invalid status = %d", code)
+	}
+	lead := strings.Index(body, "zone-lead")
+	apps = strings.Index(body, `class="apps"`)
+	if lead < 0 || apps < lead {
+		t.Fatalf("invalid zone should lead (lead=%d apps=%d)", lead, apps)
+	}
+	if strings.Contains(body, "zone-meta") {
+		t.Fatal("invalid zone should not collapse")
+	}
+
+	uurl, _ := url.Parse(f.server.URL)
+	f.client.Jar.SetCookies(uurl, []*http.Cookie{{Name: "kura_locale", Value: "pt", Path: "/"}})
+	_, body, _ = f.get("/", nil)
+	mustContain(t, body, "Fuso horário · UTC")
+	mustContain(t, body, "Pessoas")
 }

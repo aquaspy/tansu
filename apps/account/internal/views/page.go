@@ -241,7 +241,11 @@ func DrawerClass(d Drawer) string {
 }
 
 // ClientIcon renders the registered emoji, or the name initial.
+// First-party rows do not use this; they use Mark plus AppLabel.
 func ClientIcon(c *store.Client) string {
+	if c == nil {
+		return "◈"
+	}
 	if strings.TrimSpace(c.Icon) != "" {
 		return c.Icon
 	}
@@ -250,6 +254,49 @@ func ClientIcon(c *store.Client) string {
 		return "◈"
 	}
 	return string(r)
+}
+
+// FirstParty reports a suite app whose hub row is the wink plus a short name.
+// Other clients keep the emoji from KURA_CLIENTS_JSON.
+func FirstParty(c *store.Client) bool {
+	if c == nil {
+		return false
+	}
+	switch c.ID {
+	case "kuranotes", "kurachat", "kuracalendar", "kuraspend", "kurapeople", "kuraemail":
+		return true
+	default:
+		return false
+	}
+}
+
+// AppLabel is the short name for a first-party app, or the registered name.
+func AppLabel(p Page, c *store.Client) string {
+	if c == nil {
+		return ""
+	}
+	switch c.ID {
+	case "kuranotes":
+		return p.T("hub.app.notes")
+	case "kurachat":
+		return p.T("hub.app.assistant")
+	case "kuracalendar":
+		return p.T("hub.app.calendar")
+	case "kuraspend":
+		return p.T("hub.app.spend")
+	case "kurapeople":
+		return p.T("hub.app.people")
+	case "kuraemail":
+		return p.T("hub.app.email")
+	default:
+		return c.Name
+	}
+}
+
+// TimezoneReady is a saved, non-empty IANA zone with no validation error.
+// UTC counts: it is a real zone. Empty or rejected input still leads the hub.
+func TimezoneReady(d HubData) bool {
+	return d.TimezoneError == "" && strings.TrimSpace(d.Timezone) != ""
 }
 
 // IsLinked reports whether the user connected an app.
