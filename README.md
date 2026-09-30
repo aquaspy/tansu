@@ -205,6 +205,11 @@ uploads). Any consistent copy works; per app:
 Volumes: `kura_account_data`, `kura_notes_data`, `kura_chat_data`,
 `kura_calendar_data`, `kura_spend_data`, `kura_people_data`, `kura_email_data`.
 
+## Design
+
+Mobile UX audit from the September 2026 phone screenshots:
+[`docs/design-mobile-audit-2026-09.md`](docs/design-mobile-audit-2026-09.md).
+
 ## Layout
 
 Each app is independent: its own `go.mod`, Dockerfile, CI job, and SQLite
