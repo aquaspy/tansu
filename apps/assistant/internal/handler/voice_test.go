@@ -199,38 +199,21 @@ func TestVoicePolish(t *testing.T) {
 	}
 }
 
-func TestVoiceSettingsPersist(t *testing.T) {
+func TestVoiceTogglesAreIgnored(t *testing.T) {
 	f := newFlow(t, nil)
 	u := f.seedUser("you@x.com", "secret-ok")
 	conv, _ := f.store.CreateConversation(u.ID)
 	f.login("you@x.com", "secret-ok")
-	if conv.VoiceReadAloud || !conv.VoiceAutoSend {
-		t.Fatalf("defaults = %+v", conv)
-	}
 	hx := map[string]string{"HX-Request": "true"}
-	flip := func(form url.Values) {
-		t.Helper()
-		if code, _, _ := f.methodCall(http.MethodPatch, "/conversations/1/settings", form, hx); code != 200 {
-			t.Fatalf("settings = %d", code)
-		}
+	code, _, _ := f.methodCall(http.MethodPatch, "/conversations/1/settings", url.Values{
+		"voice_read_aloud": {"1", "0"},
+		"voice_auto_send":  {"0"},
+	}, hx)
+	if code != 200 {
+		t.Fatalf("settings = %d", code)
 	}
-	// Checked box submits ["1","0"] (hidden fallback last); FormValue takes "1".
-	flip(url.Values{"voice_read_aloud": {"1", "0"}})
-	conv, _ = f.store.FindConversation(u.ID, conv.ID)
-	if !conv.VoiceReadAloud {
-		t.Fatal("read-aloud did not stick")
-	}
-	// Unchecked submits ["0"] only.
-	flip(url.Values{"voice_read_aloud": {"0"}})
-	conv, _ = f.store.FindConversation(u.ID, conv.ID)
-	if conv.VoiceReadAloud {
-		t.Fatal("read-aloud did not clear")
-	}
-	// Auto-send flips the same way, defaulting on.
-	flip(url.Values{"voice_auto_send": {"0"}})
-	conv, _ = f.store.FindConversation(u.ID, conv.ID)
-	if conv.VoiceAutoSend {
-		t.Fatal("auto-send did not clear")
+	if _, err := f.store.FindConversation(u.ID, conv.ID); err != nil {
+		t.Fatal(err)
 	}
 }
 

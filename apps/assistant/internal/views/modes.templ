@@ -315,12 +315,6 @@ templ AnonComposer(p Page, a *AnonPage) {
 		data-composer-remove-label-value={ p.T("app.cancel") }
 	>
 		<input type="hidden" name="csrf_token" value={ p.CSRF }/>
-		if a.ShowControls {
-			<div class="chat-settings anon-controls">
-				@ModelField(p, "anon", a.Models, a.CurrentModel, a.ModelTiers, a.ModelPrices)
-				@EffortField(p, "anon", a.Efforts, a.CurrentEffort)
-			</div>
-		}
 		<div class="composer-main">
 			<textarea
 				name="content"
@@ -334,6 +328,18 @@ templ AnonComposer(p Page, a *AnonPage) {
 				data-action="input->composer#resize input->composer#sync"
 			></textarea>
 		</div>
+		<div class="composer-bar">
+		if a.ShowControls {
+			<details class="overflow-menu composer-more" data-controller="disclosure">
+				<summary class="composer-more-btn">{ p.T("chat.options") }</summary>
+				<div class="overflow-panel composer-more-panel">
+					<div class="chat-settings anon-controls">
+						@ModelField(p, "anon", a.Models, a.CurrentModel, a.ModelTiers, a.ModelPrices)
+						@EffortField(p, "anon", a.Efforts, a.CurrentEffort)
+					</div>
+				</div>
+			</details>
+		}
 		if a.SearchAvail {
 			<div class="search-picker" role="group" aria-label={ p.T("chat.web_search") + ", " + p.T("chat.deep_search") }>
 				<label class="search-option" title={ p.T("chat.web_search") }>
@@ -353,6 +359,7 @@ templ AnonComposer(p Page, a *AnonPage) {
 			</div>
 		}
 		<button type="submit" class="btn-primary" data-composer-target="submit" data-anon-target="submit">{ p.T("chat.send") }</button>
+		</div>
 	</form>
 }
 

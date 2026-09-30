@@ -206,7 +206,6 @@ func (s *Server) handleConversationsSettings(w http.ResponseWriter, r *http.Requ
 	}
 	st := store.ConversationSettings{
 		Model: conv.Model, Web: conv.WebSearch, Deep: conv.DeepSearch, Effort: conv.Effort,
-		VoiceReadAloud: conv.VoiceReadAloud, VoiceAutoSend: conv.VoiceAutoSend,
 	}
 	if s.Config.ShowModelControls && r.Form.Has("model") {
 		st.Model = sanitizeModel(s.Config.OpenRouterModels, r.FormValue("model"))
@@ -219,14 +218,6 @@ func (s *Server) handleConversationsSettings(w http.ResponseWriter, r *http.Requ
 	}
 	if s.Config.ShowModelControls && r.Form.Has("effort") {
 		st.Effort = sanitizeEffort(r.FormValue("effort"))
-	}
-	// Voice checkboxes always submit (a hidden 0 follows each box, and
-	// FormValue takes the first), so both directions persist.
-	if r.Form.Has("voice_read_aloud") {
-		st.VoiceReadAloud = r.FormValue("voice_read_aloud") == "1"
-	}
-	if r.Form.Has("voice_auto_send") {
-		st.VoiceAutoSend = r.FormValue("voice_auto_send") == "1"
 	}
 	if err := s.Store.UpdateConversationSettings(user.ID, conv.ID, st); err != nil {
 		http.Error(w, "chat", http.StatusInternalServerError)

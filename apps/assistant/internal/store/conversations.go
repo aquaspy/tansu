@@ -21,8 +21,6 @@ type Conversation struct {
 	WebSearch           bool   // sticky web-search toggle
 	DeepSearch          bool   // sticky deep-search modifier
 	Effort              string // sticky reasoning effort, "" = server default
-	VoiceReadAloud      bool   // sticky: speak every reply
-	VoiceAutoSend       bool   // sticky: mic sends right away (false = stage)
 	Mode                string // assistant (default) or chat; anonymous is never stored
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
@@ -59,9 +57,9 @@ func scanConversation(row interface {
 	c := &Conversation{}
 	var summary, token, archived, model, effort, mode, created, updated sql.NullString
 	var through sql.NullInt64
-	var web, deep, readAloud, autoSend int
+	var web, deep int
 	err := row.Scan(&c.ID, &c.UserID, &c.Title, &summary, &through, &token, &archived,
-		&model, &web, &deep, &effort, &readAloud, &autoSend, &mode, &created, &updated)
+		&model, &web, &deep, &effort, &mode, &created, &updated)
 	if err != nil {
 		return nil, err
 	}
@@ -72,8 +70,6 @@ func scanConversation(row interface {
 	c.WebSearch = web != 0
 	c.DeepSearch = deep != 0
 	c.Effort = effort.String
-	c.VoiceReadAloud = readAloud != 0
-	c.VoiceAutoSend = autoSend != 0
 	c.Mode = mode.String
 	if c.Mode == "" {
 		c.Mode = ModeAssistant
@@ -88,7 +84,7 @@ func scanConversation(row interface {
 
 const conversationCols = `id, user_id, title, summary, summarized_through_id,
 	share_token, archived_at, model, web_search, deep_search, effort,
-	voice_read_aloud, voice_auto_send, mode, created_at, updated_at`
+	mode, created_at, updated_at`
 
 func (s *Store) CreateConversation(userID int64) (*Conversation, error) {
 	ts := now()
@@ -177,8 +173,7 @@ func (s *Store) OpenDraftFor(userID int64) (*Conversation, error) {
 
 // OpenDraftForMode returns the newest blank draft of mode (assistant or
 // chat), creating one when missing, and deletes the other blanks.
-// New drafts inherit the voice toggles and effort of the user's most
-// recent chat, so flipping them once sticks for future chats.
+// New drafts inherit the effort of the user's most recent chat.
 // Anonymous is not a stored mode; it is coerced to assistant.
 func (s *Store) OpenDraftForMode(userID int64, mode string) (*Conversation, error) {
 	mode = NormalizeStoredMode(mode)
@@ -194,14 +189,14 @@ func (s *Store) OpenDraftForMode(userID int64, mode string) (*Conversation, erro
 		ORDER BY c.updated_at DESC, c.id DESC LIMIT 1`, userID, mode).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		ts := now()
-		readAloud, autoSend, effort := 0, 1, ""
-		_ = tx.QueryRow(`SELECT voice_read_aloud, voice_auto_send, effort
+		effort := ""
+		_ = tx.QueryRow(`SELECT effort
 			FROM conversations WHERE user_id = ?
 			ORDER BY updated_at DESC, id DESC LIMIT 1`, userID).
-			Scan(&readAloud, &autoSend, &effort)
+			Scan(&effort)
 		res, err := tx.Exec(`INSERT INTO conversations
-			(user_id, title, mode, voice_read_aloud, voice_auto_send, effort, created_at, updated_at)
-			VALUES (?, '', ?, ?, ?, ?, ?, ?)`, userID, mode, readAloud, autoSend, effort, ts, ts)
+			(user_id, title, mode, effort, created_at, updated_at)
+			VALUES (?, '', ?, ?, ?, ?)`, userID, mode, effort, ts, ts)
 		if err != nil {
 			return nil, err
 		}
@@ -240,23 +235,19 @@ func (s *Store) UpdateConversationTitle(userID, id int64, title string) error {
 // ConversationSettings is the sticky per-chat state; "" means the
 // server default (model, effort).
 type ConversationSettings struct {
-	Model          string
-	Web            bool
-	Deep           bool
-	Effort         string
-	VoiceReadAloud bool
-	VoiceAutoSend  bool
+	Model  string
+	Web    bool
+	Deep   bool
+	Effort string
 }
 
 // UpdateConversationSettings stores the sticky state without touching
 // updated_at (a flip is not activity).
 func (s *Store) UpdateConversationSettings(userID, id int64, st ConversationSettings) error {
 	_, err := s.db.Exec(`UPDATE conversations
-		SET model = ?, web_search = ?, deep_search = ?, effort = ?,
-			voice_read_aloud = ?, voice_auto_send = ?
+		SET model = ?, web_search = ?, deep_search = ?, effort = ?
 		WHERE id = ? AND user_id = ?`,
-		st.Model, boolInt(st.Web), boolInt(st.Deep), st.Effort,
-		boolInt(st.VoiceReadAloud), boolInt(st.VoiceAutoSend), id, userID)
+		st.Model, boolInt(st.Web), boolInt(st.Deep), st.Effort, id, userID)
 	return err
 }
 

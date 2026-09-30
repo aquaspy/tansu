@@ -70,6 +70,7 @@ type Citation struct {
 type MessageView struct {
 	Msg        *store.Message
 	BodyHTML   string // sanitized markdown (assistant)
+	CopyText   string // plain text for copy and listen, without tool ids
 	Citations  []Citation
 	ModelLabel string // assistant model from token_usage, "" when unknown
 	Searched   bool   // assistant turn ran web search
@@ -78,6 +79,16 @@ type MessageView struct {
 	Shared     bool   // shared page: no retry, no status polling
 	ShareToken string
 	Actions    []ActionCard
+}
+
+func copyText(m *MessageView) string {
+	if m == nil || m.Msg == nil {
+		return ""
+	}
+	if m.CopyText != "" {
+		return m.CopyText
+	}
+	return m.Msg.Content
 }
 
 // AppRow is one sibling on the Apps page.

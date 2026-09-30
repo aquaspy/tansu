@@ -26,7 +26,9 @@ func (s *Service) messageView(locale i18n.Locale, m *store.Message, convID int64
 		}
 	}
 	if m.Role == store.RoleAssistant {
-		mv.BodyHTML = Render(orEllipsis(visibleContent(m.Content, shared)))
+		shown := visibleContent(m.Content, shared)
+		mv.CopyText = shown
+		mv.BodyHTML = Render(orEllipsis(shown))
 		mv.Citations = StoredCitations(m.Citations)
 		if u := m.UsageMap(); u != nil {
 			if model, _ := u["model"].(string); model != "" {
