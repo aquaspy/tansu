@@ -6,7 +6,7 @@ import "fmt"
 templ ConversationList(p Page, d ShellData) {
 	<nav class="note-list" id="conversation-list" data-controller="confirm">
 	if !d.HasConversations {
-		<p class="empty-list muted">{ p.T("chat.empty_list") }</p>
+		<p class="empty-list">{ p.T("chat.empty_list") }</p>
 	} else {
 		for _, c := range d.Conversations {
 			<div class={ noteItemClass(c) }>

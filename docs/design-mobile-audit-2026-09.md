@@ -501,6 +501,31 @@ Not a fake phone inside the app. The list from P1.4 (title, one muted line, rela
 
 Once timezone is non-empty and valid, do not lead with the form. Render the app list first (it is why the hub exists). Move the timezone card below the apps, collapsed to a single meta row: "Timezone · America/Sao_Paulo" with a disclosure that reveals the current form. An invalid or empty zone still leads, with the P0 salary-style treatment: one sentence, one button.
 
+### Landed (P2)
+
+Measured from the live landing stylesheet (`https://www.gettansu.com/css/styles.css`), the same page as `01-www-landing.png`. The marketing repo was not edited.
+
+Light, checked against WCAG 4.5:1:
+
+| Token | Hex | Contrast |
+|---|---|---|
+| `--bg0` | `#f7f4ef` | `--ink` `#1a1916` on it is 16.0:1 |
+| `--sidebar` | `#efeae2` | header; `theme-color` light is this |
+| `--surface` / `--input` | `#fffdf9` | |
+| `--line` / `--line-soft` | `#e4ddd2` / `#efe6da` | |
+| `--muted` | `#6b6358` | 5.82:1 on `--surface` |
+| `--accent` | `#1f6f5b` | landing pill; `#f7fffb` on it is 5.93:1 |
+| `--accent-2` | `#0f3f34` | landing pressed forest |
+| `--accent-soft` | `#e4f1ec` | |
+| `--accent-ink` | `#f7fffb` | |
+| `--user-bubble` | `#267360` | one step lighter than the pill; `#f7fffb` on it is 5.58:1 |
+
+Dark surfaces stayed. Dark accent is forest, not `#2dd4bf`: `--accent` `#8fcead`, `--accent-ink` `#062117` (9.37:1 on the accent), `--accent-2` `#c5e6d4`, `--accent-soft` `#1a3d32`, `--user-bubble` `#8fcead`.
+
+The header and PWA mark is the landing wink (T plus the dot) in a ~6px-radius square, one color. `Wordmark` inlines `design/mark.svg` so it paints with `currentColor` / `--accent-2` at 22px (24px on auth cards). `design/icon.svg`, `icon.png` (512), and `apple-touch-icon.png` (180) are that glyph in `#0f3f34` on `#f7f4ef`. Hub drawers already fill from `--accent`. First-party hub rows use the mark and the short name; other clients still use their emoji.
+
+Assistant empty list is the audit sentence in EN and PT. User bubbles use `--user-bubble` with `--accent-ink` text. A valid timezone, including UTC, sits under the apps as "Timezone · {zone}". An empty or rejected zone still leads with the form.
+
 ---
 
 ## Proposed mobile design system (sketch)

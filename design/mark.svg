@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+  <!-- Minimal wink (piscadinha): the landing T plus the dot. One color.
+       Header copies are inlined in Wordmark so currentColor follows --accent-2.
+       At 22px the rx=7 square is about 6px radius. -->
+  <rect x="1.5" y="1.5" width="25" height="25" rx="7" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M8 10.5h12M14 10.5v9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+  <circle cx="19.5" cy="8" r="1.4" fill="currentColor"/>
+</svg>

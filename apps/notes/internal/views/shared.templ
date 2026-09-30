@@ -1,8 +1,18 @@
 package views
 
+// Mark is the minimal wink (piscadinha). One color, currentColor, so the
+// header paints it with --accent-2. Geometry matches design/mark.svg.
+templ Mark() {
+	<svg class="mark" viewBox="0 0 28 28" width="22" height="22" aria-hidden="true" fill="none">
+		<rect x="1.5" y="1.5" width="25" height="25" rx="7" stroke="currentColor" stroke-width="1.5"></rect>
+		<path d="M8 10.5h12M14 10.5v9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
+		<circle cx="19.5" cy="8" r="1.4" fill="currentColor"></circle>
+	</svg>
+}
+
 templ Wordmark(p Page) {
 	<p class="wordmark">
-		<img src="/icon.png" width="28" height="28" alt="" decoding="async"/>
+		@Mark()
 		<span>{ p.T("app.short_name") }</span>
 	</p>
 }
