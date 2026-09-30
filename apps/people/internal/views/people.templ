@@ -23,23 +23,13 @@ templ PeopleHeader(p Page, autoLock bool, back bool) {
 				<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.2 3.4 5.6 8l4.6 4.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
 			</a>
 		}
-		@Wordmark()
+		@Wordmark(p)
 		@AccountLink(p)
-		<button type="button" class="icon-btn people-top-tool" data-action="theme#cycle" data-theme-button title={ p.T("auth.theme") } aria-label={ p.T("auth.theme") }>
-			<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 3a5 5 0 0 0 0 10Z" fill="currentColor"></path></svg>
-		</button>
-		<button type="button" class="icon-btn desktop-only" data-action="lock#lock" title={ p.T("app.lock") } aria-label={ p.T("app.lock") }>
-			<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.4" y="7.2" width="9.2" height="6.4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M5.3 7.2V5.4a2.7 2.7 0 0 1 5.4 0v1.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
-		</button>
-		if !back {
-			<button type="button" class="icon-btn" data-action="composer#openPerson" title={ p.T("app.add_person") } aria-label={ p.T("app.add_person") }>
-				<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>
-			</button>
-		}
 		<button type="button" class="icon-btn" data-action="menu#toggle" data-menu-target="menuButton" title={ p.T("app.more") } aria-label={ p.T("app.more") } aria-expanded="false">
 			<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="3.5" r="1.1" fill="currentColor"></circle><circle cx="8" cy="8" r="1.1" fill="currentColor"></circle><circle cx="8" cy="12.5" r="1.1" fill="currentColor"></circle></svg>
 		</button>
 		<div class="mobile-menu" data-menu-target="menu" hidden>
+			@SuiteMenuLink(p)
 			<form action="/lock" method="post">
 				<input type="hidden" name="csrf_token" value={ p.CSRF }/>
 				<button type="submit" class="btn-io">
@@ -58,7 +48,7 @@ templ PeopleHeader(p Page, autoLock bool, back bool) {
 			</a>
 			@ChangePasswordButton(p)
 			@ApiTokensButton(p)
-			@LanguageSwitch(p)
+			@ThemeSwitch(p)
 			@SignOut(p)
 		</div>
 	</header>
@@ -133,16 +123,16 @@ templ IndexPage(p Page, d IndexData, dlg DialogData) {
 			} else {
 				<div class="grid">
 					for _, person := range d.People {
-						<a class="card" href={ templ.SafeURL(PersonURL(person)) }>
+						<a class="card row" href={ templ.SafeURL(PersonURL(person)) }>
 							<span class="avatar" style={ AvatarStyle(person.Name) } aria-hidden="true">{ Initials(person.Name) }</span>
-							<span class="card-main">
-								<span class="card-name">{ PersonTitle(person) }</span>
+							<span class="card-main row-main">
+								<span class="card-name row-title">{ PersonTitle(person) }</span>
 								if CardSub(p, person) != "" {
-									<span class="card-sub">{ CardSub(p, person) }</span>
+									<span class="card-sub row-meta">{ CardSub(p, person) }</span>
 								}
 							</span>
 							if CountdownText(p, person, d.Today) != "" {
-								<span class={ CountdownClass(p, person, d.Today) }>{ CountdownText(p, person, d.Today) }</span>
+								<span class={ CountdownClass(p, person, d.Today) + " row-trailing" }>{ CountdownText(p, person, d.Today) }</span>
 							}
 						</a>
 					}

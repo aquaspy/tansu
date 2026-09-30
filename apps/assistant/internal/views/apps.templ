@@ -8,7 +8,7 @@ templ AppsPage(p Page, rows []AppRow) {
 		if p.Alert != "" {
 			<p class="flash flash-alert" role="alert">{ p.Alert }</p>
 		}
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ p.T("apps.entry") }</h1>
 		<p class="lede">{ p.T("apps.lede") }</p>
 		<ul class="app-rows">

@@ -3,6 +3,7 @@
 package i18n
 
 import (
+	"os"
 	"strings"
 	"time"
 )
@@ -37,8 +38,39 @@ func FromCookie(header, cookie string) Locale {
 	case "en":
 		return EN
 	default:
-		return FromHeader(header)
+		if loc, ok := localeFromHeader(header); ok {
+			return loc
+		}
+		return DefaultLocale()
 	}
+}
+
+// DefaultLocale applies when the locale cookie is empty and Accept-Language
+// names neither Portuguese nor English. Hosted gettansu.com sets
+// DEFAULT_LOCALE=pt. Unset or any other value stays English.
+func DefaultLocale() Locale {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("DEFAULT_LOCALE"))) {
+	case "pt", "pt-br":
+		return PT
+	default:
+		return EN
+	}
+}
+
+func localeFromHeader(header string) (Locale, bool) {
+	for _, part := range strings.Split(header, ",") {
+		tag := strings.ToLower(strings.TrimSpace(strings.Split(part, ";")[0]))
+		if tag == "" {
+			continue
+		}
+		if strings.HasPrefix(tag, "pt") {
+			return PT, true
+		}
+		if strings.HasPrefix(tag, "en") {
+			return EN, true
+		}
+	}
+	return "", false
 }
 
 func HTMLLang(l Locale) string {
@@ -286,6 +318,7 @@ var strings_ = map[Locale]map[string]string{
 		"app.save":             "Save",
 		"app.more":             "More",
 		"app.account":          "Tansu Account",
+		"app.short_name":       "Calendar",
 		"app.account_label":    "Open Tansu Account",
 		"app.today":            "Today",
 		"app.previous_month":   "Previous month",
@@ -318,6 +351,7 @@ var strings_ = map[Locale]map[string]string{
 		"app.repeat_until":     "Until",
 		"app.repeat_hint":      "Blank repeats forever. Editing changes every occurrence.",
 		"app.holidays":         "Holidays",
+		"app.legend":           "Month marks",
 		"app.holidays_lede":    "Pick the countries whose public holidays you want on the month.",
 		"app.export":           "Export",
 		"app.import":           "Import",
@@ -548,6 +582,7 @@ var strings_ = map[Locale]map[string]string{
 		"app.save":             "Salvar",
 		"app.more":             "Mais",
 		"app.account":          "Tansu Account",
+		"app.short_name":       "Agenda",
 		"app.account_label":    "Abrir o Tansu Account",
 		"app.today":            "Hoje",
 		"app.previous_month":   "Mês anterior",
@@ -580,6 +615,7 @@ var strings_ = map[Locale]map[string]string{
 		"app.repeat_until":     "Até",
 		"app.repeat_hint":      "Em branco repete para sempre. Editar muda todas as ocorrências.",
 		"app.holidays":         "Feriados",
+		"app.legend":           "Marcas do mês",
 		"app.holidays_lede":    "Escolha os países cujos feriados você quer no mês.",
 		"app.export":           "Exportar",
 		"app.import":           "Importar",

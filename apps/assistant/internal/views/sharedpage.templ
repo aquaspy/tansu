@@ -3,7 +3,7 @@ package views
 // SharedChatPage is the public read-only view at /s/:token.
 templ SharedChatPage(p Page, title string, messages []*MessageView) {
 	<article class="share-card share-chat">
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ title }</h1>
 		<div class="share-thread">
 			for _, m := range messages {

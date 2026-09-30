@@ -10,9 +10,13 @@ templ NoteList(p Page, d ShellData) {
 		} else {
 			for _, n := range d.Notes {
 				<div class={ noteItemClass(n.Active) }>
-					<a href={ templ.SafeURL(NoteHref(n.ID, d.Filters)) } class="note-item-link">
-						<strong>{ n.Title }</strong>
-						<span>{ n.Preview }</span>
+					<a href={ templ.SafeURL(NoteHref(n.ID, d.Filters)) } class="note-item-link row">
+						<span class="row-main">
+							<strong class="row-title">{ n.Title }</strong>
+							if n.Preview != "" {
+								<span class="row-meta">{ n.Preview }</span>
+							}
+						</span>
 					</a>
 					<button
 						type="button"

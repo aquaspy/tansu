@@ -15,7 +15,7 @@ templ TokensPage(p Page, list []*store.APIToken, raw string) {
 		if p.Alert != "" {
 			<p class="flash flash-alert" role="alert">{ p.Alert }</p>
 		}
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ p.T("tokens.title") }</h1>
 		<p class="lede">{ p.T("tokens.lede") }</p>
 		if raw != "" {

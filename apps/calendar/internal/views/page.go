@@ -280,6 +280,57 @@ type CellMarks struct {
 	Extra int
 }
 
+// LegendItem is one dot in the month legend.
+type LegendItem struct {
+	Kind  string
+	Label string
+}
+
+// LegendItems lists the mark kinds that appear on in-month days.
+func LegendItems(p Page, d CalData) []LegendItem {
+	if d.Grid == nil {
+		return nil
+	}
+	seen := map[string]bool{}
+	for _, cell := range d.Grid.Cells {
+		if cell == nil || !cell.InMonth {
+			continue
+		}
+		if len(cell.Holidays) > 0 {
+			seen["holiday"] = true
+		}
+		if len(cell.Birthdays) > 0 {
+			seen["birthday"] = true
+		}
+		if len(cell.PaymentDays) > 0 {
+			seen["payment"] = true
+		}
+		if len(cell.Events) > 0 {
+			seen["event"] = true
+		}
+		if len(cell.ICSEvents) > 0 {
+			seen["ics"] = true
+		}
+	}
+	order := []struct {
+		kind string
+		key  string
+	}{
+		{"event", "app.new_event"},
+		{"holiday", "app.holidays"},
+		{"birthday", "app.new_birthday"},
+		{"payment", "app.payment_badge"},
+		{"ics", "feeds.badge"},
+	}
+	var out []LegendItem
+	for _, item := range order {
+		if seen[item.kind] {
+			out = append(out, LegendItem{Kind: item.kind, Label: p.T(item.key)})
+		}
+	}
+	return out
+}
+
 func MarksOf(p Page, c *calendar.Cell) CellMarks {
 	pills, extra := Marks(p, c)
 	return CellMarks{Pills: pills, Extra: extra}

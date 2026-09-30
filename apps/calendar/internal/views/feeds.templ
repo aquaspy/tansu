@@ -16,7 +16,7 @@ templ FeedsPage(p Page, list []*store.ICSFeed) {
 		if p.Alert != "" {
 			<p class="flash flash-alert" role="alert">{ p.Alert }</p>
 		}
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ p.T("feeds.title") }</h1>
 		<p class="lede">{ p.T("feeds.lede") }</p>
 		@TimezoneForm(p)

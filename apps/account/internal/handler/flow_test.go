@@ -188,7 +188,7 @@ func TestHubShowsAppsAndDrawers(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("hub: %d", code)
 	}
-	for _, want := range []string{"TansuPeople", "0/1", "Not connected yet", "Connect", "http://127.0.0.1:3005/login/kura"} {
+	for _, want := range []string{"TansuPeople", "0 of 1 apps connected", "Not connected yet", "Connect", "http://127.0.0.1:3005/login/kura"} {
 		mustContain(t, body, want)
 	}
 	// Link the app through a redemption, drawers light up.
@@ -197,7 +197,7 @@ func TestHubShowsAppsAndDrawers(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, body, _ = f.get("/", nil)
-	for _, want := range []string{"1/1", "Connected", "Open", "http://127.0.0.1:3005/login/kura"} {
+	for _, want := range []string{"1 of 1 apps connected", "Connected", "Open", "http://127.0.0.1:3005/login/kura"} {
 		mustContain(t, body, want)
 	}
 }

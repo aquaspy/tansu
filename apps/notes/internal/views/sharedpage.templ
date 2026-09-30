@@ -8,7 +8,7 @@ import (
 
 templ SharedPage(p Page, note *store.Note) {
 	<article class="share-card">
-		@Wordmark()
+		@Wordmark(p)
 		if note.Title != "" {
 			<h1>{ note.Title }</h1>
 		}

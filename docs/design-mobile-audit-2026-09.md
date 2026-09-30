@@ -449,6 +449,17 @@ Proposal. Add `DEFAULT_LOCALE` (default `en`, so self-hosters do not change). On
 
 `.btn-primary` is `border-radius: 0.5rem`. `.btn-new`, the landing CTA, and the FAB are pills. Set `.btn-primary` and `.btn-new` to `border-radius: 999px; min-height: 2.75rem; font-weight: 650`. Cards stay 16px. Inputs stay 12px. Icon buttons stay circles.
 
+### Landed differently (P0 + P1)
+
+- **P1.2.** A real Spend balance uses `--text-display` (1.75rem), so the leftover stays the primary number. `--text-title` stays available for dialog titles.
+- **P1.3.** The space scale is on chrome, cards, rows, and search. Auth screens keep their existing padding.
+- **P1.5.** Notes, Email, and Assistant gained the magnifier. People already had it. Spend has no search backend, so there is no Spend field.
+- **P1.8.** Pragmatic v1 only: the first item in each app's overflow menu is the existing account link (hub). No sheet, and no duplicated client list.
+- **P0.9.** The theme script already painted `theme-color`. Light is now `#e9edeb` (the header), dark stays `#0a0d12`, and the status-bar style is `default`.
+- **P0.1 / P0.3.** Theme and lock left the mobile header. The Notes editor bar still has both, because that header is hidden while a note is open. Row delete stays in the DOM for keyboard focus and is clipped on small screens so it is not a visible hit target.
+- **P1.1.** Color, type, and space tokens share `design/tokens.css`. `scripts/sync-design-css.sh` copies that file into each app (Docker only sees the app directory) and refreshes the mobile rules.
+- **P1.9.** `DEFAULT_LOCALE` defaults to English. Hosted gettansu.com should set `DEFAULT_LOCALE=pt`. This change does not edit deploy scripts.
+
 ### P2 — the landing and the suite in one family
 
 Do P2 only after P0 and P1 are in production. A recolor on top of `Tans…` and two FABs will still look unfinished.

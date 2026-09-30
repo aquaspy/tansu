@@ -3,6 +3,7 @@
 package i18n
 
 import (
+	"os"
 	"strings"
 	"time"
 )
@@ -37,8 +38,39 @@ func FromCookie(header, cookie string) Locale {
 	case "en":
 		return EN
 	default:
-		return FromHeader(header)
+		if loc, ok := localeFromHeader(header); ok {
+			return loc
+		}
+		return DefaultLocale()
 	}
+}
+
+// DefaultLocale applies when the locale cookie is empty and Accept-Language
+// names neither Portuguese nor English. Hosted gettansu.com sets
+// DEFAULT_LOCALE=pt. Unset or any other value stays English.
+func DefaultLocale() Locale {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("DEFAULT_LOCALE"))) {
+	case "pt", "pt-br":
+		return PT
+	default:
+		return EN
+	}
+}
+
+func localeFromHeader(header string) (Locale, bool) {
+	for _, part := range strings.Split(header, ",") {
+		tag := strings.ToLower(strings.TrimSpace(strings.Split(part, ";")[0]))
+		if tag == "" {
+			continue
+		}
+		if strings.HasPrefix(tag, "pt") {
+			return PT, true
+		}
+		if strings.HasPrefix(tag, "en") {
+			return EN, true
+		}
+	}
+	return "", false
 }
 
 func HTMLLang(l Locale) string {
@@ -126,10 +158,10 @@ var strings_ = map[Locale]map[string]string{
 		"tokens.name_blank":       "Name can't be blank.",
 		"tokens.too_many":         "Ten tokens is enough. Revoke one first.",
 
-		"agent.title":      "Link Tansu Assistant",
-		"agent.lede":       "Tansu Assistant will read and change everything in this account, including deleting it. It can do that even while this app is locked. Text it reads is sent to the model, the same way a chat message is.",
-		"agent.session":    "This session: %{email}",
-		"agent.confirm":    "Allow",
+		"agent.title":       "Link Tansu Assistant",
+		"agent.lede":        "Tansu Assistant will read and change everything in this account, including deleting it. It can do that even while this app is locked. Text it reads is sent to the model, the same way a chat message is.",
+		"agent.session":     "This session: %{email}",
+		"agent.confirm":     "Allow",
 		"agent.bad_request": "This link is not valid.",
 
 		"auth.sign_in":              "Sign in",
@@ -192,6 +224,7 @@ var strings_ = map[Locale]map[string]string{
 		"app.write_placeholder":     "Write. The first line is the title.",
 		"app.more":                  "More",
 		"app.account":               "Tansu Account",
+		"app.short_name":            "Notes",
 		"app.account_label":         "Open Tansu Account",
 		"app.share":                 "Share",
 		"app.share_lede":            "Anyone with the link can read this note. They don't need an account.",
@@ -316,6 +349,7 @@ var strings_ = map[Locale]map[string]string{
 		"app.write_placeholder":     "Escreva. A primeira linha é o título.",
 		"app.more":                  "Mais",
 		"app.account":               "Tansu Account",
+		"app.short_name":            "Notas",
 		"app.account_label":         "Abrir o Tansu Account",
 		"app.share":                 "Compartilhar",
 		"app.share_lede":            "Quem tiver o link lê a nota. Não precisa de conta.",

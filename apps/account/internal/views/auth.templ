@@ -2,7 +2,7 @@ package views
 
 templ LoginPage(p Page, email string, signupOpen bool, mailEnabled bool) {
 	<section class="auth-card">
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ p.T("auth.sign_in") }</h1>
 		<p class="lede">{ p.T("auth.sign_in_lede") }</p>
 		if p.Notice != "" {
@@ -38,7 +38,7 @@ templ LoginPage(p Page, email string, signupOpen bool, mailEnabled bool) {
 
 templ SignupPage(p Page, email string, mailEnabled bool) {
 	<section class="auth-card">
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ p.T("auth.create_account") }</h1>
 		if mailEnabled {
 			<p class="lede">{ p.T("auth.signup_lede_mail") }</p>
@@ -74,7 +74,7 @@ templ SignupPage(p Page, email string, mailEnabled bool) {
 
 templ SignupSentPage(p Page, email string) {
 	<section class="auth-card">
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ p.T("auth.signup_sent_title") }</h1>
 		<p class="lede">{ p.T("auth.signup_sent_lede", "email", email) }</p>
 		<p class="auth-foot"><a href={ templ.SafeURL(WithNext("/login", p.Next)) }>{ p.T("auth.sign_in") }</a></p>
@@ -84,7 +84,7 @@ templ SignupSentPage(p Page, email string) {
 
 templ SignupConfirmPage(p Page, token string) {
 	<section class="auth-card">
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ p.T("auth.signup_confirm_title") }</h1>
 		<p class="lede">{ p.T("auth.signup_confirm_lede") }</p>
 		<form action="/signup/confirm" method="post" class="auth-form">
@@ -105,7 +105,7 @@ templ SignupConfirmPage(p Page, token string) {
 
 templ ForgotPasswordPage(p Page, email string) {
 	<section class="auth-card">
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ p.T("auth.forgot_title") }</h1>
 		<p class="lede">{ p.T("auth.forgot_lede") }</p>
 		<form action="/password/forgot" method="post" class="auth-form">
@@ -129,7 +129,7 @@ templ ForgotPasswordPage(p Page, email string) {
 
 templ ForgotPasswordSentPage(p Page, email string) {
 	<section class="auth-card">
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ p.T("auth.forgot_sent_title") }</h1>
 		<p class="lede">{ p.T("auth.forgot_sent_lede", "email", email) }</p>
 		<p class="auth-foot"><a href={ templ.SafeURL(WithNext("/login", p.Next)) }>{ p.T("auth.sign_in") }</a></p>
@@ -139,7 +139,7 @@ templ ForgotPasswordSentPage(p Page, email string) {
 
 templ ResetPasswordPage(p Page, token string) {
 	<section class="auth-card">
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ p.T("auth.reset_title") }</h1>
 		<p class="lede">{ p.T("auth.reset_lede") }</p>
 		<form action="/password/reset" method="post" class="auth-form">
@@ -164,7 +164,7 @@ templ ResetPasswordPage(p Page, token string) {
 
 templ ResetPasswordInvalidPage(p Page) {
 	<section class="auth-card">
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ p.T("auth.reset_title") }</h1>
 		if p.Alert != "" {
 			<p class="error">{ p.Alert }</p>
@@ -176,7 +176,7 @@ templ ResetPasswordInvalidPage(p Page) {
 
 templ SignupConfirmInvalidPage(p Page) {
 	<section class="auth-card">
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ p.T("auth.signup_confirm_title") }</h1>
 		if p.Alert != "" {
 			<p class="error">{ p.Alert }</p>
@@ -188,7 +188,7 @@ templ SignupConfirmInvalidPage(p Page) {
 
 templ UnlockPage(p Page, email string) {
 	<section class="auth-card">
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ p.T("app.unlock") }</h1>
 		<p class="lede">{ p.T("app.unlock_lede", "email", email) }</p>
 		<form action="/unlock" method="post" class="auth-form">
@@ -212,7 +212,7 @@ templ UnlockPage(p Page, email string) {
 
 templ PasswordPage(p Page) {
 	<section class="auth-card">
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ p.T("auth.change_password") }</h1>
 		<p class="lede">{ p.T("auth.change_password_lede") }</p>
 		<form
