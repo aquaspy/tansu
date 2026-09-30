@@ -352,4 +352,10 @@ func TestMigrateOldUsersSSO(t *testing.T) {
 	if err := s.SetUserSub(u2.ID, "acct-old"); !IsUniqueViolation(err) {
 		t.Fatalf("duplicate sub err = %v, want unique violation", err)
 	}
+	if err := s.SetPreferredPersonality(u.ID, ModeChat); err != nil {
+		t.Fatal(err)
+	}
+	if mode, ok := s.PreferredPersonality(u.ID); !ok || mode != ModeChat {
+		t.Fatalf("preferred after migrate = %q ok %v", mode, ok)
+	}
 }

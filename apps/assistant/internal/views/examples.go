@@ -88,8 +88,5 @@ func threadMode(d ShellData) string {
 	if d.Anonymous {
 		return "anonymous"
 	}
-	if d.Current != nil && d.Current.Conv != nil && d.Current.Conv.Mode != "" {
-		return d.Current.Conv.Mode
-	}
-	return "assistant"
+	return personalityOf(d)
 }

@@ -2,6 +2,24 @@ package i18n
 
 import "testing"
 
+func TestAnonymousBannerCopy(t *testing.T) {
+	if got := T(EN, "mode.not_saved_banner"); got != "This chat will not be saved" {
+		t.Fatalf("en banner: %q", got)
+	}
+	if got := T(PT, "mode.not_saved_banner"); got != "Esta conversa não será salva" {
+		t.Fatalf("pt banner: %q", got)
+	}
+	if got := T(PT, "mode.anonymous_on"); got != "Anônimo ligado" {
+		t.Fatalf("pt on: %q", got)
+	}
+	if got := T(EN, "mode.anonymous_on"); got != "Anonymous on" {
+		t.Fatalf("en on: %q", got)
+	}
+	if got := T(PT, "mode.anon_empty"); got != "Pergunte qualquer coisa — nada fica no histórico." {
+		t.Fatalf("pt empty: %q", got)
+	}
+}
+
 func TestEmptyListCopy(t *testing.T) {
 	if got := T(EN, "chat.empty_list"); got != "Ask about your calendar, spend, or notes." {
 		t.Fatalf("en: %q", got)

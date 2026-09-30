@@ -321,7 +321,7 @@ func Shell(p Page, d ShellData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.Anonymous {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<section class=\"col-editor\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<section class=\"col-editor is-anon\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

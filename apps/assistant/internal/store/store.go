@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT NOT NULL UNIQUE,
   password_digest TEXT NOT NULL,
   account_sub TEXT NOT NULL DEFAULT '',
+  preferred_mode TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -171,6 +172,7 @@ func migrate(db *sql.DB) error {
 		},
 		"users": {
 			{"account_sub", `ALTER TABLE users ADD COLUMN account_sub TEXT NOT NULL DEFAULT ''`},
+			{"preferred_mode", `ALTER TABLE users ADD COLUMN preferred_mode TEXT NOT NULL DEFAULT ''`},
 		},
 	}
 	for table, cols := range tables {

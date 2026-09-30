@@ -80,7 +80,7 @@ templ Shell(p Page, d ShellData) {
 			@ConversationList(p, d)
 		</aside>
 		if d.Anonymous {
-			<section class="col-editor">
+			<section class="col-editor is-anon">
 				@AnonThread(p, d)
 			</section>
 		} else if d.Current == nil {

@@ -44,6 +44,7 @@ func (s *Server) handleAnonymousShow(w http.ResponseWriter, r *http.Request) {
 	user := UserOf(r)
 	d := s.shellData(r, user.ID, 0)
 	d.Anonymous = true
+	d.Personality = s.Store.StickyPersonality(user.ID)
 	d.Anon = s.anonPage(r)
 	p := s.page(w, r, pTitle(r, "titles.app"), "")
 	render(w, r, http.StatusOK, views.Layout(p, views.NoHead(), views.Shell(p, d)))
@@ -91,6 +92,7 @@ func (s *Server) handleAnonymousComplete(w http.ResponseWriter, r *http.Request)
 		}
 		d := s.shellData(r, user.ID, 0)
 		d.Anonymous = true
+		d.Personality = s.Store.StickyPersonality(user.ID)
 		d.Anon = s.anonPage(r)
 		d.Anon.SearchOn = web
 		d.Anon.DeepOn = deep

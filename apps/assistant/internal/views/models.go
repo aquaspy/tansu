@@ -178,6 +178,9 @@ type ShellData struct {
 	Anonymous        bool
 	Anon             *AnonPage
 	AppsNeedConnect  bool
+	// Personality is Assistente or Conversa while Anonymous is on.
+	// Saved threads use the conversation's own mode.
+	Personality string
 }
 
 // RowPreview is the sidebar second line. Empty when it repeats the title.
@@ -250,19 +253,12 @@ func transcriptClass(empty bool) string {
 	return "transcript"
 }
 
-func modeSwitchClass(list bool) string {
-	if list {
-		return "mode-switch is-list"
-	}
-	return "mode-switch"
-}
-
 func heroTitle(p Page, mode string) string {
 	switch mode {
 	case "chat":
 		return p.T("mode.hero_chat")
 	case "anonymous":
-		return p.T("mode.hero_anonymous")
+		return p.T("mode.anon_empty")
 	default:
 		return p.T("mode.hero_assistant")
 	}
@@ -273,10 +269,25 @@ func heroLede(p Page, mode string) string {
 	case "chat":
 		return p.T("mode.chat_lede")
 	case "anonymous":
-		return p.T("mode.anonymous_lede")
+		return ""
 	default:
 		return p.T("mode.assistant_lede")
 	}
+}
+
+// personalityOf is the header picker value: the open thread's mode, or the
+// sticky personality while anonymous is on.
+func personalityOf(d ShellData) string {
+	if d.Anonymous {
+		if d.Personality == "chat" {
+			return "chat"
+		}
+		return "assistant"
+	}
+	if d.Current != nil && d.Current.Conv != nil && d.Current.Conv.Mode == "chat" {
+		return "chat"
+	}
+	return "assistant"
 }
 
 // AppStatusKind is "none" (nothing linked), "ok", or "down".

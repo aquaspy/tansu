@@ -1336,6 +1336,8 @@
     }
     if (hero) hero.hidden = !empty;
     if (box) box.classList.toggle("is-empty", empty);
+    const bar = target(root, "anon", "bar");
+    if (bar) bar.hidden = empty;
     if (title && thread && document.activeElement !== title) title.value = thread.title || "";
     anonRenderLocal(root, data);
   }

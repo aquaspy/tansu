@@ -33,7 +33,7 @@ It sits next to [TansuNotes](../notes), [TansuCalendar](../calendar), [TansuSpen
 
 - Multi-user instance; each person owns many conversations
 - Streaming replies over server-sent events + htmx fragment swaps
-- Three chat modes: **Assistente** (tools on, saved), **Conversa** (no tools, saved), and **Anônimo** (no tools, kept in this browser only — the text still goes to the model)
+- Personality is **Assistente** (tools on) or **Conversa** (no tools), chosen in the header and remembered for the next chat. **Anônimo** is a separate header toggle: the text still goes to the model, but the conversation is kept in this browser only and is not saved for either personality. Web and Deep stay composer toggles.
 - Model and effort pickers hidden on the hosted default (`ASSISTANT_SHOW_MODEL_CONTROLS=false`); set it true to show the per-chat picker with price-tier dots. Titles and compaction always use `none`
 - Explicit per-turn web search with a Sources fold (Exa engine via OpenRouter; off unless toggled), plus a deep-search toggle for research questions
 - Attach up to 4 files per message (images JPEG/PNG/WebP/GIF, or PDF, up to 8 MB each; the model sees them; follow-ups keep seeing them while that turn is in context). PDFs go through OpenRouter's file-parser plugin (`OPENROUTER_PDF_ENGINE`, default `mistral-ocr`)

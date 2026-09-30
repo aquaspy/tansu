@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -82,6 +83,8 @@ func (s *Server) handleConversationsShow(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	detail.ModelTiers, detail.ModelPrices = s.modelTierMaps(r.Context())
+	// Opening a saved chat selects its personality for the next new chat.
+	_ = s.Store.SetPreferredPersonality(user.ID, conv.Mode)
 	if conv.AllowsTools() && s.Chat != nil {
 		detail.Badges = s.appBadges(r.Context(), l, conv.UserID)
 	}
@@ -240,8 +243,45 @@ func shareURL(r *http.Request, token string) string {
 }
 
 func (s *Server) handleConversationsCreate(w http.ResponseWriter, r *http.Request) {
-	_ = r.ParseForm()
-	draft, err := s.Store.OpenDraftForMode(UserOf(r).ID, r.FormValue("mode"))
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "chat", http.StatusBadRequest)
+		return
+	}
+	user := UserOf(r)
+	mode := strings.TrimSpace(r.FormValue("mode"))
+	if mode != "" {
+		if err := s.Store.SetPreferredPersonality(user.ID, mode); err != nil {
+			http.Error(w, "chat", http.StatusInternalServerError)
+			return
+		}
+		// Personality while anonymous only updates the preference. The
+		// browser thread stays unsaved.
+		if r.FormValue("anon") == "1" {
+			http.Redirect(w, r, "/anonymous", http.StatusSeeOther)
+			return
+		}
+		if raw := strings.TrimSpace(r.FormValue("draft_id")); raw != "" {
+			if id, err := strconv.ParseInt(raw, 10, 64); err == nil {
+				err = s.Store.SetDraftMode(user.ID, id, mode)
+				if err == nil {
+					http.Redirect(w, r, "/conversations/"+raw, http.StatusSeeOther)
+					return
+				}
+				if !errors.Is(err, store.ErrNotFound) {
+					http.Error(w, "chat", http.StatusInternalServerError)
+					return
+				}
+			}
+		}
+		draft, err := s.Store.OpenDraftForMode(user.ID, mode)
+		if err != nil {
+			http.Error(w, "chat", http.StatusInternalServerError)
+			return
+		}
+		http.Redirect(w, r, "/conversations/"+itoa64(draft.ID), http.StatusSeeOther)
+		return
+	}
+	draft, err := s.Store.OpenDraftFor(user.ID)
 	if err != nil {
 		http.Error(w, "chat", http.StatusInternalServerError)
 		return

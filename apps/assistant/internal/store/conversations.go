@@ -166,9 +166,74 @@ func escapeLike(s string) string {
 	return r.Replace(s)
 }
 
-// OpenDraftFor returns the newest blank Assistente draft.
+// OpenDraftFor returns the newest blank draft of the user's sticky
+// personality (Assistente or Conversa). New chats inherit that choice
+// instead of resetting to Assistente.
 func (s *Store) OpenDraftFor(userID int64) (*Conversation, error) {
-	return s.OpenDraftForMode(userID, ModeAssistant)
+	return s.OpenDraftForMode(userID, s.StickyPersonality(userID))
+}
+
+// StickyPersonality is the last personality the user selected. An explicit
+// preference on the user row wins; otherwise the newest saved conversation
+// supplies it. Anonymous is never a personality.
+func (s *Store) StickyPersonality(userID int64) string {
+	if mode, ok := s.PreferredPersonality(userID); ok {
+		return mode
+	}
+	return s.LastPersonality(userID)
+}
+
+// PreferredPersonality reads users.preferred_mode. ok is false when the
+// user has never chosen (empty), so callers can fall back to history.
+func (s *Store) PreferredPersonality(userID int64) (string, bool) {
+	var mode string
+	err := s.db.QueryRow(`SELECT preferred_mode FROM users WHERE id = ?`, userID).Scan(&mode)
+	if err != nil || strings.TrimSpace(mode) == "" {
+		return "", false
+	}
+	return NormalizeStoredMode(mode), true
+}
+
+// SetPreferredPersonality remembers Assistente or Conversa on the user.
+// Anonymous is coerced to Assistente and is not stored as a preference.
+func (s *Store) SetPreferredPersonality(userID int64, mode string) error {
+	mode = NormalizeStoredMode(mode)
+	_, err := s.db.Exec(`UPDATE users SET preferred_mode = ? WHERE id = ?`, mode, userID)
+	return err
+}
+
+// LastPersonality is the mode of the newest saved conversation.
+func (s *Store) LastPersonality(userID int64) string {
+	var mode string
+	err := s.db.QueryRow(`SELECT mode FROM conversations
+		WHERE user_id = ? AND mode != ?
+		ORDER BY updated_at DESC, id DESC LIMIT 1`, userID, ModeAnonymous).Scan(&mode)
+	if err != nil {
+		return ModeAssistant
+	}
+	return NormalizeStoredMode(mode)
+}
+
+// SetDraftMode changes personality on a blank draft in place. A thread
+// that already has messages returns ErrNotFound so the caller can open
+// a new draft instead of rewriting a saved chat.
+func (s *Store) SetDraftMode(userID, id int64, mode string) error {
+	mode = NormalizeStoredMode(mode)
+	res, err := s.db.Exec(`UPDATE conversations SET mode = ?, updated_at = ?
+		WHERE id = ? AND user_id = ? AND title = '' AND share_token IS NULL
+		AND NOT EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = conversations.id)`,
+		mode, now(), id, userID)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // OpenDraftForMode returns the newest blank draft of mode (assistant or
