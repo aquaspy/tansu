@@ -160,6 +160,7 @@ func migrate(db *sql.DB) error {
 			{"web_search", `ALTER TABLE conversations ADD COLUMN web_search INTEGER NOT NULL DEFAULT 0`},
 			{"deep_search", `ALTER TABLE conversations ADD COLUMN deep_search INTEGER NOT NULL DEFAULT 0`},
 			{"effort", `ALTER TABLE conversations ADD COLUMN effort TEXT NOT NULL DEFAULT ''`},
+			// Kept so older files still open. The app no longer reads them.
 			{"voice_read_aloud", `ALTER TABLE conversations ADD COLUMN voice_read_aloud INTEGER NOT NULL DEFAULT 0`},
 			{"voice_auto_send", `ALTER TABLE conversations ADD COLUMN voice_auto_send INTEGER NOT NULL DEFAULT 1`},
 			{"mode", `ALTER TABLE conversations ADD COLUMN mode TEXT NOT NULL DEFAULT 'assistant'`},

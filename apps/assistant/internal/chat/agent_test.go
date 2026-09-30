@@ -152,11 +152,17 @@ func TestAgentCreateThenConfirmDelete(t *testing.T) {
 
 func TestVisibleContentHidesActionsWhenShared(t *testing.T) {
 	body := "Pronto.\n\n[[actions]]\nnotes_create #4 Trip\n[[/actions]]"
-	if got := visibleContent(body, false); strings.Contains(got, "[[") || !strings.Contains(got, "notes_create #4") || !strings.Contains(got, "Pronto.") {
+	if got := visibleContent(body, false); strings.Contains(got, "[[") || strings.Contains(got, "notes_create") || got != "Pronto." {
 		t.Fatalf("owner %q", got)
 	}
 	if got := visibleContent(body, true); strings.Contains(got, "notes_create") || strings.Contains(got, "#4") || got != "Pronto." {
 		t.Fatalf("shared %q", got)
+	}
+	if got := toolChip(i18n.PT, "people_search", "Ana"); got != "Busquei contatos · Ana" {
+		t.Fatalf("chip %q", got)
+	}
+	if got := toolChip(i18n.EN, "people_update", ""); got != "Updated contact" {
+		t.Fatalf("chip %q", got)
 	}
 	reads := "Oi.\n\n[[actions]]\n[[/actions]]"
 	if strings.Contains(digest([]toolCall{{Name: "notes_search", Status: "done", RecID: 0}}), "notes_search") {

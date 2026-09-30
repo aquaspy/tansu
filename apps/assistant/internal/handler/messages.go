@@ -101,7 +101,6 @@ func (s *Server) handleMessagesCreate(w http.ResponseWriter, r *http.Request) {
 	deep := s.Config.SearchEnabled && r.FormValue("deep") == "1"
 	_ = s.Store.UpdateConversationSettings(user.ID, conv.ID, store.ConversationSettings{
 		Model: model, Web: web, Deep: deep, Effort: conv.Effort,
-		VoiceReadAloud: conv.VoiceReadAloud, VoiceAutoSend: conv.VoiceAutoSend,
 	})
 	_ = s.Store.CancelConfirming(conv.ID, i18n.T(l, "chat.action_cancelled"))
 	userMsg, asstMsg, err := s.Store.CreateTurn(conv.ID, content, web, deep)

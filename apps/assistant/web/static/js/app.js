@@ -674,8 +674,8 @@
   });
 
   // ---- voice --------------------------------------------------------------
-  // Tap mic to dictate (auto-sends; the reply auto-plays), or tap Listen
-  // on any finished reply. One shared player: a new request stops the old.
+  // Tap mic to dictate into the box (review, then Send), or tap Listen
+  // on a finished reply. One shared player: a new request stops the old.
   const VOICE_CHUNK = 450;
 
   // Screen wake lock: held while recording or playing so a long reply
@@ -794,8 +794,8 @@
     }
   }
 
-  // voiceFinishUpload transcribes, always polishes, then follows the
-  // auto-send setting: submit right away or stage for review.
+  // voiceFinishUpload transcribes, polishes, and leaves the text in the
+  // box so the person can send it.
   async function voiceFinishUpload(form, blob) {
     const out = await voiceTranscribe(form, blob);
     if (!out) return;
@@ -828,8 +828,7 @@
     voiceFillInput(form, text);
     voiceStampMetering(form, entries);
     voiceState(form).staged = true;
-    if (form.dataset.voiceAutosendValue === "1") form.requestSubmit();
-    else target(form, "composer", "input")?.focus();
+    target(form, "composer", "input")?.focus();
   }
 
   function voiceStampMetering(form, entries) {
@@ -963,53 +962,6 @@
     voicePlayQueue();
   }
 
-  // Auto-play every completed reply while read-aloud is on. Replies
-  // arrive inflight and are swapped for a terminal node with the same id,
-  // so track both phases; failures play nothing.
-  function voiceWatchTranscript() {
-    const root = document.getElementById("transcript");
-    if (!root || root._voiceWatched) return;
-    root._voiceWatched = true;
-    const seen = new Set();
-    for (const a of root.querySelectorAll("article")) {
-      if (!a.id) continue;
-      seen.add(a.id);
-      if (a.querySelector(".msg-toolbar, .msg-error")) seen.add(`${a.id}#t`);
-    }
-    new MutationObserver((records) => {
-      for (const rec of records) {
-        for (const node of rec.addedNodes) {
-          if (!(node instanceof Element)) continue;
-          const articles = node.matches("article") ? [node] : [...node.querySelectorAll("article")];
-          for (const a of articles) {
-            if (!a.id) continue;
-            const tools = a.querySelector(".msg-toolbar");
-            const terminal = tools || a.querySelector(".msg-error");
-            const key = terminal ? `${a.id}#t` : a.id;
-            if (seen.has(key)) continue;
-            seen.add(key);
-            if (!tools) continue;
-            const form = document.querySelector("form.composer");
-            if (form && form.dataset.voiceAutospeakValue === "1") voiceSpeakArticle(a);
-          }
-        }
-      }
-    }).observe(root, { childList: true, subtree: true });
-  }
-
-  // Mirror the sticky voice toggles into the composer dataset so flips
-  // take effect without a reload (the settings form PATCHes itself).
-  document.addEventListener("change", (event) => {
-    const box = event.target?.closest?.(".voice-setting");
-    if (!box) return;
-    const form = document.querySelector("form.composer");
-    if (!form) return;
-    const read = box.querySelector('input[name="voice_read_aloud"]');
-    const send = box.querySelector('input[name="voice_auto_send"]');
-    form.dataset.voiceAutospeakValue = read && read.checked ? "1" : "0";
-    form.dataset.voiceAutosendValue = send && send.checked ? "1" : "0";
-  });
-
   async function voiceRecordStart(form) {
     const st = voiceState(form);
     try {
@@ -1059,10 +1011,7 @@
 
   controllers.voice = {
     connect(scope) {
-      if (scope.matches("form.composer")) {
-        voiceMicUI(scope);
-        voiceWatchTranscript();
-      }
+      if (scope.matches("form.composer")) voiceMicUI(scope);
     },
     async toggle({ scope }) {
       const form = scope.matches("form.composer") ? scope : scope.closest("form.composer");
@@ -1234,13 +1183,13 @@
       if (controllers.disclosure.bound) return;
       controllers.disclosure.bound = true;
       document.addEventListener("click", (event) => {
-        document.querySelectorAll("details.mode-menu[open]").forEach((item) => {
+        document.querySelectorAll("details.mode-menu[open], details.overflow-menu[open], details.msg-more[open]").forEach((item) => {
           if (!item.contains(event.target)) item.removeAttribute("open");
         });
       });
       document.addEventListener("keydown", (event) => {
         if (event.key !== "Escape") return;
-        document.querySelectorAll("details.mode-menu[open]").forEach((item) => {
+        document.querySelectorAll("details.mode-menu[open], details.overflow-menu[open], details.msg-more[open]").forEach((item) => {
           const back = item.contains(document.activeElement);
           item.removeAttribute("open");
           if (back) item.querySelector("summary")?.focus();

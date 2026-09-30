@@ -382,13 +382,26 @@ func (s *Service) finishAgent(conv *store.Conversation, assistant *store.Message
 	s.htmlComplete(conv, assistant, acc, usage, false, locale)
 }
 
+func toolPhrase(locale i18n.Locale, name string) string {
+	key := "tool." + name
+	if s := i18n.T(locale, key); s != key {
+		return s
+	}
+	return name
+}
+
+func toolChip(locale i18n.Locale, name, title string) string {
+	label := toolPhrase(locale, name)
+	if title != "" {
+		return label + " · " + title
+	}
+	return label
+}
+
 func (s *Service) actionCards(locale i18n.Locale, m *store.Message) []views.ActionCard {
 	var out []views.ActionCard
 	for _, c := range parseTrace(m.ToolTrace) {
-		label := c.Name
-		if c.Title != "" {
-			label = c.Title
-		}
+		label := toolChip(locale, c.Name, c.Title)
 		card := views.ActionCard{CallID: c.ID, Label: label}
 		if base := s.appBase(suiteApp(c.Name)); base != "" && c.Status == "done" {
 			card.Href = base + "/"
@@ -401,7 +414,11 @@ func (s *Service) actionCards(locale i18n.Locale, m *store.Message) []views.Acti
 				key = "chat.confirm_send"
 			}
 			card.ConfirmLabel = i18n.T(locale, key)
-			card.Label = card.ConfirmLabel + " " + label
+			if c.Title != "" {
+				card.Label = card.ConfirmLabel + " · " + c.Title
+			} else {
+				card.Label = card.ConfirmLabel
+			}
 		case "cancelled":
 			card.Label = i18n.T(locale, "chat.action_cancelled")
 		case "unknown":
@@ -479,33 +496,21 @@ func digest(calls []toolCall) string {
 }
 
 // visibleContent is what a person reads. The action block stays in storage
-// so the next turn remembers ids. A shared page drops the block. The owner
-// sees the lines without the markers.
+// so the next turn remembers ids. The transcript shows human chips from
+// the tool trace instead of the raw lines. shared is unused; both views
+// drop the block.
 func visibleContent(content string, shared bool) string {
+	_ = shared
 	start := strings.Index(content, actionOpen)
 	if start < 0 {
 		return content
 	}
 	end := strings.Index(content[start:], actionClose)
 	if end < 0 {
-		if shared {
-			return strings.TrimSpace(content[:start])
-		}
-		return content
+		return strings.TrimSpace(content[:start])
 	}
 	end += start + len(actionClose)
-	if shared {
-		return strings.TrimSpace(content[:start] + content[end:])
-	}
-	inner := strings.TrimSpace(content[start+len(actionOpen) : end-len(actionClose)])
-	rest := strings.TrimSpace(content[:start] + content[end:])
-	if rest == "" {
-		return inner
-	}
-	if inner == "" {
-		return rest
-	}
-	return rest + "\n\n" + inner
+	return strings.TrimSpace(content[:start] + content[end:])
 }
 
 func replay(calls []toolCall) []any {
