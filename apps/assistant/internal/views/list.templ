@@ -10,8 +10,18 @@ templ ConversationList(p Page, d ShellData) {
 	} else {
 		for _, c := range d.Conversations {
 			<div class={ noteItemClass(c) }>
-				<a href={ templ.SafeURL(listHref(c.ID, d.Query)) } class="note-item-link">
-					@ConvTitle(c.ID, c.Title)
+				<a href={ templ.SafeURL(listHref(c.ID, d.Query)) } class="note-item-link row">
+					<span class="row-main">
+						<span class="row-line">
+							@ConvTitle(c.ID, c.Title)
+							if !c.UpdatedAt.IsZero() {
+								<span class="row-trailing">{ RelLabel(p, c.UpdatedAt) }</span>
+							}
+						</span>
+						if c.Preview != "" {
+							<span class="row-meta">{ c.Preview }</span>
+						}
+					</span>
 				</a>
 				<button
 					type="button"

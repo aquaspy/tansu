@@ -3,6 +3,7 @@ package views
 import (
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aquasp/kurachat/internal/i18n"
 	"github.com/aquasp/kurachat/internal/store"
@@ -10,9 +11,47 @@ import (
 
 // ConversationItem is one sidebar row.
 type ConversationItem struct {
-	ID     int64
-	Title  string
-	Active bool
+	ID        int64
+	Title     string
+	Preview   string
+	UpdatedAt time.Time
+	Active    bool
+}
+
+// RelLabel is a short relative time for a conversation row ("3d", "2 h").
+func RelLabel(p Page, t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	d := time.Since(t)
+	if d < time.Minute {
+		if p.L == i18n.PT {
+			return "agora"
+		}
+		return "now"
+	}
+	if d < time.Hour {
+		n := int(d.Minutes())
+		if p.L == i18n.PT {
+			return strconv.Itoa(n) + " min"
+		}
+		return strconv.Itoa(n) + "m"
+	}
+	if d < 24*time.Hour {
+		n := int(d.Hours())
+		if p.L == i18n.PT {
+			return strconv.Itoa(n) + " h"
+		}
+		return strconv.Itoa(n) + "h"
+	}
+	if d < 7*24*time.Hour {
+		n := int(d.Hours() / 24)
+		if p.L == i18n.PT {
+			return strconv.Itoa(n) + " d"
+		}
+		return strconv.Itoa(n) + "d"
+	}
+	return i18n.TimeShort(p.L, t)
 }
 
 // CostView is nil-text when the chat has no cost yet.
@@ -127,6 +166,20 @@ type ShellData struct {
 	AutoLock         bool
 	Anonymous        bool
 	Anon             *AnonPage
+	AppsNeedConnect  bool
+}
+
+// RowPreview is the sidebar second line. Empty when it repeats the title.
+func RowPreview(title, raw string) string {
+	raw = strings.Join(strings.Fields(raw), " ")
+	if raw == "" || raw == title {
+		return ""
+	}
+	runes := []rune(raw)
+	if len(runes) > 140 {
+		raw = string(runes[:140]) + "…"
+	}
+	return raw
 }
 
 // DisplayTitle mirrors Conversation#display_title.

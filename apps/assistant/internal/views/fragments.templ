@@ -2,7 +2,7 @@ package views
 
 // ConvTitle is the sidebar row label, replaced live on auto-title.
 templ ConvTitle(convID int64, title string) {
-	<strong id={ ConvTitleID(convID) } sse-swap={ TitleEvent(convID) } hx-swap="outerHTML">{ title }</strong>
+	<strong class="row-title" id={ ConvTitleID(convID) } sse-swap={ TitleEvent(convID) } hx-swap="outerHTML">{ title }</strong>
 }
 
 // TitleField is the rename input in the editor bar.

@@ -1,9 +1,9 @@
 package views
 
-templ Wordmark() {
+templ Wordmark(p Page) {
 	<p class="wordmark">
 		<img src="/icon.png" width="28" height="28" alt="" decoding="async"/>
-		<span>TansuAccount</span>
+		<span>{ p.T("app.short_name") }</span>
 	</p>
 }
 

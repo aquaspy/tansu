@@ -14,12 +14,12 @@ templ Layout(p Page, head templ.Component, content templ.Component) {
 				})()
 			</script>
 			<title>{ p.Title }</title>
-			<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+			<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content"/>
 			<meta name="apple-mobile-web-app-capable" content="yes"/>
-			<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+			<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
 			<meta name="application-name" content="TansuCalendar"/>
 			<meta name="mobile-web-app-capable" content="yes"/>
-			<meta name="theme-color" content="#0a0d12"/>
+			<meta name="theme-color" content="#e9edeb"/>
 			<meta name="color-scheme" content="light dark"/>
 			<meta name="csrf-token" content={ p.CSRF }/>
 			if head != nil {

@@ -52,6 +52,15 @@ func (s *Server) handleApps(w http.ResponseWriter, r *http.Request) {
 	render(w, r, http.StatusOK, views.Layout(p, views.NoHead(), views.AppsPage(p, s.appRows(r, user))))
 }
 
+func appsNeedConnect(rows []views.AppRow) bool {
+	for _, row := range rows {
+		if row.State == "off" || row.State == "broken" {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Server) appRows(r *http.Request, user *store.User) []views.AppRow {
 	links, _ := s.Store.ListAppLinks(user.ID)
 	by := map[string]store.AppLink{}

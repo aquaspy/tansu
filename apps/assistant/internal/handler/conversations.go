@@ -27,12 +27,26 @@ func (s *Server) shellData(r *http.Request, userID, currentID int64) views.Shell
 	convs, _ := s.Store.ListConversations(userID, query)
 	l := LocaleOf(r)
 	d := views.ShellData{Query: query, AutoLock: AutoLockEnabled(r)}
+	ids := make([]int64, 0, len(convs))
 	for _, c := range convs {
+		ids = append(ids, c.ID)
+	}
+	snippets, _ := s.Store.FirstUserSnippets(ids)
+	page := views.Page{L: l}
+	for _, c := range convs {
+		title := views.DisplayTitle(page, c)
 		d.Conversations = append(d.Conversations, &views.ConversationItem{
-			ID: c.ID, Title: views.DisplayTitle(views.Page{L: l}, c), Active: c.ID == currentID,
+			ID:        c.ID,
+			Title:     title,
+			Preview:   views.RowPreview(title, snippets[c.ID]),
+			UpdatedAt: c.UpdatedAt,
+			Active:    c.ID == currentID,
 		})
 	}
 	d.HasConversations = len(d.Conversations) > 0
+	if user, err := s.Store.FindUser(userID); err == nil && user != nil {
+		d.AppsNeedConnect = appsNeedConnect(s.appRows(r, user))
+	}
 	return d
 }
 

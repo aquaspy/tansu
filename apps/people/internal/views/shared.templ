@@ -1,9 +1,9 @@
 package views
 
-templ Wordmark() {
+templ Wordmark(p Page) {
 	<p class="wordmark">
 		<img src="/icon.png" width="28" height="28" alt="" decoding="async"/>
-		<span>TansuPeople</span>
+		<span>{ p.T("app.short_name") }</span>
 	</p>
 }
 
@@ -11,6 +11,21 @@ templ Wordmark() {
 templ AccountLink(p Page) {
 	if p.AccountURL != "" {
 		<a class="account-link" href={ templ.SafeURL(p.AccountURL) } title={ p.T("app.account_label") } aria-label={ p.T("app.account_label") }>
+			<svg viewBox="0 0 16 16" aria-hidden="true">
+				<rect x="2.3" y="2.5" width="11.4" height="11.2" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect>
+				<path d="M2.3 6.2h11.4M2.3 9.9h11.4" fill="none" stroke="currentColor" stroke-width="1.15"></path>
+				<path d="M6 4.35h4M6 8.05h4M6 11.7h4" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round"></path>
+			</svg>
+			<span>{ p.T("app.account") }</span>
+		</a>
+	}
+}
+
+
+// SuiteMenuLink is the overflow-menu path back to the Account hub.
+templ SuiteMenuLink(p Page) {
+	if p.AccountURL != "" {
+		<a class="btn-io" href={ templ.SafeURL(p.AccountURL) }>
 			<svg viewBox="0 0 16 16" aria-hidden="true">
 				<rect x="2.3" y="2.5" width="11.4" height="11.2" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect>
 				<path d="M2.3 6.2h11.4M2.3 9.9h11.4" fill="none" stroke="currentColor" stroke-width="1.15"></path>

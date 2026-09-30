@@ -2,7 +2,7 @@ package views
 
 templ LoginPage(p Page, email string, signupOpen bool) {
 	<section class="auth-card">
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ p.T("auth.sign_in") }</h1>
 		<p class="lede">{ p.T("auth.sign_in_lede") }</p>
 		<form action="/login" method="post" class="auth-form">
@@ -36,7 +36,7 @@ templ LoginPage(p Page, email string, signupOpen bool) {
 
 templ SignupPage(p Page, email string) {
 	<section class="auth-card">
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ p.T("auth.create_account") }</h1>
 		<p class="lede">{ p.T("auth.signup_lede") }</p>
 		<form action="/signup" method="post" class="auth-form">
@@ -65,7 +65,7 @@ templ SignupPage(p Page, email string) {
 
 templ UnlockPage(p Page, email string) {
 	<section class="auth-card">
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ p.T("app.unlock") }</h1>
 		<p class="lede">{ p.T("app.unlock_lede", "email", email) }</p>
 		<form action="/unlock" method="post" class="auth-form">
@@ -86,7 +86,7 @@ templ UnlockPage(p Page, email string) {
 
 templ PasswordPage(p Page) {
 	<section class="auth-card">
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ p.T("auth.change_password") }</h1>
 		<p class="lede">{ p.T("auth.change_password_lede") }</p>
 		<form

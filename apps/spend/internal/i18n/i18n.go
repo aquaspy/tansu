@@ -3,6 +3,7 @@
 package i18n
 
 import (
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -38,8 +39,39 @@ func FromCookie(header, cookie string) Locale {
 	case "en":
 		return EN
 	default:
-		return FromHeader(header)
+		if loc, ok := localeFromHeader(header); ok {
+			return loc
+		}
+		return DefaultLocale()
 	}
+}
+
+// DefaultLocale applies when the locale cookie is empty and Accept-Language
+// names neither Portuguese nor English. Hosted gettansu.com sets
+// DEFAULT_LOCALE=pt. Unset or any other value stays English.
+func DefaultLocale() Locale {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("DEFAULT_LOCALE"))) {
+	case "pt", "pt-br":
+		return PT
+	default:
+		return EN
+	}
+}
+
+func localeFromHeader(header string) (Locale, bool) {
+	for _, part := range strings.Split(header, ",") {
+		tag := strings.ToLower(strings.TrimSpace(strings.Split(part, ";")[0]))
+		if tag == "" {
+			continue
+		}
+		if strings.HasPrefix(tag, "pt") {
+			return PT, true
+		}
+		if strings.HasPrefix(tag, "en") {
+			return EN, true
+		}
+	}
+	return "", false
 }
 
 func HTMLLang(l Locale) string {
@@ -243,6 +275,7 @@ var strings_ = map[Locale]map[string]string{
 		"app.save":                    "Save",
 		"app.more":                    "More",
 		"app.account":                 "Tansu Account",
+		"app.short_name":              "Spend",
 		"app.account_label":           "Open Tansu Account",
 		"app.today":                   "This month",
 		"app.previous_month":          "Previous month",
@@ -297,6 +330,7 @@ var strings_ = map[Locale]map[string]string{
 		"app.fx_refresh_failed":       "Could not fetch live rates.",
 		"app.missing_rates":           "Set a rate for %{codes} or those rows stay out of leftover.",
 		"app.salary_hint":             "Set a salary in the menu to see what's left after subscriptions and spend.",
+		"app.set_salary":              "Set salary",
 		"app.empty_expenses":          "No daily spend this month.",
 		"app.empty_payment_days":      "No payment days yet. Water, electricity, card…",
 		"app.empty_subscriptions":     "No subscriptions yet.",
@@ -438,6 +472,7 @@ var strings_ = map[Locale]map[string]string{
 		"app.save":                    "Salvar",
 		"app.more":                    "Mais",
 		"app.account":                 "Tansu Account",
+		"app.short_name":              "Gastos",
 		"app.account_label":           "Abrir o Tansu Account",
 		"app.today":                   "Este mês",
 		"app.previous_month":          "Mês anterior",
@@ -492,6 +527,7 @@ var strings_ = map[Locale]map[string]string{
 		"app.fx_refresh_failed":       "Não foi possível buscar as cotações.",
 		"app.missing_rates":           "Defina a cotação de %{codes} ou essas linhas ficam fora da sobra.",
 		"app.salary_hint":             "Coloque o salário no menu para ver o que sobra depois das assinaturas e gastos.",
+		"app.set_salary":              "Definir salário",
 		"app.empty_expenses":          "Nenhum gasto do dia neste mês.",
 		"app.empty_payment_days":      "Nenhum dia de pagamento ainda. Água, luz, cartão…",
 		"app.empty_subscriptions":     "Nenhuma assinatura ainda.",

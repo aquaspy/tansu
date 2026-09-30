@@ -8,7 +8,7 @@ templ AccountsPage(p Page, f AccountForm) {
 		if p.Alert != "" {
 			<p class="flash flash-alert" role="alert">{ p.Alert }</p>
 		}
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ p.T("mail.accounts") }</h1>
 		<p class="lede">{ p.T("mail.accounts_lede") }</p>
 		if len(f.Rows) > 0 {

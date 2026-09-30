@@ -2,7 +2,11 @@
 // config/locales. Keys use the same dot paths as the Rails app.
 package i18n
 
-import "strings"
+import (
+	"os"
+	"strings"
+	"time"
+)
 
 type Locale string
 
@@ -34,8 +38,39 @@ func FromCookie(header, cookie string) Locale {
 	case "en":
 		return EN
 	default:
-		return FromHeader(header)
+		if loc, ok := localeFromHeader(header); ok {
+			return loc
+		}
+		return DefaultLocale()
 	}
+}
+
+// DefaultLocale applies when the locale cookie is empty and Accept-Language
+// names neither Portuguese nor English. Hosted gettansu.com sets
+// DEFAULT_LOCALE=pt. Unset or any other value stays English.
+func DefaultLocale() Locale {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("DEFAULT_LOCALE"))) {
+	case "pt", "pt-br":
+		return PT
+	default:
+		return EN
+	}
+}
+
+func localeFromHeader(header string) (Locale, bool) {
+	for _, part := range strings.Split(header, ",") {
+		tag := strings.ToLower(strings.TrimSpace(strings.Split(part, ";")[0]))
+		if tag == "" {
+			continue
+		}
+		if strings.HasPrefix(tag, "pt") {
+			return PT, true
+		}
+		if strings.HasPrefix(tag, "en") {
+			return EN, true
+		}
+	}
+	return "", false
 }
 
 func HTMLLang(l Locale) string {
@@ -80,6 +115,16 @@ func JS(l Locale) map[string]string {
 		}
 	}
 	return out
+}
+
+// TimeShort mirrors the other apps' short stamp: "Sep 19, 10:00" in en,
+// "19/09, 10:00" in pt. Used when a conversation row is older than a week.
+func TimeShort(l Locale, t time.Time) string {
+	t = t.Local()
+	if l == PT {
+		return t.Format("02/01, 15:04")
+	}
+	return t.Format("Jan 2, 15:04")
 }
 
 var strings_ = map[Locale]map[string]string{
@@ -133,6 +178,7 @@ var strings_ = map[Locale]map[string]string{
 		"app.delete":        "Delete",
 		"app.more":          "More",
 		"app.account":       "Tansu Account",
+		"app.short_name":    "Assistant",
 		"app.account_label": "Open Tansu Account",
 		"app.share":         "Share",
 		"app.share_lede":    "Anyone with the link can read this chat. They don't need an account.",
@@ -341,6 +387,7 @@ var strings_ = map[Locale]map[string]string{
 		"app.delete":        "Apagar",
 		"app.more":          "Mais",
 		"app.account":       "Tansu Account",
+		"app.short_name":    "Assistente",
 		"app.account_label": "Abrir o Tansu Account",
 		"app.share":         "Compartilhar",
 		"app.share_lede":    "Quem tiver o link lê o chat. Não precisa de conta.",

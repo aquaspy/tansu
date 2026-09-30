@@ -5,7 +5,7 @@ templ AgentError(p Page) {
 		if p.Alert != "" {
 			<p class="flash flash-alert" role="alert">{ p.Alert }</p>
 		}
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ p.T("agent.title") }</h1>
 	</section>
 }
@@ -15,7 +15,7 @@ templ AgentConfirm(p Page, email, redirectURI, state, challenge string) {
 		if p.Alert != "" {
 			<p class="flash flash-alert" role="alert">{ p.Alert }</p>
 		}
-		@Wordmark()
+		@Wordmark(p)
 		<h1>{ p.T("agent.title") }</h1>
 		<p class="lede">{ p.T("agent.lede") }</p>
 		<p class="lede">{ p.T("agent.session", "email", email) }</p>

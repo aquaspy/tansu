@@ -2,6 +2,7 @@
 package i18n
 
 import (
+	"os"
 	"strings"
 	"time"
 )
@@ -33,8 +34,39 @@ func FromCookie(header, cookie string) Locale {
 	case "en":
 		return EN
 	default:
-		return FromHeader(header)
+		if loc, ok := localeFromHeader(header); ok {
+			return loc
+		}
+		return DefaultLocale()
 	}
+}
+
+// DefaultLocale applies when the locale cookie is empty and Accept-Language
+// names neither Portuguese nor English. Hosted gettansu.com sets
+// DEFAULT_LOCALE=pt. Unset or any other value stays English.
+func DefaultLocale() Locale {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("DEFAULT_LOCALE"))) {
+	case "pt", "pt-br":
+		return PT
+	default:
+		return EN
+	}
+}
+
+func localeFromHeader(header string) (Locale, bool) {
+	for _, part := range strings.Split(header, ",") {
+		tag := strings.ToLower(strings.TrimSpace(strings.Split(part, ";")[0]))
+		if tag == "" {
+			continue
+		}
+		if strings.HasPrefix(tag, "pt") {
+			return PT, true
+		}
+		if strings.HasPrefix(tag, "en") {
+			return EN, true
+		}
+	}
+	return "", false
 }
 
 func HTMLLang(l Locale) string {
@@ -160,6 +192,7 @@ var strings_ = map[Locale]map[string]string{
 		"app.cancel":        "Cancel",
 		"app.more":          "More",
 		"app.account":       "Tansu Account",
+		"app.short_name":    "Email",
 		"app.account_label": "Open Tansu Account",
 		"app.offline":       "You're offline. Mail needs the network.",
 
@@ -304,6 +337,7 @@ var strings_ = map[Locale]map[string]string{
 		"app.cancel":        "Cancelar",
 		"app.more":          "Mais",
 		"app.account":       "Tansu Account",
+		"app.short_name":    "Email",
 		"app.account_label": "Abrir o Tansu Account",
 		"app.offline":       "Você está offline. O email precisa da rede.",
 

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 )
 
@@ -259,6 +260,42 @@ func (s *Store) InflightExists(conversationID int64) (bool, error) {
 	err := s.db.QueryRow(`SELECT COUNT(*) FROM messages WHERE conversation_id = ?
 		AND role = 'assistant' AND status IN ('pending', 'streaming')`, conversationID).Scan(&n)
 	return n > 0, err
+}
+
+// FirstUserSnippets returns the first user message of each conversation,
+// trimmed to one line, for the sidebar preview.
+func (s *Store) FirstUserSnippets(ids []int64) (map[int64]string, error) {
+	out := map[int64]string{}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	placeholders := make([]string, len(ids))
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+	q := `SELECT m.conversation_id, COALESCE(m.content, '') FROM messages m
+		INNER JOIN (
+			SELECT conversation_id, MIN(id) AS id FROM messages
+			WHERE role = ? AND conversation_id IN (` + strings.Join(placeholders, ",") + `)
+			GROUP BY conversation_id
+		) first ON first.id = m.id`
+	queryArgs := append([]any{RoleUser}, args...)
+	rows, err := s.db.Query(q, queryArgs...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		var content string
+		if err := rows.Scan(&id, &content); err != nil {
+			return nil, err
+		}
+		out[id] = content
+	}
+	return out, rows.Err()
 }
 
 func (s *Store) FirstUserMessage(conversationID int64) (*Message, error) {

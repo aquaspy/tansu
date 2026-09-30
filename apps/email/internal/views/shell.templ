@@ -22,30 +22,25 @@ templ Shell(p Page, d MailData) {
 	>
 		<p class="offline-banner" data-offline-target="banner" hidden>{ p.T("app.offline") }</p>
 		<header class="mobile-top">
-			@Wordmark()
+			@Wordmark(p)
 			@AccountLink(p)
-			<button type="button" class="icon-btn" data-action="theme#cycle" data-theme-button title={ p.T("auth.theme") } aria-label={ p.T("auth.theme") }>
-				<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.3"></circle><path d="M8 3a5 5 0 0 0 0 10Z" fill="currentColor"></path></svg>
-			</button>
-			<button type="button" class="icon-btn" data-action="lock#lock" title={ p.T("app.lock") } aria-label={ p.T("app.lock") }>
-				<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3.4" y="7.2" width="9.2" height="6.4" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"></rect><path d="M5.3 7.2V5.4a2.7 2.7 0 0 1 5.4 0v1.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"></path></svg>
-			</button>
 			<button type="button" class="icon-btn" data-action="layout#toggleMenu" data-layout-target="menuButton" title={ p.T("app.more") } aria-label={ p.T("app.more") } aria-expanded="false">
 				<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="3.5" r="1.1" fill="currentColor"></circle><circle cx="8" cy="8" r="1.1" fill="currentColor"></circle><circle cx="8" cy="12.5" r="1.1" fill="currentColor"></circle></svg>
 			</button>
 			<div class="mobile-menu" data-layout-target="menu" hidden>
+				@SuiteMenuLink(p)
 				@LockButton(p)
 				@AutoLockButton(p, d.AutoLock)
 				@ChangePasswordButton(p)
 				@APITokensButton(p)
 				<a href="/accounts" class="btn-io">{ p.T("mail.accounts") }</a>
-				@LanguageSwitch(p)
+				@ThemeSwitch(p)
 				@SignOut(p)
 			</div>
 		</header>
 		<aside class="col-folders">
 			<div class="brand">
-				@Wordmark()
+				@Wordmark(p)
 				@AccountLink(p)
 				if len(d.Accounts) == 0 {
 					<a class="btn-new" href="/accounts">{ p.T("mail.connect") }</a>
@@ -74,7 +69,7 @@ templ Shell(p Page, d MailData) {
 				@AutoLockButton(p, d.AutoLock)
 				@ChangePasswordButton(p)
 				@APITokensButton(p)
-				@LanguageSwitch(p)
+				@ThemeSwitch(p)
 				@SignOut(p)
 			</div>
 		</aside>
@@ -105,7 +100,8 @@ templ Shell(p Page, d MailData) {
 					if d.Folder != "" {
 						<input type="hidden" name="folder" value={ d.Folder }/>
 					}
-					<input type="search" name="q" value={ d.Query } placeholder={ p.T("mail.search") } class="search" enterkeyhint="search" autocomplete="off"/>
+					<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.2" fill="none" stroke="currentColor" stroke-width="1.4"></circle><path d="M10.4 10.4 13.6 13.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>
+					<input type="search" name="q" value={ d.Query } placeholder={ p.T("mail.search") } aria-label={ p.T("mail.search") } class="search" enterkeyhint="search" autocomplete="off"/>
 					<button type="button" class="search-clear" data-action="search#clear" aria-label={ p.T("mail.clear_search") }>
 						<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 4.2 11.8 11.8M11.8 4.2 4.2 11.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>
 					</button>
@@ -157,15 +153,12 @@ templ MailList(p Page, d MailData) {
 		}
 		for _, m := range d.Messages {
 			<a class={ messageClass(m) } href={ templ.SafeURL(m.Href) }>
-				<span class="note-item-link">
-					<strong>{ orUntitled(p, m.Subject) }</strong>
-					<span>
-						if !m.Seen {
-							<em class="unread-badge">{ p.T("mail.unread") }</em>
-						}
-						{ m.From }
+				<span class="note-item-link row-main">
+					<span class="row-line">
+						<strong class="row-title">{ orUntitled(p, m.Subject) }</strong>
+						<span class="row-trailing">{ m.When }</span>
 					</span>
-					<span>{ m.When }</span>
+					<span class="row-meta">{ m.From }</span>
 				</span>
 			</a>
 		}
